@@ -11,6 +11,7 @@ use Saloon\Exceptions\Request\RequestException;
 use Saloon\Http\Auth\BasicAuthenticator;
 use Saloon\Http\Connector;
 use Saloon\Http\Request;
+use Saloon\Http\Response;
 use Saloon\PaginationPlugin\Contracts\HasPagination;
 use Saloon\Traits\Plugins\AcceptsJson;
 
@@ -273,12 +274,12 @@ class TransmitSmsConnector extends Connector implements HasPagination
      * This method ensures that SUCCESS responses are not treated as failures,
      * which allows Saloon's dtoOrFail() to work correctly.
      *
-     * @param  \Saloon\Http\Response  $response  The response to check
+     * @param  Response  $response  The response to check
      * @return bool|null True if failed, false if success, null for default Saloon behavior
      *
      * @see https://docs.saloon.dev/the-basics/handling-failures#customising-when-saloon-thinks-a-request-has-failed
      */
-    public function hasRequestFailed(\Saloon\Http\Response $response): ?bool
+    public function hasRequestFailed(Response $response): ?bool
     {
         // Let Saloon handle HTTP errors (4xx, 5xx)
         if ($response->status() >= 400) {
@@ -324,7 +325,7 @@ class TransmitSmsConnector extends Connector implements HasPagination
      *
      * @see https://docs.saloon.dev/the-basics/handling-failures#custom-exceptions
      */
-    public function getRequestException(\Saloon\Http\Response $response, ?\Throwable $senderException): ?\Throwable
+    public function getRequestException(Response $response, ?\Throwable $senderException): ?\Throwable
     {
         return Exceptions\TransmitSmsException::fromResponse($response);
     }

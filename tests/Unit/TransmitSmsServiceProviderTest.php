@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use ExpertSystems\TransmitSms\Laravel\Notifications\TransmitSmsChannel;
+use ExpertSystems\TransmitSms\Laravel\TransmitSmsServiceProvider;
 use ExpertSystems\TransmitSms\TransmitSmsClient;
 use ExpertSystems\TransmitSms\TransmitSmsConnector;
 use Illuminate\Notifications\ChannelManager;
@@ -105,7 +106,7 @@ describe('TransmitSmsServiceProvider', function () {
 
     describe('provides', function () {
         it('provides the correct services', function () {
-            $provider = app()->getProvider(\ExpertSystems\TransmitSms\Laravel\TransmitSmsServiceProvider::class);
+            $provider = app()->getProvider(TransmitSmsServiceProvider::class);
 
             $provides = $provider->provides();
 

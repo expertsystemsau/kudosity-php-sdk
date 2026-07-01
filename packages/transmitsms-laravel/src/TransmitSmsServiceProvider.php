@@ -9,6 +9,7 @@ use ExpertSystems\TransmitSms\Callbacks\CallbackUrlParser;
 use ExpertSystems\TransmitSms\Laravel\Notifications\TransmitSmsChannel;
 use ExpertSystems\TransmitSms\TransmitSmsClient;
 use ExpertSystems\TransmitSms\TransmitSmsConnector;
+use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Notifications\ChannelManager;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Route;
@@ -125,7 +126,7 @@ class TransmitSmsServiceProvider extends ServiceProvider
     /**
      * Get the signing key for callback URLs.
      *
-     * @param  \Illuminate\Contracts\Foundation\Application  $app
+     * @param  Application  $app
      *
      * @throws \RuntimeException If no signing key is configured
      */

@@ -237,7 +237,7 @@ class SendSmsRequest extends TransmitSmsRequest
      *
      * @param  string  $email  Email address to receive replies
      *
-     * @throws \ExpertSystems\TransmitSms\Exceptions\ValidationException If the email is invalid
+     * @throws ValidationException If the email is invalid
      */
     public function repliesToEmail(string $email): self
     {
@@ -254,7 +254,7 @@ class SendSmsRequest extends TransmitSmsRequest
      *
      * @param  string  $url  The URL to convert to a tracking link
      *
-     * @throws \ExpertSystems\TransmitSms\Exceptions\ValidationException If the URL is invalid
+     * @throws ValidationException If the URL is invalid
      */
     public function trackedLinkUrl(string $url): self
     {
@@ -272,7 +272,7 @@ class SendSmsRequest extends TransmitSmsRequest
      *
      * @param  string  $url  URL to receive delivery notifications (must be publicly accessible)
      *
-     * @throws \ExpertSystems\TransmitSms\Exceptions\ValidationException If the URL is invalid or points to internal resources
+     * @throws ValidationException If the URL is invalid or points to internal resources
      */
     public function dlrCallback(string $url): self
     {
@@ -290,7 +290,7 @@ class SendSmsRequest extends TransmitSmsRequest
      *
      * @param  string  $url  URL to receive reply notifications (must be publicly accessible)
      *
-     * @throws \ExpertSystems\TransmitSms\Exceptions\ValidationException If the URL is invalid or points to internal resources
+     * @throws ValidationException If the URL is invalid or points to internal resources
      */
     public function replyCallback(string $url): self
     {
@@ -308,7 +308,7 @@ class SendSmsRequest extends TransmitSmsRequest
      *
      * @param  string  $url  URL to receive link click notifications (must be publicly accessible)
      *
-     * @throws \ExpertSystems\TransmitSms\Exceptions\ValidationException If the URL is invalid or points to internal resources
+     * @throws ValidationException If the URL is invalid or points to internal resources
      */
     public function linkHitsCallback(string $url): self
     {

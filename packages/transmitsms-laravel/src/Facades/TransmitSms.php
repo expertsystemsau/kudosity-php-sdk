@@ -24,7 +24,7 @@ use Saloon\Http\Response;
  * @method static TransmitSmsClient useMmsUrl()
  * @method static TransmitSmsClient setBaseUrl(string $baseUrl)
  *
- * @see \ExpertSystems\TransmitSms\TransmitSmsClient
+ * @see TransmitSmsClient
  */
 class TransmitSms extends Facade
 {
