@@ -30,14 +30,19 @@ class SmsResource extends Resource
      * @param  string  $message  The message content (up to 612 characters)
      * @param  string  $to  Single number or comma-separated numbers (up to 500)
      * @param  string|null  $from  Override the default sender ID (optional)
+     * @param  string|null  $repliesToEmail  Email address to receive SMS replies (optional)
      *
      * @throws TransmitSmsException
      */
-    public function send(string $message, string $to, ?string $from = null): SmsData
+    public function send(string $message, string $to, ?string $from = null, ?string $repliesToEmail = null): SmsData
     {
         $request = (new SendSmsRequest($message))->to($to);
 
         $this->applyDefaults($request, $from);
+
+        if ($repliesToEmail !== null) {
+            $request->repliesToEmail($repliesToEmail);
+        }
 
         /** @var SmsData */
         return $this->sendAndDto($request);
