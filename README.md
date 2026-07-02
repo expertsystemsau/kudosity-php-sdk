@@ -62,53 +62,88 @@ Add your credentials to your `.env` file:
 ```env
 TRANSMITSMS_API_KEY=your-api-key
 TRANSMITSMS_API_SECRET=your-api-secret
-TRANSMITSMS_FROM=YourSenderID
+# Optional default sender ID — see "Sender IDs" below before setting this
+TRANSMITSMS_FROM=
 ```
+
+### Sender IDs
+
+The `from` value (`TRANSMITSMS_FROM`, or the per-message `from` option) is the sender
+ID recipients see. It can be:
+
+- A **dedicated virtual number (VMN)** in international format, e.g. `61412345678` —
+  supports two-way messaging (recipients can reply).
+- An **alphanumeric sender ID** ("alpha tag") such as `MyBrand` — max 11 characters,
+  letters and digits only, no spaces (validated by `PhoneNumber::isValidSenderId()`).
+  One-way only; recipients cannot reply.
+- **Omitted** (leave empty) — TransmitSMS falls back to a shared number for the
+  destination country.
+
+> ⚠️ **Alpha tags must be registered and approved before you can send with them.**
+> For messages to Australian numbers, alphanumeric sender IDs must be listed on the
+> [ACMA SMS Sender ID Register](https://www.acma.gov.au/sms-sender-id-register)
+> (enforced from 1 July 2026) — an unregistered sender ID is replaced with
+> **"Unverified"** on the recipient's device. Registration requires your registered
+> entity name, ABN, and an authorised contact. Register your sender IDs through the
+> TransmitSMS dashboard before setting `TRANSMITSMS_FROM`; until then, leave `from`
+> empty to send from a shared number.
 
 ## Usage
 
 ### Core Client (Plain PHP)
 
+The client is resource-based: SMS operations live on `$client->sms()`, account
+operations on `$client->account()`, reporting on `$client->reporting()`, and so on.
+
 ```php
 use ExpertSystems\TransmitSms\TransmitSmsClient;
+use ExpertSystems\TransmitSms\Requests\SendSmsRequest;
 
 $client = new TransmitSmsClient('api-key', 'api-secret');
 
-// Send an SMS
-$response = $client->sendSms('+61400000000', 'Hello from TransmitSMS!');
+// Send an SMS — send(string $message, string $to, ?string $from = null, ?callable $configure = null)
+$sms = $client->sms()->send('Hello from TransmitSMS!', '+61400000000');
+$messageId = $sms->messageId;
 
-// Send to multiple recipients
-$response = $client->sendSms(['+61400000000', '+61400000001'], 'Bulk message');
+// Send to multiple recipients (comma-separated, up to 500)
+$client->sms()->send('Bulk message', '+61400000000,+61400000001');
 
-// Send with options
-$response = $client->sendSms('+61400000000', 'Scheduled message', [
-    'from' => 'MySenderID',
-    'send_at' => '2024-12-25 09:00:00',
-]);
+// Extra options (replies-to-email, callbacks, scheduling, validity) — pass a
+// configure closure. Connector defaults still apply, unlike sendRequest().
+$client->sms()->send('Hello!', '+61400000000', configure: fn (SendSmsRequest $r) =>
+    $r->repliesToEmail('inbox@example.com')->validity(60)
+);
 
-// Check message status
-$status = $client->getMessageStatus('message-id');
+// Full control with no connector defaults applied — build a request yourself
+$request = (new SendSmsRequest('Scheduled message'))
+    ->to('+61400000000')
+    ->from('MySenderID')
+    ->scheduledAt('2026-12-25 09:00:00');
+$client->sms()->sendRequest($request);
+
+// Check a message's status / delivery stats
+$message = $client->reporting()->getMessage($messageId);
+$stats = $client->reporting()->getStats($messageId);
 
 // Get account balance
-$balance = $client->getBalance();
+$balance = $client->account()->getBalance();
 
-// Get SMS replies
-$replies = $client->getSmsReplies();
-
-// Get delivery reports
-$reports = $client->getDeliveryReports();
+// Get SMS replies (responses)
+$replies = $client->sms()->getAllResponses();
 ```
 
 ### Laravel Facade
+
+The facade proxies to the same resources as the core client.
 
 ```php
 use ExpertSystems\TransmitSms\Laravel\Facades\TransmitSms;
 
 // Send an SMS
-TransmitSms::sendSms('+61400000000', 'Hello from Laravel!');
+TransmitSms::sms()->send('Hello from Laravel!', '+61400000000');
 
 // Get account balance
-$balance = TransmitSms::getBalance();
+$balance = TransmitSms::account()->getBalance();
 ```
 
 ### Laravel Notifications

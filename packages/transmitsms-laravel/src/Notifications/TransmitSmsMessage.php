@@ -10,6 +10,8 @@ class TransmitSmsMessage
 
     protected ?string $to = null;
 
+    protected ?int $listId = null;
+
     protected ?string $from = null;
 
     protected ?string $sendAt = null;
@@ -17,6 +19,8 @@ class TransmitSmsMessage
     protected ?int $validity = null;
 
     protected ?string $countryCode = null;
+
+    protected bool $formatNumbers = false;
 
     protected ?string $repliesToEmail = null;
 
@@ -104,6 +108,19 @@ class TransmitSmsMessage
     }
 
     /**
+     * Send to a TransmitSMS contact list instead of an individual recipient.
+     *
+     * When set, the notifiable's resolved phone number is ignored and the
+     * message is sent to every contact on the list.
+     */
+    public function toList(int $listId): self
+    {
+        $this->listId = $listId;
+
+        return $this;
+    }
+
+    /**
      * Set the sender ID.
      */
     public function from(string $from): self
@@ -139,6 +156,20 @@ class TransmitSmsMessage
     public function countryCode(string $countryCode): self
     {
         $this->countryCode = $countryCode;
+
+        return $this;
+    }
+
+    /**
+     * Enable local formatting of phone numbers to E.164 before sending.
+     *
+     * Requires a country code to be set (via countryCode() or the connector
+     * default). When enabled, numbers are normalised client-side rather than
+     * relying on the API's countrycode parameter.
+     */
+    public function formatNumbers(bool $format = true): self
+    {
+        $this->formatNumbers = $format;
 
         return $this;
     }
@@ -289,6 +320,14 @@ class TransmitSmsMessage
     }
 
     /**
+     * Get the recipient list ID.
+     */
+    public function getListId(): ?int
+    {
+        return $this->listId;
+    }
+
+    /**
      * Get the sender ID.
      */
     public function getFrom(): ?string
@@ -318,6 +357,14 @@ class TransmitSmsMessage
     public function getCountryCode(): ?string
     {
         return $this->countryCode;
+    }
+
+    /**
+     * Whether local E.164 number formatting is enabled.
+     */
+    public function getFormatNumbers(): bool
+    {
+        return $this->formatNumbers;
     }
 
     /**

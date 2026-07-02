@@ -14,39 +14,97 @@ composer require expertsystemsau/transmitsms-php-client
 
 ## Usage
 
+The client is resource-based. SMS operations live on `$client->sms()`, account
+operations on `$client->account()`, reporting on `$client->reporting()`, and
+contact lists on `$client->lists()`.
+
 ```php
 use ExpertSystems\TransmitSms\TransmitSmsClient;
+use ExpertSystems\TransmitSms\Requests\SendSmsRequest;
 
 $client = new TransmitSmsClient('your-api-key', 'your-api-secret');
 
-// Send an SMS
-$response = $client->sendSms('+61400000000', 'Hello from TransmitSMS!');
+// Send an SMS — send(string $message, string $to, ?string $from = null, ?callable $configure = null)
+$sms = $client->sms()->send('Hello from TransmitSMS!', '+61400000000');
+$messageId = $sms->messageId;
 
-// Send to multiple recipients
-$response = $client->sendSms(['+61400000000', '+61400000001'], 'Bulk message');
+// Send to multiple recipients (comma-separated, up to 500)
+$client->sms()->send('Bulk message', '+61400000000,+61400000001');
 
-// Send with options
-$response = $client->sendSms('+61400000000', 'Scheduled message', [
-    'from' => 'MySenderID',
-    'send_at' => '2024-12-25 09:00:00',
-]);
+// Extra options (replies-to-email, callbacks, scheduling, validity) — pass a
+// configure closure. Connector defaults still apply, unlike sendRequest().
+$client->sms()->send('Hello!', '+61400000000', configure: fn (SendSmsRequest $r) =>
+    $r->repliesToEmail('inbox@example.com')->validity(60)
+);
 
-// Check message status
-$status = $client->getMessageStatus('message-id');
+// Full control with no connector defaults applied — build a request yourself
+$request = (new SendSmsRequest('Scheduled message'))
+    ->to('+61400000000')
+    ->from('MySenderID')
+    ->scheduledAt('2026-12-25 09:00:00');
+$client->sms()->sendRequest($request);
+
+// Check a message's status / delivery stats
+$message = $client->reporting()->getMessage($messageId);
+$stats = $client->reporting()->getStats($messageId);
 
 // Get account balance
-$balance = $client->getBalance();
+$balance = $client->account()->getBalance();
 
-// Get SMS replies
-$replies = $client->getSmsReplies();
+// Get SMS replies (responses)
+$replies = $client->sms()->getAllResponses();
 
-// Get delivery reports
-$reports = $client->getDeliveryReports();
-
-// Manage contacts
-$lists = $client->getLists();
-$client->addContact(123, '+61400000000', ['first_name' => 'John']);
+// Manage contact lists
+$lists = $client->lists()->all();
+$client->lists()->addContact(123, '+61400000000', firstName: 'John');
 ```
+
+## Sender IDs
+
+The `from` value (per-message, or the connector default via `setDefaultFrom()`) is the
+sender ID recipients see. It can be:
+
+- A **dedicated virtual number (VMN)** in international format, e.g. `61412345678` —
+  supports two-way messaging (recipients can reply).
+- An **alphanumeric sender ID** ("alpha tag") such as `MyBrand` — max 11 characters,
+  letters and digits only, no spaces (validate with `$client->sms()->isValidSenderId()`).
+  One-way only; recipients cannot reply.
+- **Omitted** — TransmitSMS falls back to a shared number for the destination country.
+
+There is no `from` argument on the constructor. Set it one of two ways:
+
+```php
+$client = new TransmitSmsClient('your-api-key', 'your-api-secret');
+
+// 1. Per message — the third argument to send() overrides any default.
+//    send(string $message, string $to, ?string $from = null, ?callable $configure = null)
+$client->sms()->send('Hello!', '+61400000000', 'MyBrand');
+
+// 2. A default sender ID applied to every send()/sendToList() call, set on
+//    the connector. Optionally set a default country code used to normalise
+//    local numbers before sending.
+$client->connector()->setDefaultFrom('MyBrand');
+$client->connector()->setDefaultCountryCode('AU');
+
+$client->sms()->send('Hello!', '+61400000000'); // uses "MyBrand"
+
+// Validate a value before you rely on it
+if (! $client->sms()->isValidSenderId('MyBrand')) {
+    // reject / fall back to a shared number
+}
+```
+
+> Note: `$client->sms()->sendRequest(SendSmsRequest $request)` does **not** apply
+> these connector defaults — set `from` on the request yourself when using it.
+
+> ⚠️ **Alpha tags must be registered and approved before you can send with them.**
+> For messages to Australian numbers, alphanumeric sender IDs must be listed on the
+> [ACMA SMS Sender ID Register](https://www.acma.gov.au/sms-sender-id-register)
+> (enforced from 1 July 2026) — an unregistered sender ID is replaced with
+> **"Unverified"** on the recipient's device. Registration requires your registered
+> entity name, ABN, and an authorised contact. Register your sender IDs through the
+> TransmitSMS dashboard before using an alpha tag; otherwise omit `from` to send from
+> a shared number.
 
 ## DLR & Reply Callbacks
 
