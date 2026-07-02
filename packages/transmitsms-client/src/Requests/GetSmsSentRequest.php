@@ -5,13 +5,14 @@ declare(strict_types=1);
 namespace ExpertSystems\TransmitSms\Requests;
 
 use DateTimeInterface;
+use Saloon\PaginationPlugin\Contracts\Paginatable;
 
 /**
  * Get list of SMS sent for a message (paginated).
  *
  * @see https://developer.transmitsms.com/#get-sms-sent
  */
-class GetSmsSentRequest extends TransmitSmsRequest
+class GetSmsSentRequest extends TransmitSmsRequest implements Paginatable
 {
     protected ?int $page = null;
 

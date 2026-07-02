@@ -2,6 +2,22 @@
 
 All notable changes to `transmitsms-php-client` will be documented in this file.
 
+## 1.8.0 - 2026-07-03
+
+### Breaking
+
+- `SmsResource::send()` and `sendToList()` replace the positional `repliesToEmail` argument added in 1.7.0 with an optional `configure` closure that receives the `SendSmsRequest` after connector defaults are applied. Migrate `send($msg, $to, $from, $email)` to `send($msg, $to, $from, configure: fn ($r) => $r->repliesToEmail($email))`. The closure also reaches every other request option (callbacks, scheduling, validity, tracked links).
+- Dropped Laravel 10 support. The Saloon v4 upgrade (`saloonphp/laravel-plugin ^4.0`) requires Laravel 11+, so the Laravel package now requires `illuminate/* ^11.0||^12.0`. The CI matrix and docs were updated to match.
+
+### Added
+
+- Laravel `TransmitSmsMessage::toList(int $listId)` — send a notification to a TransmitSMS contact list; the channel skips notifiable recipient resolution when a list is set.
+- Laravel `TransmitSmsMessage::formatNumbers(bool)` — client-side E.164 number normalisation, wired through `TransmitSmsChannel`.
+
+### Fixed
+
+- Pagination threw `InvalidArgumentException` on every paginated call (`numbers()->all()`, `sms()->getResponses()`/`getAllResponses()`, `lists()->all()`, `keywords()->all()`, reporting `getSent()`/`getUserSent()`); all collection requests now implement Saloon's `Paginatable` interface.
+
 ## 1.7.0 - 2026-07-02
 
 Add "repliesToEmail" parameter to send() method.

@@ -27,21 +27,31 @@ class SmsResource extends Resource
      *
      * Uses the connector's default 'from' and 'countryCode' if configured.
      *
+     * Pass a `$configure` closure to set any additional option on the request
+     * (replies-to-email, callbacks, scheduling, validity, ...). It receives the
+     * request after connector defaults have been applied:
+     *
+     * ```php
+     * $client->sms()->send('Hi', '+61400000000', configure: fn (SendSmsRequest $r) =>
+     *     $r->repliesToEmail('inbox@example.com')->validity(60)
+     * );
+     * ```
+     *
      * @param  string  $message  The message content (up to 612 characters)
      * @param  string  $to  Single number or comma-separated numbers (up to 500)
      * @param  string|null  $from  Override the default sender ID (optional)
-     * @param  string|null  $repliesToEmail  Email address to receive SMS replies (optional)
+     * @param  (callable(SendSmsRequest): mixed)|null  $configure  Configure the request before sending (optional)
      *
      * @throws TransmitSmsException
      */
-    public function send(string $message, string $to, ?string $from = null, ?string $repliesToEmail = null): SmsData
+    public function send(string $message, string $to, ?string $from = null, ?callable $configure = null): SmsData
     {
         $request = (new SendSmsRequest($message))->to($to);
 
         $this->applyDefaults($request, $from);
 
-        if ($repliesToEmail !== null) {
-            $request->repliesToEmail($repliesToEmail);
+        if ($configure !== null) {
+            $configure($request);
         }
 
         /** @var SmsData */
@@ -53,17 +63,26 @@ class SmsResource extends Resource
      *
      * Uses the connector's default 'from' and 'countryCode' if configured.
      *
+     * Pass a `$configure` closure to set any additional option on the request;
+     * it receives the request after connector defaults have been applied. See
+     * {@see self::send()} for an example.
+     *
      * @param  string  $message  The message content (up to 612 characters)
      * @param  int  $listId  The list ID to send to
      * @param  string|null  $from  Override the default sender ID (optional)
+     * @param  (callable(SendSmsRequest): mixed)|null  $configure  Configure the request before sending (optional)
      *
      * @throws TransmitSmsException
      */
-    public function sendToList(string $message, int $listId, ?string $from = null): SmsData
+    public function sendToList(string $message, int $listId, ?string $from = null, ?callable $configure = null): SmsData
     {
         $request = (new SendSmsRequest($message))->toList($listId);
 
         $this->applyDefaults($request, $from);
+
+        if ($configure !== null) {
+            $configure($request);
+        }
 
         /** @var SmsData */
         return $this->sendAndDto($request);

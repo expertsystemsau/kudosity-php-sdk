@@ -32,11 +32,32 @@ describe('TransmitSmsMessage', function () {
             expect($message->getTo())->toBe('61400000000');
         });
 
+        it('sets list ID via toList() method', function () {
+            $message = (new TransmitSmsMessage('Test'))
+                ->toList(12345);
+
+            expect($message->getListId())->toBe(12345);
+        });
+
         it('sets sender via from() method', function () {
             $message = (new TransmitSmsMessage('Test'))
                 ->from('MyBrand');
 
             expect($message->getFrom())->toBe('MyBrand');
+        });
+
+        it('enables number formatting via formatNumbers() method', function () {
+            $message = (new TransmitSmsMessage('Test'))
+                ->formatNumbers();
+
+            expect($message->getFormatNumbers())->toBeTrue();
+        });
+
+        it('disables number formatting when passed false', function () {
+            $message = (new TransmitSmsMessage('Test'))
+                ->formatNumbers(false);
+
+            expect($message->getFormatNumbers())->toBeFalse();
         });
 
         it('sets scheduled time via sendAt() method', function () {
@@ -143,6 +164,16 @@ describe('TransmitSmsMessage', function () {
         it('returns null for unset to', function () {
             $message = new TransmitSmsMessage('Test');
             expect($message->getTo())->toBeNull();
+        });
+
+        it('returns null for unset listId', function () {
+            $message = new TransmitSmsMessage('Test');
+            expect($message->getListId())->toBeNull();
+        });
+
+        it('returns false for formatNumbers by default', function () {
+            $message = new TransmitSmsMessage('Test');
+            expect($message->getFormatNumbers())->toBeFalse();
         });
 
         it('returns null for unset from', function () {

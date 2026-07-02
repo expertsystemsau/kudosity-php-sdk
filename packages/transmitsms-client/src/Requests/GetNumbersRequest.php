@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace ExpertSystems\TransmitSms\Requests;
 
+use Saloon\PaginationPlugin\Contracts\Paginatable;
+
 /**
  * Get all virtual numbers (paginated).
  *
  * @see https://developer.transmitsms.com/#get-numbers
  */
-class GetNumbersRequest extends TransmitSmsRequest
+class GetNumbersRequest extends TransmitSmsRequest implements Paginatable
 {
     protected ?int $page = null;
 

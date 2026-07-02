@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a PHP monorepo containing two packages for the TransmitSMS API:
 
 - **`packages/transmitsms-client`** (`expertsystemsau/transmitsms-client`) - Framework-agnostic PHP client built on Saloon v3
-- **`packages/transmitsms-laravel`** (`expertsystemsau/transmitsms-laravel`) - Laravel notification channel integration (supports Laravel 10, 11, 12)
+- **`packages/transmitsms-laravel`** (`expertsystemsau/transmitsms-laravel`) - Laravel notification channel integration (supports Laravel 11, 12)
 
 ## Common Commands
 

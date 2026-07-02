@@ -25,21 +25,46 @@ Add your credentials to your `.env` file:
 ```env
 TRANSMITSMS_API_KEY=your-api-key
 TRANSMITSMS_API_SECRET=your-api-secret
-TRANSMITSMS_FROM=YourSenderID
+# Optional default sender ID — see "Sender IDs" below before setting this
+TRANSMITSMS_FROM=
 ```
+
+### Sender IDs
+
+`TRANSMITSMS_FROM` (or the per-message `from()` / `from` option) is the sender ID
+recipients see. It can be:
+
+- A **dedicated virtual number (VMN)** in international format, e.g. `61412345678` —
+  supports two-way messaging (recipients can reply).
+- An **alphanumeric sender ID** ("alpha tag") such as `MyBrand` — max 11 characters,
+  letters and digits only, no spaces. One-way only; recipients cannot reply.
+- **Omitted** (leave empty) — TransmitSMS falls back to a shared number for the
+  destination country.
+
+> ⚠️ **Alpha tags must be registered and approved before you can send with them.**
+> For messages to Australian numbers, alphanumeric sender IDs must be listed on the
+> [ACMA SMS Sender ID Register](https://www.acma.gov.au/sms-sender-id-register)
+> (enforced from 1 July 2026) — an unregistered sender ID is replaced with
+> **"Unverified"** on the recipient's device. Registration requires your registered
+> entity name, ABN, and an authorised contact. Register your sender IDs through the
+> TransmitSMS dashboard before setting `TRANSMITSMS_FROM`; until then, leave it empty
+> to send from a shared number.
 
 ## Usage
 
 ### Facade
 
+The facade proxies to the resource-based client: SMS operations live on `sms()`,
+account operations on `account()`, reporting on `reporting()`, and so on.
+
 ```php
 use ExpertSystems\TransmitSms\Laravel\Facades\TransmitSms;
 
-// Send an SMS
-TransmitSms::sendSms('+61400000000', 'Hello from Laravel!');
+// Send an SMS — send(string $message, string $to, ?string $from = null, ?callable $configure = null)
+TransmitSms::sms()->send('Hello from Laravel!', '+61400000000');
 
 // Get account balance
-$balance = TransmitSms::getBalance();
+$balance = TransmitSms::account()->getBalance();
 ```
 
 ### Notifications
@@ -83,6 +108,32 @@ Then send notifications:
 
 ```php
 $user->notify(new OrderShipped());
+```
+
+### Message options
+
+`TransmitSmsMessage` is a fluent builder covering every send option:
+
+```php
+TransmitSmsMessage::create('Your order has shipped!')
+    ->from('MyStore')                         // sender ID (else config/default)
+    ->countryCode('AU')                       // normalise local numbers
+    ->formatNumbers()                         // format numbers to E.164 client-side
+    ->validity(60)                            // minutes to attempt delivery
+    ->sendAt('2026-12-25 09:00:00')           // schedule
+    ->repliesToEmail('inbox@example.com')     // route replies to an email
+    ->trackedLinkUrl('https://example.com');  // [tracked-link] target
+```
+
+To send to a TransmitSMS contact list instead of the notifiable's number, use
+`toList()` — the resolved recipient is then ignored:
+
+```php
+public function toTransmitSms($notifiable): TransmitSmsMessage
+{
+    return TransmitSmsMessage::create('Flash sale for members!')
+        ->toList(12345);
+}
 ```
 
 ## DLR & Reply Callbacks

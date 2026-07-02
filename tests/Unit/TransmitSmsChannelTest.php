@@ -130,6 +130,92 @@ describe('TransmitSmsChannel', function () {
             expect($result)->toBe($smsData);
         });
 
+        it('sends to a list via toList() without a resolved recipient', function () {
+            $notifiable = new class
+            {
+                public function routeNotificationFor($channel, $notification)
+                {
+                    return null; // no individual recipient
+                }
+            };
+
+            $notification = new class extends Notification
+            {
+                public function toTransmitSms($notifiable)
+                {
+                    return (new TransmitSmsMessage('List blast'))
+                        ->toList(999);
+                }
+            };
+
+            $smsData = new SmsData(
+                messageId: 555,
+                sendAt: '2025-12-06 10:00:00',
+                recipients: 10,
+                cost: 1.00,
+                sms: 10
+            );
+
+            $this->smsResource->shouldReceive('sendRequest')
+                ->once()
+                ->withArgs(function ($request) {
+                    $body = $request->body()->all();
+
+                    return $request instanceof SendSmsRequest
+                        && ($body['list_id'] ?? null) === 999
+                        && ! array_key_exists('to', $body);
+                })
+                ->andReturn($smsData);
+
+            $result = $this->channel->send($notifiable, $notification);
+
+            expect($result)->toBe($smsData);
+        });
+
+        it('applies local number formatting when formatNumbers() is set', function () {
+            $notifiable = new class
+            {
+                public function routeNotificationFor($channel, $notification)
+                {
+                    return '0400000000';
+                }
+            };
+
+            $notification = new class extends Notification
+            {
+                public function toTransmitSms($notifiable)
+                {
+                    return (new TransmitSmsMessage('Test'))
+                        ->countryCode('AU')
+                        ->formatNumbers();
+                }
+            };
+
+            $smsData = new SmsData(
+                messageId: 444,
+                sendAt: '2025-12-06 10:00:00',
+                recipients: 1,
+                cost: 0.10,
+                sms: 1
+            );
+
+            $this->smsResource->shouldReceive('sendRequest')
+                ->once()
+                ->withArgs(function ($request) {
+                    $body = $request->body()->all();
+
+                    // formatNumbers => local formatting applied, countrycode omitted
+                    return $request instanceof SendSmsRequest
+                        && ($body['to'] ?? null) === '61400000000'
+                        && ! array_key_exists('countrycode', $body);
+                })
+                ->andReturn($smsData);
+
+            $result = $this->channel->send($notifiable, $notification);
+
+            expect($result)->toBe($smsData);
+        });
+
         it('returns null when no recipient available', function () {
             $notifiable = new class
             {

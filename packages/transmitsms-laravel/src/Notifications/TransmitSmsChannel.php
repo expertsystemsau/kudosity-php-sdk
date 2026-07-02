@@ -38,15 +38,23 @@ class TransmitSmsChannel
             $message = new TransmitSmsMessage($message);
         }
 
+        $listId = $message->getListId();
         $to = $message->getTo() ?? $notifiable->routeNotificationFor('transmitsms', $notification);
 
-        if (! $to) {
+        // A list send doesn't need a resolved recipient; a direct send does.
+        if ($listId === null && ! $to) {
             return null;
         }
 
         try {
             // Build the SendSmsRequest (may throw ValidationException)
-            $request = (new SendSmsRequest($message->getContent()))->to($to);
+            $request = new SendSmsRequest($message->getContent());
+
+            if ($listId !== null) {
+                $request->toList($listId);
+            } elseif ($to !== null) {
+                $request->to($to);
+            }
 
             // Apply sender ID: message > config > default
             $from = $message->getFrom() ?? Config::get('transmitsms.from');
@@ -66,6 +74,10 @@ class TransmitSmsChannel
 
             if ($message->getCountryCode() !== null) {
                 $request->countryCode($message->getCountryCode());
+            }
+
+            if ($message->getFormatNumbers()) {
+                $request->formatNumbers();
             }
 
             if ($message->getRepliesToEmail() !== null) {

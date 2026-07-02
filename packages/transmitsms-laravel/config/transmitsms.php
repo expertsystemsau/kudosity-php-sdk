@@ -53,8 +53,21 @@ return [
     | Default Sender ID
     |--------------------------------------------------------------------------
     |
-    | The default sender ID (from number) to use when sending SMS messages.
-    | This can be overridden per-message.
+    | The default sender ID recipients see when sending SMS. Can be overridden
+    | per-message. Valid values:
+    |
+    |   - A dedicated virtual number (VMN) in international format, e.g.
+    |     "61412345678" — supports two-way messaging (replies).
+    |   - An alphanumeric sender ID ("alpha tag"), e.g. "MyBrand" — max 11
+    |     characters, letters and digits only, no spaces. One-way only.
+    |   - Empty — TransmitSMS falls back to a shared number for the
+    |     destination country.
+    |
+    | IMPORTANT: Alpha tags must be registered and approved before use. For
+    | Australian numbers, alphanumeric sender IDs must be listed on the ACMA
+    | SMS Sender ID Register (enforced from 1 July 2026) or they are shown as
+    | "Unverified" to recipients. Register via the TransmitSMS dashboard first;
+    | otherwise leave this empty. See https://www.acma.gov.au/sms-sender-id-register
     |
     */
     'from' => env('TRANSMITSMS_FROM', ''),

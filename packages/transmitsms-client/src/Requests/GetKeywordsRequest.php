@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace ExpertSystems\TransmitSms\Requests;
 
+use Saloon\PaginationPlugin\Contracts\Paginatable;
+
 /**
  * Get all keywords (paginated).
  *
  * @see https://developer.transmitsms.com/#get-keywords
  */
-class GetKeywordsRequest extends TransmitSmsRequest
+class GetKeywordsRequest extends TransmitSmsRequest implements Paginatable
 {
     protected ?int $page = null;
 
