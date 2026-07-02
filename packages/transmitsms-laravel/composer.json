@@ -22,7 +22,7 @@
         "expertsystemsau/transmitsms-php-client": "^1.0",
         "illuminate/notifications": "^10.0||^11.0||^12.0",
         "illuminate/support": "^10.0||^11.0||^12.0",
-        "saloonphp/laravel-plugin": "^3.0"
+        "saloonphp/laravel-plugin": "^4.0"
     },
     "require-dev": {
         "orchestra/testbench": "^9.0||^10.0",
