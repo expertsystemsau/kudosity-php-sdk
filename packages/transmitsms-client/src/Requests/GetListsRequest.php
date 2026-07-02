@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace ExpertSystems\TransmitSms\Requests;
 
+use Saloon\PaginationPlugin\Contracts\Paginatable;
+
 /**
  * Get all contact lists (paginated).
  *
  * @see https://developer.transmitsms.com/#get-lists
  */
-class GetListsRequest extends TransmitSmsRequest
+class GetListsRequest extends TransmitSmsRequest implements Paginatable
 {
     protected ?int $page = null;
 

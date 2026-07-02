@@ -7,6 +7,7 @@ namespace ExpertSystems\TransmitSms\Requests;
 use ExpertSystems\TransmitSms\Data\SmsResponseItemData;
 use Saloon\Enums\Method;
 use Saloon\Http\Response;
+use Saloon\PaginationPlugin\Contracts\Paginatable;
 
 /**
  * Get all SMS responses/replies by time frame.
@@ -15,7 +16,7 @@ use Saloon\Http\Response;
  *
  * @see https://developer.transmitsms.com/#get-user-sms-responses
  */
-class GetUserSmsResponsesRequest extends TransmitSmsRequest
+class GetUserSmsResponsesRequest extends TransmitSmsRequest implements Paginatable
 {
     protected Method $method = Method::GET;
 
