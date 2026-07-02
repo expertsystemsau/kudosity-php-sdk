@@ -2,6 +2,10 @@
 
 All notable changes to `transmitsms-php-client` will be documented in this file.
 
+## 1.7.0 - 2026-07-02
+
+Add "repliesToEmail" parameter to send() method.
+
 ## v1.6.0 - 2026-01-16
 
 **Full Changelog**: https://github.com/expertsystemsau/transmitsms-php-sdk/compare/v1.5.0...v1.6.0
