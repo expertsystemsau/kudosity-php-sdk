@@ -22,8 +22,13 @@ jobs:
             target: expertsystemsau/transmitsms-laravel-client
 
     steps:
+      # Pinned to v4 on purpose (do NOT bump to match the other workflows).
+      # splitsh-action@v1.0.0 runs `git config --local --unset-all
+      # http.https://github.com/.extraheader` under `set -e`; checkout v5+ stores
+      # the auth token via an includeIf credentials file instead of that inline
+      # header, so the unset hits a missing key (exit 5) and aborts the split.
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 

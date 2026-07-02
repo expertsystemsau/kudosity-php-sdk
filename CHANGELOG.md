@@ -12,7 +12,7 @@ All notable changes to `transmitsms-php-client` will be documented in this file.
 ### Changed
 
 - CI: removed the `test-client` matrix (12 jobs) that ran PHPUnit against the client package's empty test directory under `continue-on-error: true`, masking the fact that it ran nothing. The client's classes are covered by the root Pest suite (`test-laravel` job).
-- CI: bumped `actions/checkout` from v4 to v6 in `split.yml` to match the other workflows.
+- CI: documented why `split.yml` intentionally pins `actions/checkout@v4` — `splitsh-action@v1.0.0` unsets the inline `http.extraheader` auth token that checkout v4 writes, and checkout v5+ stores credentials differently, which breaks the split. It must stay on v4.
 
 ## 1.8.0 - 2026-07-03
 
