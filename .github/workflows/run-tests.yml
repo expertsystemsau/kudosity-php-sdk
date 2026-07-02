@@ -58,26 +58,24 @@ jobs:
         continue-on-error: true
 
   # Test the Laravel integration
+  # PHP 8.2 is intentionally excluded here: the test suite runs on Pest v4,
+  # which requires PHP >= 8.3. The framework-agnostic client is still tested
+  # on 8.2 in the test-client job (it runs under PHPUnit).
   test-laravel:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 5
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
-        php: [8.4, 8.3, 8.2]
-        laravel: [12.*, 11.*, 10.*]
+        php: [8.4, 8.3]
+        laravel: [12.*, 11.*]
         stability: [prefer-stable]
-        exclude:
-          - php: 8.4
-            laravel: 10.*
         include:
           - laravel: 12.*
             testbench: 10.*
           - laravel: 11.*
             testbench: 9.*
-          - laravel: 10.*
-            testbench: 8.*
 
     name: Laravel - P${{ matrix.php }} - L${{ matrix.laravel }} - ${{ matrix.stability }} - ${{ matrix.os }}
 
