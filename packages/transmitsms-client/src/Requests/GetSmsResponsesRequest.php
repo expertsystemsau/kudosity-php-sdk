@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace ExpertSystems\TransmitSms\Requests;
 
+use ExpertSystems\TransmitSms\Contracts\PaginatesResults;
 use ExpertSystems\TransmitSms\Data\SmsResponseItemData;
 use Saloon\Http\Response;
-use Saloon\PaginationPlugin\Contracts\Paginatable;
 
 /**
  * Get SMS responses/replies by message ID, keyword, or mobile.
@@ -15,7 +15,7 @@ use Saloon\PaginationPlugin\Contracts\Paginatable;
  *
  * @see https://developer.transmitsms.com/#get-sms-responses
  */
-class GetSmsResponsesRequest extends TransmitSmsRequest implements Paginatable
+class GetSmsResponsesRequest extends TransmitSmsRequest implements PaginatesResults
 {
     protected ?int $messageId = null;
 
@@ -117,6 +117,11 @@ class GetSmsResponsesRequest extends TransmitSmsRequest implements Paginatable
     public function resolveEndpoint(): string
     {
         return $this->formatEndpoint('/get-sms-responses');
+    }
+
+    public function paginationItemsKey(): string
+    {
+        return 'responses';
     }
 
     /**

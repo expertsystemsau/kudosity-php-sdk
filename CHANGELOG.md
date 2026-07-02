@@ -2,6 +2,18 @@
 
 All notable changes to `transmitsms-php-client` will be documented in this file.
 
+## 1.9.0 - 2026-07-03
+
+### Fixed
+
+- Paginated iteration silently returned zero items for every endpoint whose response envelope is not keyed `responses`. `TransmitSmsPaginator` hardcoded the `responses` key, so `numbers()->all()`, `lists()->all()`, `keywords()->all()`, and reporting `getSent()`/`getUserSent()` iterated to nothing. Each paginatable request now declares its own key (`numbers`, `lists`, `keywords`, `recipients`, `messages`, `members`, `responses`) via the new `ExpertSystems\TransmitSms\Contracts\PaginatesResults` interface, and the paginator reads it per request. Keys were verified against the official API documentation.
+- `lists()->getContacts()` threw `InvalidArgumentException` because `GetListRequest` was not `Paginatable`. It now implements `PaginatesResults` and pages through the list's `members`.
+
+### Changed
+
+- CI: removed the `test-client` matrix (12 jobs) that ran PHPUnit against the client package's empty test directory under `continue-on-error: true`, masking the fact that it ran nothing. The client's classes are covered by the root Pest suite (`test-laravel` job).
+- CI: bumped `actions/checkout` from v4 to v6 in `split.yml` to match the other workflows.
+
 ## 1.8.0 - 2026-07-03
 
 ### Breaking

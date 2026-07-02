@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace ExpertSystems\TransmitSms\Pagination;
 
+use ExpertSystems\TransmitSms\Contracts\PaginatesResults;
 use Saloon\Http\Request;
 use Saloon\Http\Response;
 use Saloon\PaginationPlugin\PagedPaginator;
@@ -14,7 +15,13 @@ use Saloon\PaginationPlugin\PagedPaginator;
  * The TransmitSMS API uses page-based pagination with:
  * - page: Current page number (1-indexed)
  * - max: Items per page
- * - Response contains: page.count (total pages), page.number (current page), total, responses[]
+ * - Response contains: page.count (total pages), page.number (current page), total, <items>[]
+ *
+ * **Important: Per-endpoint item keys**
+ * The envelope key holding the items differs per endpoint (`numbers`, `lists`,
+ * `keywords`, `recipients`, `messages`, `members`, `responses`). The key is
+ * declared by each request via {@see PaginatesResults} and resolved here, so
+ * iteration returns the right items instead of silently yielding nothing.
  *
  * **Important: Index Conversion**
  * Saloon's PagedPaginator uses 0-indexed pages internally (starting at 0),
@@ -26,7 +33,7 @@ use Saloon\PaginationPlugin\PagedPaginator;
 class TransmitSmsPaginator extends PagedPaginator
 {
     /**
-     * The key containing the items in the response.
+     * Fallback key used when a request does not declare its own items key.
      */
     protected string $itemsKey = 'responses';
 
@@ -38,7 +45,7 @@ class TransmitSmsPaginator extends PagedPaginator
         $data = $response->json();
 
         // If no items in response, we're done
-        if (empty($data[$this->itemsKey])) {
+        if (empty($data[$this->resolveItemsKey($response->getRequest())])) {
             return true;
         }
 
@@ -58,7 +65,22 @@ class TransmitSmsPaginator extends PagedPaginator
      */
     protected function getPageItems(Response $response, Request $request): array
     {
-        return $response->json($this->itemsKey) ?? [];
+        return $response->json($this->resolveItemsKey($request)) ?? [];
+    }
+
+    /**
+     * Resolve the response key holding the items for the given request.
+     *
+     * Prefers the key declared by the request (via {@see PaginatesResults}) and
+     * falls back to a key set with {@see setItemsKey()} or the default.
+     */
+    protected function resolveItemsKey(Request $request): string
+    {
+        if ($request instanceof PaginatesResults) {
+            return $request->paginationItemsKey();
+        }
+
+        return $this->itemsKey;
     }
 
     /**

@@ -5,14 +5,14 @@ declare(strict_types=1);
 namespace ExpertSystems\TransmitSms\Requests;
 
 use DateTimeInterface;
-use Saloon\PaginationPlugin\Contracts\Paginatable;
+use ExpertSystems\TransmitSms\Contracts\PaginatesResults;
 
 /**
  * Get list of all SMS sent by user (paginated).
  *
  * @see https://developer.transmitsms.com/#get-user-sms-sent
  */
-class GetUserSmsSentRequest extends TransmitSmsRequest implements Paginatable
+class GetUserSmsSentRequest extends TransmitSmsRequest implements PaginatesResults
 {
     protected ?int $page = null;
 
@@ -27,6 +27,11 @@ class GetUserSmsSentRequest extends TransmitSmsRequest implements Paginatable
     public function resolveEndpoint(): string
     {
         return $this->formatEndpoint('get-user-sms-sent');
+    }
+
+    public function paginationItemsKey(): string
+    {
+        return 'messages';
     }
 
     /**

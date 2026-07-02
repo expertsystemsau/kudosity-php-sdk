@@ -15,52 +15,12 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Test the core PHP client (no Laravel dependencies)
-  test-client:
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 5
-    strategy:
-      fail-fast: true
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-        php: [8.4, 8.3, 8.2]
-        stability: [prefer-lowest, prefer-stable]
-
-    name: Client - P${{ matrix.php }} - ${{ matrix.stability }} - ${{ matrix.os }}
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: ${{ matrix.php }}
-          extensions: dom, curl, libxml, mbstring, zip, pcntl, bcmath, soap, intl, gd, exif, iconv, fileinfo
-          coverage: none
-
-      - name: Setup problem matchers
-        run: |
-          echo "::add-matcher::${{ runner.tool_cache }}/php.json"
-          echo "::add-matcher::${{ runner.tool_cache }}/phpunit.json"
-
-      - name: Install client dependencies
-        working-directory: packages/transmitsms-client
-        run: composer update --${{ matrix.stability }} --prefer-dist --no-interaction
-
-      - name: List Installed Dependencies
-        working-directory: packages/transmitsms-client
-        run: composer show -D
-
-      - name: Execute client tests
-        working-directory: packages/transmitsms-client
-        run: vendor/bin/phpunit --colors=always
-        continue-on-error: true
-
-  # Test the Laravel integration
-  # PHP 8.2 is intentionally excluded here: the test suite runs on Pest v4,
-  # which requires PHP >= 8.3. The framework-agnostic client is still tested
-  # on 8.2 in the test-client job (it runs under PHPUnit).
+  # Run the whole suite (framework-agnostic client + Laravel integration) with Pest.
+  #
+  # There is no separate client-only job: the client package ships no tests of its
+  # own, and its classes are exercised by the root suite in tests/ alongside the
+  # Laravel integration. PHP 8.2 is intentionally excluded because Pest v4 requires
+  # PHP >= 8.3, so the whole suite (client included) runs on 8.3+.
   test-laravel:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 5

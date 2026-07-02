@@ -132,6 +132,36 @@ $balance = $client->account()->getBalance();
 $replies = $client->sms()->getAllResponses();
 ```
 
+### Pagination
+
+List endpoints return a paginator that lazily fetches every page as you iterate.
+`items()` yields the individual records across all pages:
+
+```php
+// Iterate every virtual number, page by page
+foreach ($client->numbers()->all()->items() as $number) {
+    echo $number['number'].PHP_EOL;
+}
+
+// Works the same for lists, keywords, sent messages, responses, and list members
+$client->lists()->all();                 // contact lists
+$client->keywords()->all();              // keywords
+$client->reporting()->getSent($msgId);   // recipients of a message
+$client->reporting()->getUserSent();     // all messages sent by the account
+$client->lists()->getContacts($listId);  // members of a list
+
+// Request 50 records per page and cap how many pages are walked
+$numbers = $client->numbers()->all()
+    ->setPerPageLimit(50)
+    ->setMaxPages(3)
+    ->collect()   // lazy collection of items across the fetched pages
+    ->all();
+```
+
+The SDK maps each endpoint's response envelope to the right item key
+automatically, so iteration returns the records regardless of which key the API
+uses (`numbers`, `lists`, `recipients`, `messages`, `members`, `responses`, …).
+
 ### Laravel Facade
 
 The facade proxies to the same resources as the core client.

@@ -59,6 +59,30 @@ $lists = $client->lists()->all();
 $client->lists()->addContact(123, '+61400000000', firstName: 'John');
 ```
 
+## Pagination
+
+List endpoints (`numbers()->all()`, `lists()->all()`, `keywords()->all()`,
+`reporting()->getSent()`, `reporting()->getUserSent()`, `lists()->getContacts()`,
+`sms()->getResponses()`/`getAllResponses()`) return a paginator that lazily walks
+every page. Use `items()` to iterate individual records:
+
+```php
+foreach ($client->numbers()->all()->items() as $number) {
+    echo $number['number'].PHP_EOL;
+}
+
+// Or collect across pages, tuning page size and page count
+$members = $client->lists()->getContacts($listId)
+    ->setPerPageLimit(100)
+    ->setMaxPages(5)
+    ->collect()
+    ->all();
+```
+
+Each endpoint's response envelope uses a different item key (`numbers`, `lists`,
+`recipients`, `messages`, `members`, `responses`, …); the paginator resolves the
+correct key per request automatically.
+
 ## Sender IDs
 
 The `from` value (per-message, or the connector default via `setDefaultFrom()`) is the
