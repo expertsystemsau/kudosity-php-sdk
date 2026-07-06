@@ -28,7 +28,7 @@ jobs:
       # the auth token via an includeIf credentials file instead of that inline
       # header, so the unset hits a missing key (exit 5) and aborts the split.
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
