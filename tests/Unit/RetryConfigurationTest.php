@@ -2,9 +2,28 @@
 
 declare(strict_types=1);
 
+use ExpertSystems\Kudosity\KudosityClient;
 use ExpertSystems\Kudosity\KudosityV1Connector;
 
 describe('KudosityV1Connector', function () {
+    describe('base URL', function () {
+        it('defaults BASE_URL to the live V1 API hostname', function () {
+            expect(KudosityV1Connector::BASE_URL)->toBe('https://api.transmitsms.com');
+        });
+
+        it('resolves the default hostname when no baseUrl is given to the connector', function () {
+            $connector = new KudosityV1Connector('key', 'secret');
+
+            expect($connector->resolveBaseUrl())->toBe('https://api.transmitsms.com');
+        });
+
+        it('resolves the default hostname when no baseUrl is given to the client', function () {
+            $client = new KudosityClient('key', 'secret');
+
+            expect($client->connector()->resolveBaseUrl())->toBe('https://api.transmitsms.com');
+        });
+    });
+
     describe('retry configuration', function () {
         it('configures retry with default values', function () {
             $connector = new KudosityV1Connector('key', 'secret');

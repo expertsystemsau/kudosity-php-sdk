@@ -19,7 +19,7 @@ class KudosityV1Connector extends Connector implements HasPagination
 {
     use AcceptsJson;
 
-    public const BASE_URL = 'https://api.kudosity.com';
+    public const BASE_URL = 'https://api.transmitsms.com';
 
     /**
      * Default sender ID (VMN, short code, or alphanumeric).
