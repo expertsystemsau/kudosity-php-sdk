@@ -1105,11 +1105,12 @@ Rewrite the Project Overview, Architecture and Namespaces sections for the new p
 git grep -in 'transmitsms' -- . \
   ':(exclude).agents/*' ':(exclude)docs/*' ':(exclude)CHANGELOG.md' \
   ':(exclude)UPGRADING.md' ':(exclude)rename-map.json' \
+  ':(exclude)bin/kudosity-codemod' ':(exclude)tests/Unit/CodemodTest.php' \
   | grep -v 'api\.transmitsms\.com' \
   | grep -v 'TransmitSMS is now'
 ```
 
-Expected: **no output.** `CHANGELOG.md`, `UPGRADING.md` and `rename-map.json` are excluded because they document the old names on purpose.
+Expected: **no output.** `CHANGELOG.md`, `UPGRADING.md` and `rename-map.json` are excluded because they document the old names on purpose. So are Task 4's two deliverables: `bin/kudosity-codemod`'s docblock names the 1.x SDK it migrates away from, and `tests/Unit/CodemodTest.php` is built entirely from old-brand fixtures — that is what drives the script under test. Neither can be "cleaned" without destroying its purpose.
 
 `CLAUDE.md` is deliberately **not** excluded — it is the file this phase rewrites most heavily, and it must stay under the sweep's eye for genuinely stale references. Instead the second `grep -v` permits one line of it: the sentence explaining that TransmitSMS rebranded to Kudosity, which is what tells a future reader why the vendored skills are named `kudosity-*` while the V1 hostname is still `api.transmitsms.com`. That is prose about the old name, not a live use of it.
 
@@ -1138,7 +1139,7 @@ git commit -m "docs: rewrite READMEs, add UPGRADING.md, log the Kudosity rebrand
 
 ## Definition of done
 
-- `git grep -i transmitsms` returns hits only in `.agents/skills/`, `CHANGELOG.md`, `UPGRADING.md`, `rename-map.json`, as the literal hostname `api.transmitsms.com`, and in the one sentence of `CLAUDE.md` recording that TransmitSMS rebranded to Kudosity.
+- `git grep -i transmitsms` returns hits only in `.agents/skills/`, `CHANGELOG.md`, `UPGRADING.md`, `rename-map.json`, `bin/kudosity-codemod`, `tests/Unit/CodemodTest.php`, as the literal hostname `api.transmitsms.com`, and in the one sentence of `CLAUDE.md` recording that TransmitSMS rebranded to Kudosity.
 - 249 tests pass; PHPStan level 6 clean; Pint clean; all three composer manifests validate strictly.
 - `php bin/kudosity-codemod packages` reports zero changes; `php bin/kudosity-codemod tests` reports exactly one — `tests/Unit/CodemodTest.php`, whose old-brand fixtures are what drive the script under test.
 - No behaviour changed. Every V1 request still hits the same URL with the same body and the same auth.
