@@ -37,7 +37,7 @@ use ExpertSystems\Kudosity\Data\ReplyCallbackData;
 interface HandlesReplyCallback
 {
     /**
-     * @param  ReplyCallbackData  $reply  The reply data from TransmitSMS
+     * @param  ReplyCallbackData  $reply  The reply data from Kudosity
      * @param  array<string, mixed>  $context  The context data passed when sending the message
      */
     public function __construct(ReplyCallbackData $reply, array $context);

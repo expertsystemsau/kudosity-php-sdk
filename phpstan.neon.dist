@@ -14,7 +14,7 @@ parameters:
         # Config files use env() and are published to the Laravel config directory
         - identifier: larastan.noEnvCallsOutsideOfConfig
           path: packages/kudosity-laravel/config/*
-        # toTransmitSms is a notification convention method
+        # toKudosity is a notification convention method
         -
-            message: "#Call to an undefined method Illuminate\\\\Notifications\\\\Notification::toTransmitSms#"
-            path: packages/kudosity-laravel/src/Notifications/TransmitSmsChannel.php
+            message: "#Call to an undefined method Illuminate\\\\Notifications\\\\Notification::toKudosity#"
+            path: packages/kudosity-laravel/src/Notifications/KudosityChannel.php

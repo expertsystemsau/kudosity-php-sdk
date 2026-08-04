@@ -7,7 +7,7 @@ namespace ExpertSystems\Kudosity\Requests;
 /**
  * Cancel a scheduled SMS message.
  *
- * @see https://developer.transmitsms.com/#cancel-sms
+ * @see https://developers.kudosity.com
  */
 class CancelSmsRequest extends KudosityV1Request
 {

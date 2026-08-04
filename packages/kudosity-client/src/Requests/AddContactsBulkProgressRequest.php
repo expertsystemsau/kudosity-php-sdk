@@ -10,7 +10,7 @@ use Saloon\Http\Response;
 /**
  * Check progress of a bulk contact add operation.
  *
- * @see https://developer.transmitsms.com/#add-contacts-bulk-progress
+ * @see https://developers.kudosity.com
  */
 class AddContactsBulkProgressRequest extends KudosityV1Request
 {

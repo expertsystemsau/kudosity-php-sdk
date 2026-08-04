@@ -18,7 +18,7 @@ use Saloon\Http\Response;
  * Supports sending to individual numbers or to a list.
  * Use the fluent builder methods to set optional parameters.
  *
- * @see https://developer.transmitsms.com/#send-sms
+ * @see https://developers.kudosity.com
  */
 class SendSmsRequest extends KudosityV1Request
 {
@@ -267,7 +267,7 @@ class SendSmsRequest extends KudosityV1Request
     /**
      * Set the delivery report callback URL.
      *
-     * This URL will be called by the TransmitSMS API to notify you of delivery status.
+     * This URL will be called by the Kudosity API to notify you of delivery status.
      * SSRF protection is applied to prevent internal network access.
      *
      * @param  string  $url  URL to receive delivery notifications (must be publicly accessible)
@@ -285,7 +285,7 @@ class SendSmsRequest extends KudosityV1Request
     /**
      * Set the reply callback URL.
      *
-     * This URL will be called by the TransmitSMS API when replies are received.
+     * This URL will be called by the Kudosity API when replies are received.
      * SSRF protection is applied to prevent internal network access.
      *
      * @param  string  $url  URL to receive reply notifications (must be publicly accessible)
@@ -303,7 +303,7 @@ class SendSmsRequest extends KudosityV1Request
     /**
      * Set the link hits callback URL.
      *
-     * This URL will be called by the TransmitSMS API when tracked links are clicked.
+     * This URL will be called by the Kudosity API when tracked links are clicked.
      * SSRF protection is applied to prevent internal network access.
      *
      * @param  string  $url  URL to receive link click notifications (must be publicly accessible)

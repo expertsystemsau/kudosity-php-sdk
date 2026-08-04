@@ -220,7 +220,7 @@ class RateLimitException extends KudosityException
      * Get recommended wait time in seconds before retrying.
      *
      * Returns the retry-after value if available, otherwise returns
-     * a default of 1 second (based on TransmitSMS's 15 calls/second limit).
+     * a default of 1 second (based on Kudosity's 15 calls/second limit).
      */
     public function getRecommendedWaitSeconds(): int
     {

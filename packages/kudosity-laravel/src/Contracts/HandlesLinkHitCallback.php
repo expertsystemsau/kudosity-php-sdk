@@ -38,7 +38,7 @@ use ExpertSystems\Kudosity\Data\LinkHitCallbackData;
 interface HandlesLinkHitCallback
 {
     /**
-     * @param  LinkHitCallbackData  $linkHit  The link hit data from TransmitSMS
+     * @param  LinkHitCallbackData  $linkHit  The link hit data from Kudosity
      * @param  array<string, mixed>  $context  The context data passed when sending the message
      */
     public function __construct(LinkHitCallbackData $linkHit, array $context);

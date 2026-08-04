@@ -7,7 +7,7 @@ namespace ExpertSystems\Kudosity\Data;
 /**
  * Data transfer object for Reply callback payload.
  *
- * This DTO represents the data sent by TransmitSMS when a reply
+ * This DTO represents the data sent by Kudosity when a reply
  * message is received from a recipient.
  */
 final readonly class ReplyCallbackData

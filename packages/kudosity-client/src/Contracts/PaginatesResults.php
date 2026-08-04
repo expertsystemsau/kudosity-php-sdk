@@ -10,7 +10,7 @@ use Saloon\PaginationPlugin\Contracts\Paginatable;
 /**
  * Marks a request as paginatable and declares which response key holds its items.
  *
- * The TransmitSMS API uses a different envelope key per endpoint (e.g. `numbers`,
+ * The Kudosity API uses a different envelope key per endpoint (e.g. `numbers`,
  * `lists`, `keywords`, `recipients`, `messages`, `members`, `responses`), so the
  * paginator cannot assume a single key. Each paginatable request declares its own
  * key here and {@see V1PagedPaginator} reads it when extracting page items.

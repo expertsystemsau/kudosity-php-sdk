@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace ExpertSystems\Kudosity\Laravel\Notifications;
 
-class TransmitSmsMessage
+class KudosityMessage
 {
     protected string $content;
 
@@ -108,7 +108,7 @@ class TransmitSmsMessage
     }
 
     /**
-     * Send to a TransmitSMS contact list instead of an individual recipient.
+     * Send to a Kudosity contact list instead of an individual recipient.
      *
      * When set, the notifiable's resolved phone number is ignored and the
      * message is sent to every contact on the list.
@@ -236,12 +236,12 @@ class TransmitSmsMessage
     /**
      * Register a job to handle DLR (Delivery Receipt) callbacks.
      *
-     * When the delivery receipt is received from TransmitSMS, the specified
+     * When the delivery receipt is received from Kudosity, the specified
      * job will be dispatched with the DLR data and context.
      *
      * Example:
      * ```php
-     * TransmitSmsMessage::create('Your order has shipped!')
+     * KudosityMessage::create('Your order has shipped!')
      *     ->onDlr(UpdateOrderStatusJob::class, ['order_id' => 123]);
      * ```
      *
@@ -264,7 +264,7 @@ class TransmitSmsMessage
      *
      * Example:
      * ```php
-     * TransmitSmsMessage::create('Reply YES to confirm')
+     * KudosityMessage::create('Reply YES to confirm')
      *     ->onReply(ProcessReplyJob::class, ['order_id' => 123]);
      * ```
      *
@@ -287,7 +287,7 @@ class TransmitSmsMessage
      *
      * Example:
      * ```php
-     * TransmitSmsMessage::create('Check out our sale: [tracked-link]')
+     * KudosityMessage::create('Check out our sale: [tracked-link]')
      *     ->trackedLinkUrl('https://example.com/sale')
      *     ->onLinkHit(TrackClickJob::class, ['campaign_id' => 456]);
      * ```

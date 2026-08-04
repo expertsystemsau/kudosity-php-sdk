@@ -12,7 +12,7 @@ use ExpertSystems\Kudosity\Requests\DeleteEmailRequest;
 /**
  * Email SMS resource for managing email-to-SMS authorization.
  *
- * @see https://developer.transmitsms.com/#email-sms
+ * @see https://developers.kudosity.com
  */
 class EmailSmsResource extends Resource
 {

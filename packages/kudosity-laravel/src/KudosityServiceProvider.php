@@ -8,14 +8,14 @@ use ExpertSystems\Kudosity\Callbacks\CallbackUrlBuilder;
 use ExpertSystems\Kudosity\Callbacks\CallbackUrlParser;
 use ExpertSystems\Kudosity\KudosityClient;
 use ExpertSystems\Kudosity\KudosityV1Connector;
-use ExpertSystems\Kudosity\Laravel\Notifications\TransmitSmsChannel;
+use ExpertSystems\Kudosity\Laravel\Notifications\KudosityChannel;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Notifications\ChannelManager;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 
-class TransmitSmsServiceProvider extends ServiceProvider
+class KudosityServiceProvider extends ServiceProvider
 {
     /**
      * Register any application services.
@@ -23,14 +23,14 @@ class TransmitSmsServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->mergeConfigFrom(
-            __DIR__.'/../config/transmitsms.php',
-            'transmitsms'
+            __DIR__.'/../config/kudosity.php',
+            'kudosity'
         );
 
         // Register the connector as a singleton
         $this->app->singleton(KudosityV1Connector::class, function ($app) {
             /** @var array{api_key: string, api_secret: string, base_url: string, timeout: int, from: string} $config */
-            $config = $app['config']['transmitsms'];
+            $config = $app['config']['kudosity'];
 
             $connector = new KudosityV1Connector(
                 apiKey: $config['api_key'],
@@ -56,7 +56,7 @@ class TransmitSmsServiceProvider extends ServiceProvider
 
         // Register the callback URL builder
         $this->app->singleton(CallbackUrlBuilder::class, function ($app) {
-            $prefix = $app['config']['transmitsms.webhooks.prefix'] ?? 'webhooks/transmitsms';
+            $prefix = $app['config']['kudosity.webhooks.prefix'] ?? 'webhooks/kudosity';
             $appUrl = rtrim(config('app.url'), '/');
             $baseUrl = $appUrl.'/'.ltrim($prefix, '/');
             $signingKey = $this->getSigningKey($app);
@@ -70,16 +70,16 @@ class TransmitSmsServiceProvider extends ServiceProvider
         });
 
         // Register the notification channel
-        $this->app->singleton(TransmitSmsChannel::class, function ($app) {
-            return new TransmitSmsChannel(
+        $this->app->singleton(KudosityChannel::class, function ($app) {
+            return new KudosityChannel(
                 $app->make(KudosityClient::class),
                 $app->make(CallbackUrlBuilder::class)
             );
         });
 
         // Create aliases for easier resolution
-        $this->app->alias(KudosityClient::class, 'transmitsms');
-        $this->app->alias(KudosityV1Connector::class, 'transmitsms.connector');
+        $this->app->alias(KudosityClient::class, 'kudosity');
+        $this->app->alias(KudosityV1Connector::class, 'kudosity.connector');
     }
 
     /**
@@ -89,14 +89,14 @@ class TransmitSmsServiceProvider extends ServiceProvider
     {
         if ($this->app->runningInConsole()) {
             $this->publishes([
-                __DIR__.'/../config/transmitsms.php' => config_path('transmitsms.php'),
-            ], 'transmitsms-config');
+                __DIR__.'/../config/kudosity.php' => config_path('kudosity.php'),
+            ], 'kudosity-config');
         }
 
         // Register the notification channel
         Notification::resolved(function (ChannelManager $service) {
-            $service->extend('transmitsms', function ($app) {
-                return $app->make(TransmitSmsChannel::class);
+            $service->extend('kudosity', function ($app) {
+                return $app->make(KudosityChannel::class);
             });
         });
 
@@ -109,12 +109,12 @@ class TransmitSmsServiceProvider extends ServiceProvider
      */
     protected function registerWebhookRoutes(): void
     {
-        if (! $this->app['config']['transmitsms.webhooks.enabled']) {
+        if (! $this->app['config']['kudosity.webhooks.enabled']) {
             return;
         }
 
-        $prefix = $this->app['config']['transmitsms.webhooks.prefix'] ?? 'webhooks/transmitsms';
-        $middleware = $this->app['config']['transmitsms.webhooks.middleware'] ?? ['api'];
+        $prefix = $this->app['config']['kudosity.webhooks.prefix'] ?? 'webhooks/kudosity';
+        $middleware = $this->app['config']['kudosity.webhooks.middleware'] ?? ['api'];
 
         Route::prefix($prefix)
             ->middleware($middleware)
@@ -132,7 +132,7 @@ class TransmitSmsServiceProvider extends ServiceProvider
      */
     protected function getSigningKey($app): string
     {
-        $signingKey = $app['config']['transmitsms.webhooks.signing_key'];
+        $signingKey = $app['config']['kudosity.webhooks.signing_key'];
 
         if (! empty($signingKey)) {
             return $signingKey;
@@ -148,8 +148,8 @@ class TransmitSmsServiceProvider extends ServiceProvider
 
         if (empty($appKey)) {
             throw new \RuntimeException(
-                'TransmitSMS webhook signing key is not configured. '.
-                'Set TRANSMITSMS_SIGNING_KEY in your .env file or ensure APP_KEY is set.'
+                'Kudosity webhook signing key is not configured. '.
+                'Set KUDOSITY_SIGNING_KEY in your .env file or ensure APP_KEY is set.'
             );
         }
 
@@ -166,11 +166,11 @@ class TransmitSmsServiceProvider extends ServiceProvider
         return [
             KudosityClient::class,
             KudosityV1Connector::class,
-            TransmitSmsChannel::class,
+            KudosityChannel::class,
             CallbackUrlBuilder::class,
             CallbackUrlParser::class,
-            'transmitsms',
-            'transmitsms.connector',
+            'kudosity',
+            'kudosity.connector',
         ];
     }
 }

@@ -98,7 +98,7 @@ final class PhoneNumber
      * Validate that a number is in E.164 international format.
      *
      * E.164 format: up to 15 digits, no leading zeros, no + prefix
-     * (TransmitSMS expects numbers without the + prefix)
+     * (Kudosity expects numbers without the + prefix)
      *
      * @param  string  $number  The phone number to validate
      */

@@ -3,40 +3,37 @@
 return [
     /*
     |--------------------------------------------------------------------------
-    | TransmitSMS API Key
+    | Kudosity API Key
     |--------------------------------------------------------------------------
     |
-    | Your TransmitSMS API key. You can find this in your TransmitSMS
+    | Your Kudosity API key. You can find this in your Kudosity
     | account settings under API Credentials.
     |
     */
-    'api_key' => env('TRANSMITSMS_API_KEY', ''),
+    'api_key' => env('KUDOSITY_API_KEY', ''),
 
     /*
     |--------------------------------------------------------------------------
-    | TransmitSMS API Secret
+    | Kudosity API Secret
     |--------------------------------------------------------------------------
     |
-    | Your TransmitSMS API secret. You can find this in your TransmitSMS
+    | Your Kudosity API secret. You can find this in your Kudosity
     | account settings under API Credentials.
     |
     */
-    'api_secret' => env('TRANSMITSMS_API_SECRET', ''),
+    'api_secret' => env('KUDOSITY_API_SECRET', ''),
 
     /*
     |--------------------------------------------------------------------------
     | API Base URL
     |--------------------------------------------------------------------------
     |
-    | The base URL for the TransmitSMS API. Use the SMS URL for SMS messages
-    | and the MMS URL for MMS messages.
-    |
-    | Available options:
-    | - https://api.transmitsms.com (SMS - default)
-    | - https://api.transmitmessage.com (MMS)
+    | The base URL for the Kudosity V1 API (contact lists, bulk and scheduled
+    | sends, reporting, balance). Override only to point at a proxy or a test
+    | double.
     |
     */
-    'base_url' => env('TRANSMITSMS_BASE_URL', 'https://api.transmitsms.com'),
+    'base_url' => env('KUDOSITY_BASE_URL', 'https://api.transmitsms.com'),
 
     /*
     |--------------------------------------------------------------------------
@@ -46,7 +43,7 @@ return [
     | The timeout for API requests in seconds.
     |
     */
-    'timeout' => env('TRANSMITSMS_TIMEOUT', 30),
+    'timeout' => env('KUDOSITY_TIMEOUT', 30),
 
     /*
     |--------------------------------------------------------------------------
@@ -60,17 +57,17 @@ return [
     |     "61412345678" — supports two-way messaging (replies).
     |   - An alphanumeric sender ID ("alpha tag"), e.g. "MyBrand" — max 11
     |     characters, letters and digits only, no spaces. One-way only.
-    |   - Empty — TransmitSMS falls back to a shared number for the
+    |   - Empty — Kudosity falls back to a shared number for the
     |     destination country.
     |
     | IMPORTANT: Alpha tags must be registered and approved before use. For
     | Australian numbers, alphanumeric sender IDs must be listed on the ACMA
     | SMS Sender ID Register (enforced from 1 July 2026) or they are shown as
-    | "Unverified" to recipients. Register via the TransmitSMS dashboard first;
+    | "Unverified" to recipients. Register via the Kudosity dashboard first;
     | otherwise leave this empty. See https://www.acma.gov.au/sms-sender-id-register
     |
     */
-    'from' => env('TRANSMITSMS_FROM', ''),
+    'from' => env('KUDOSITY_FROM', ''),
 
     /*
     |--------------------------------------------------------------------------
@@ -78,11 +75,11 @@ return [
     |--------------------------------------------------------------------------
     |
     | Configure how the package handles incoming DLR (Delivery Receipt),
-    | Reply, and Link Hit callbacks from TransmitSMS.
+    | Reply, and Link Hit callbacks from Kudosity.
     |
     | When you send an SMS with callback handlers (using onDlr, onReply, or
     | onLinkHit methods), the package automatically generates signed callback
-    | URLs. When TransmitSMS calls these URLs, the package verifies the
+    | URLs. When Kudosity calls these URLs, the package verifies the
     | signature and dispatches your configured handler jobs.
     |
     */
@@ -95,7 +92,7 @@ return [
         | Set to false to disable webhook route registration entirely.
         |
         */
-        'enabled' => env('TRANSMITSMS_WEBHOOKS_ENABLED', true),
+        'enabled' => env('KUDOSITY_WEBHOOKS_ENABLED', true),
 
         /*
         |----------------------------------------------------------------------
@@ -103,12 +100,12 @@ return [
         |----------------------------------------------------------------------
         |
         | The URL prefix for webhook endpoints. The full URLs will be:
-        | - {APP_URL}/{prefix}/dlr
-        | - {APP_URL}/{prefix}/reply
-        | - {APP_URL}/{prefix}/link-hits
+        | - {APP_URL}/webhooks/kudosity/dlr
+        | - {APP_URL}/webhooks/kudosity/reply
+        | - {APP_URL}/webhooks/kudosity/link-hits
         |
         */
-        'prefix' => env('TRANSMITSMS_WEBHOOKS_PREFIX', 'webhooks/transmitsms'),
+        'prefix' => env('KUDOSITY_WEBHOOKS_PREFIX', 'webhooks/kudosity'),
 
         /*
         |----------------------------------------------------------------------
@@ -132,7 +129,7 @@ return [
         | Defaults to your application's APP_KEY if not specified.
         |
         */
-        'signing_key' => env('TRANSMITSMS_SIGNING_KEY'),
+        'signing_key' => env('KUDOSITY_SIGNING_KEY'),
 
         /*
         |----------------------------------------------------------------------
@@ -146,7 +143,7 @@ return [
         'dlr' => [
             'enabled' => true,
             'path' => 'dlr',
-            'queue' => env('TRANSMITSMS_DLR_QUEUE', 'default'),
+            'queue' => env('KUDOSITY_DLR_QUEUE', 'default'),
         ],
 
         /*
@@ -161,7 +158,7 @@ return [
         'reply' => [
             'enabled' => true,
             'path' => 'reply',
-            'queue' => env('TRANSMITSMS_REPLY_QUEUE', 'default'),
+            'queue' => env('KUDOSITY_REPLY_QUEUE', 'default'),
         ],
 
         /*
@@ -176,7 +173,7 @@ return [
         'link_hits' => [
             'enabled' => true,
             'path' => 'link-hits',
-            'queue' => env('TRANSMITSMS_LINK_HITS_QUEUE', 'default'),
+            'queue' => env('KUDOSITY_LINK_HITS_QUEUE', 'default'),
         ],
     ],
 ];

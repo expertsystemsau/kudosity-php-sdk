@@ -10,9 +10,9 @@ use Saloon\Http\Response;
 use Saloon\PaginationPlugin\PagedPaginator;
 
 /**
- * Custom paginator for TransmitSMS API responses.
+ * Custom paginator for Kudosity API responses.
  *
- * The TransmitSMS API uses page-based pagination with:
+ * The Kudosity API uses page-based pagination with:
  * - page: Current page number (1-indexed)
  * - max: Items per page
  * - Response contains: page.count (total pages), page.number (current page), total, <items>[]
@@ -25,7 +25,7 @@ use Saloon\PaginationPlugin\PagedPaginator;
  *
  * **Important: Index Conversion**
  * Saloon's PagedPaginator uses 0-indexed pages internally (starting at 0),
- * but the TransmitSMS API uses 1-indexed pages (starting at 1).
+ * but the Kudosity API uses 1-indexed pages (starting at 1).
  * This class handles the conversion automatically in applyPagination().
  *
  * @see https://docs.saloon.dev/installable-plugins/pagination/paged-pagination
@@ -49,7 +49,7 @@ class V1PagedPaginator extends PagedPaginator
             return true;
         }
 
-        // TransmitSMS API returns:
+        // Kudosity API returns:
         // - page.number: current page number (1-indexed)
         // - page.count: total number of pages
         $pageNumber = $data['page']['number'] ?? 1;
@@ -86,7 +86,7 @@ class V1PagedPaginator extends PagedPaginator
     /**
      * Apply pagination parameters to the request.
      *
-     * Note: PagedPaginator uses 0-indexed pages internally, but TransmitSMS API
+     * Note: PagedPaginator uses 0-indexed pages internally, but Kudosity API
      * uses 1-indexed pages. We add 1 to convert between the two systems.
      */
     protected function applyPagination(Request $request): Request

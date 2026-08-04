@@ -10,7 +10,7 @@ use Saloon\Http\Response;
 /**
  * Get statistics for a message or campaign that has been sent.
  *
- * @see https://developer.transmitsms.com/#get-sms-stats
+ * @see https://developers.kudosity.com
  */
 class GetSmsStatsRequest extends KudosityV1Request
 {

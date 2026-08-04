@@ -14,7 +14,7 @@ use ExpertSystems\Kudosity\Requests\SendSmsRequest;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\Config;
 
-class TransmitSmsChannel
+class KudosityChannel
 {
     public function __construct(
         protected KudosityClient $client,
@@ -31,15 +31,15 @@ class TransmitSmsChannel
      */
     public function send($notifiable, Notification $notification): ?SmsData
     {
-        /** @var TransmitSmsMessage|string $message */
-        $message = $notification->toTransmitSms($notifiable);
+        /** @var KudosityMessage|string $message */
+        $message = $notification->toKudosity($notifiable);
 
         if (is_string($message)) {
-            $message = new TransmitSmsMessage($message);
+            $message = new KudosityMessage($message);
         }
 
         $listId = $message->getListId();
-        $to = $message->getTo() ?? $notifiable->routeNotificationFor('transmitsms', $notification);
+        $to = $message->getTo() ?? $notifiable->routeNotificationFor('kudosity', $notification);
 
         // A list send doesn't need a resolved recipient; a direct send does.
         if ($listId === null && ! $to) {
@@ -57,7 +57,7 @@ class TransmitSmsChannel
             }
 
             // Apply sender ID: message > config > default
-            $from = $message->getFrom() ?? Config::get('transmitsms.from');
+            $from = $message->getFrom() ?? Config::get('kudosity.from');
             if ($from !== null && $from !== '') {
                 $request->from($from);
             }
@@ -111,7 +111,7 @@ class TransmitSmsChannel
      * If a handler is specified (via onDlr, onReply, onLinkHit), a signed URL
      * is generated. Otherwise, the explicit callback URL is used if set.
      */
-    protected function applyCallbackUrls(SendSmsRequest $request, TransmitSmsMessage $message): void
+    protected function applyCallbackUrls(SendSmsRequest $request, KudosityMessage $message): void
     {
         // DLR callback
         if ($message->getDlrHandler() !== null && $this->urlBuilder !== null) {

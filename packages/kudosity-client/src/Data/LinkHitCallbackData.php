@@ -7,7 +7,7 @@ namespace ExpertSystems\Kudosity\Data;
 /**
  * Data transfer object for Link Hit callback payload.
  *
- * This DTO represents the data sent by TransmitSMS when a tracked
+ * This DTO represents the data sent by Kudosity when a tracked
  * link in an SMS message is clicked.
  */
 final readonly class LinkHitCallbackData

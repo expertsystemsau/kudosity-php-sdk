@@ -52,7 +52,7 @@ Two base URLs are supported:
 
 - **TransmitSmsServiceProvider** - Registers singletons for `TransmitSmsConnector` and `TransmitSmsClient`, extends notification channel manager
 - **TransmitSms Facade** - Proxies to `TransmitSmsClient`
-- **TransmitSmsChannel** - Laravel notification channel (expects `toTransmitSms()` method on notifications)
+- **TransmitSmsChannel** - Laravel notification channel (expects `toKudosity()` method on notifications)
 - **TransmitSmsMessage** - Fluent message builder for notifications
 
 Config file published to `config/transmitsms.php` with keys: `api_key`, `api_secret`, `base_url`, `from`, `timeout`

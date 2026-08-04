@@ -7,7 +7,7 @@ namespace ExpertSystems\Kudosity\Requests;
 /**
  * Opt out a contact from a list.
  *
- * @see https://developer.transmitsms.com/#optout-list-member
+ * @see https://developers.kudosity.com
  */
 class OptoutListMemberRequest extends KudosityV1Request
 {

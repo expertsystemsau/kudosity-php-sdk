@@ -10,7 +10,7 @@ use Saloon\Http\Response;
 /**
  * Get a specific virtual number.
  *
- * @see https://developer.transmitsms.com/#get-number
+ * @see https://developers.kudosity.com
  */
 class GetNumberRequest extends KudosityV1Request
 {

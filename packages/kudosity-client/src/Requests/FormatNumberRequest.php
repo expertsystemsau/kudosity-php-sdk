@@ -12,7 +12,7 @@ use Saloon\Http\Response;
  *
  * Converts local format numbers to international E.164 format.
  *
- * @see https://developer.transmitsms.com/#format-number
+ * @see https://developers.kudosity.com
  */
 class FormatNumberRequest extends KudosityV1Request
 {

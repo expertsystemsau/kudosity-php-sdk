@@ -60,15 +60,15 @@ $client = new TransmitSmsClient(
 Add your credentials to your `.env` file:
 
 ```env
-TRANSMITSMS_API_KEY=your-api-key
-TRANSMITSMS_API_SECRET=your-api-secret
+KUDOSITY_API_KEY=your-api-key
+KUDOSITY_API_SECRET=your-api-secret
 # Optional default sender ID — see "Sender IDs" below before setting this
-TRANSMITSMS_FROM=
+KUDOSITY_FROM=
 ```
 
 ### Sender IDs
 
-The `from` value (`TRANSMITSMS_FROM`, or the per-message `from` option) is the sender
+The `from` value (`KUDOSITY_FROM`, or the per-message `from` option) is the sender
 ID recipients see. It can be:
 
 - A **dedicated virtual number (VMN)** in international format, e.g. `61412345678` —
@@ -85,7 +85,7 @@ ID recipients see. It can be:
 > (enforced from 1 July 2026) — an unregistered sender ID is replaced with
 > **"Unverified"** on the recipient's device. Registration requires your registered
 > entity name, ABN, and an authorised contact. Register your sender IDs through the
-> TransmitSMS dashboard before setting `TRANSMITSMS_FROM`; until then, leave `from`
+> TransmitSMS dashboard before setting `KUDOSITY_FROM`; until then, leave `from`
 > empty to send from a shared number.
 
 ## Usage
@@ -188,10 +188,10 @@ class OrderShipped extends Notification
 {
     public function via($notifiable): array
     {
-        return ['transmitsms'];
+        return ['kudosity'];
     }
 
-    public function toTransmitSms($notifiable): TransmitSmsMessage
+    public function toKudosity($notifiable): TransmitSmsMessage
     {
         return (new TransmitSmsMessage())
             ->content('Your order has been shipped!')
@@ -200,14 +200,14 @@ class OrderShipped extends Notification
 }
 ```
 
-Add the `routeNotificationForTransmitsms` method to your notifiable model:
+Add the `routeNotificationForKudosity` method to your notifiable model:
 
 ```php
 class User extends Authenticatable
 {
     use Notifiable;
 
-    public function routeNotificationForTransmitsms($notification): ?string
+    public function routeNotificationForKudosity($notification): ?string
     {
         return $this->phone_number;
     }

@@ -7,7 +7,7 @@ namespace ExpertSystems\Kudosity\Requests;
 /**
  * Edit options for a virtual number.
  *
- * @see https://developer.transmitsms.com/#edit-number-options
+ * @see https://developers.kudosity.com
  */
 class EditNumberOptionsRequest extends KudosityV1Request
 {

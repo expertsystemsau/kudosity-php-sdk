@@ -14,7 +14,7 @@ use ExpertSystems\Kudosity\Requests\GetKeywordsRequest;
 /**
  * Keywords resource for managing keyword campaigns.
  *
- * @see https://developer.transmitsms.com/#keywords
+ * @see https://developers.kudosity.com
  */
 class KeywordsResource extends Resource
 {

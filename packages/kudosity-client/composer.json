@@ -1,9 +1,9 @@
 {
     "name": "expertsystemsau/kudosity-php-client",
-    "description": "Framework-agnostic PHP client for the TransmitSMS API",
+    "description": "Framework-agnostic PHP client for the Kudosity API",
     "keywords": [
         "ExpertSystems",
-        "transmitsms",
+        "kudosity",
         "sms",
         "api-client"
     ],

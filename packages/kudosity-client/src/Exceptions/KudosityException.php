@@ -92,7 +92,7 @@ class KudosityException extends Exception
     }
 
     /**
-     * Get the TransmitSMS API error code.
+     * Get the Kudosity API error code.
      */
     public function getErrorCode(): ?string
     {

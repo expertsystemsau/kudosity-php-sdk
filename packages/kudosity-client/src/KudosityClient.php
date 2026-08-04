@@ -42,13 +42,13 @@ class KudosityClient
     protected ?EmailSmsResource $emailSmsResource = null;
 
     /**
-     * Create a new TransmitSMS client instance.
+     * Create a new Kudosity client instance.
      *
      * For most use cases, use the standard constructor with API credentials.
      * To create a client from an existing connector, use fromConnector().
      *
-     * @param  string  $apiKey  Your TransmitSMS API key
-     * @param  string  $apiSecret  Your TransmitSMS API secret
+     * @param  string  $apiKey  Your Kudosity API key
+     * @param  string  $apiSecret  Your Kudosity API secret
      * @param  string  $baseUrl  The base URL for the API
      * @param  int  $timeout  Request timeout in seconds
      */
@@ -113,7 +113,7 @@ class KudosityClient
     /**
      * Access account-related API operations.
      *
-     * @see https://developer.transmitsms.com/#account
+     * @see https://developers.kudosity.com
      */
     public function account(): AccountResource
     {
@@ -123,7 +123,7 @@ class KudosityClient
     /**
      * Access SMS-related API operations.
      *
-     * @see https://developer.transmitsms.com/#sms
+     * @see https://developers.kudosity.com
      */
     public function sms(): SmsResource
     {
@@ -133,7 +133,7 @@ class KudosityClient
     /**
      * Access reporting and statistics API operations.
      *
-     * @see https://developer.transmitsms.com/#sms
+     * @see https://developers.kudosity.com
      */
     public function reporting(): ReportingResource
     {
@@ -143,7 +143,7 @@ class KudosityClient
     /**
      * Access contact lists API operations.
      *
-     * @see https://developer.transmitsms.com/#lists
+     * @see https://developers.kudosity.com
      */
     public function lists(): ListsResource
     {
@@ -153,7 +153,7 @@ class KudosityClient
     /**
      * Access virtual numbers API operations.
      *
-     * @see https://developer.transmitsms.com/#numbers
+     * @see https://developers.kudosity.com
      */
     public function numbers(): NumbersResource
     {
@@ -163,7 +163,7 @@ class KudosityClient
     /**
      * Access keywords API operations.
      *
-     * @see https://developer.transmitsms.com/#keywords
+     * @see https://developers.kudosity.com
      */
     public function keywords(): KeywordsResource
     {
@@ -173,7 +173,7 @@ class KudosityClient
     /**
      * Access email SMS API operations.
      *
-     * @see https://developer.transmitsms.com/#email-sms
+     * @see https://developers.kudosity.com
      */
     public function emailSms(): EmailSmsResource
     {

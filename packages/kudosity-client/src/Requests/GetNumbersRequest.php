@@ -9,7 +9,7 @@ use ExpertSystems\Kudosity\Contracts\PaginatesResults;
 /**
  * Get all virtual numbers (paginated).
  *
- * @see https://developer.transmitsms.com/#get-numbers
+ * @see https://developers.kudosity.com
  */
 class GetNumbersRequest extends KudosityV1Request implements PaginatesResults
 {

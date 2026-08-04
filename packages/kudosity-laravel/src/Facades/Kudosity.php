@@ -24,7 +24,7 @@ use Saloon\Http\Response;
  *
  * @see KudosityClient
  */
-class TransmitSms extends Facade
+class Kudosity extends Facade
 {
     /**
      * Get the registered name of the component.

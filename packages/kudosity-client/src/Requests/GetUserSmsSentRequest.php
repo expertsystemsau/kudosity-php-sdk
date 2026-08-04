@@ -10,7 +10,7 @@ use ExpertSystems\Kudosity\Contracts\PaginatesResults;
 /**
  * Get list of all SMS sent by user (paginated).
  *
- * @see https://developer.transmitsms.com/#get-user-sms-sent
+ * @see https://developers.kudosity.com
  */
 class GetUserSmsSentRequest extends KudosityV1Request implements PaginatesResults
 {

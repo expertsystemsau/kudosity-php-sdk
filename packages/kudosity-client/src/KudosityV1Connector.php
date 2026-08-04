@@ -19,7 +19,7 @@ class KudosityV1Connector extends Connector implements HasPagination
 {
     use AcceptsJson;
 
-    public const BASE_URL = 'https://api.transmitsms.com';
+    public const BASE_URL = 'https://api.kudosity.com';
 
     /**
      * Default sender ID (VMN, short code, or alphanumeric).
@@ -252,7 +252,7 @@ class KudosityV1Connector extends Connector implements HasPagination
     /**
      * Determine if the request has failed.
      *
-     * TransmitSMS API returns an `error` object even on success with `code: SUCCESS`.
+     * Kudosity API returns an `error` object even on success with `code: SUCCESS`.
      * This method ensures that SUCCESS responses are not treated as failures,
      * which allows Saloon's dtoOrFail() to work correctly.
      *

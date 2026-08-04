@@ -10,7 +10,7 @@ use Saloon\Http\Response;
 /**
  * Bulk add contacts to a list from a CSV file URL.
  *
- * @see https://developer.transmitsms.com/#add-contacts-bulk
+ * @see https://developers.kudosity.com
  */
 class AddContactsBulkRequest extends KudosityV1Request
 {

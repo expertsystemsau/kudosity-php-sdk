@@ -11,7 +11,7 @@ use Saloon\Http\Response;
 /**
  * Get a count of SMS sent for the account within a date range.
  *
- * @see https://developer.transmitsms.com/#get-sms-sent-count
+ * @see https://developers.kudosity.com
  */
 class GetSmsSentCountRequest extends KudosityV1Request
 {

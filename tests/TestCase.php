@@ -2,7 +2,7 @@
 
 namespace ExpertSystems\Kudosity\Tests;
 
-use ExpertSystems\Kudosity\Laravel\TransmitSmsServiceProvider;
+use ExpertSystems\Kudosity\Laravel\KudosityServiceProvider;
 use Orchestra\Testbench\TestCase as Orchestra;
 
 class TestCase extends Orchestra
@@ -15,7 +15,7 @@ class TestCase extends Orchestra
     protected function getPackageProviders($app)
     {
         return [
-            TransmitSmsServiceProvider::class,
+            KudosityServiceProvider::class,
         ];
     }
 
@@ -23,7 +23,7 @@ class TestCase extends Orchestra
     {
         config()->set('database.default', 'testing');
         config()->set('app.key', 'base64:'.base64_encode('test-app-key-32-bytes-long!!!!'));
-        config()->set('transmitsms.api_key', 'test-api-key');
-        config()->set('transmitsms.api_secret', 'test-api-secret');
+        config()->set('kudosity.api_key', 'test-api-key');
+        config()->set('kudosity.api_secret', 'test-api-secret');
     }
 }

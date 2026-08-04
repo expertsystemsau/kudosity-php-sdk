@@ -18,7 +18,7 @@ use ExpertSystems\Kudosity\Support\PhoneNumber;
 /**
  * SMS resource for sending and managing SMS messages.
  *
- * @see https://developer.transmitsms.com/#sms
+ * @see https://developers.kudosity.com
  */
 class SmsResource extends Resource
 {

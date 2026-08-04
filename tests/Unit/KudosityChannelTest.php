@@ -5,25 +5,25 @@ declare(strict_types=1);
 use ExpertSystems\Kudosity\Data\SmsData;
 use ExpertSystems\Kudosity\Exceptions\KudosityException;
 use ExpertSystems\Kudosity\KudosityClient;
-use ExpertSystems\Kudosity\Laravel\Notifications\TransmitSmsChannel;
-use ExpertSystems\Kudosity\Laravel\Notifications\TransmitSmsMessage;
+use ExpertSystems\Kudosity\Laravel\Notifications\KudosityChannel;
+use ExpertSystems\Kudosity\Laravel\Notifications\KudosityMessage;
 use ExpertSystems\Kudosity\Requests\SendSmsRequest;
 use ExpertSystems\Kudosity\Resources\SmsResource;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\Config;
 
-describe('TransmitSmsChannel', function () {
+describe('KudosityChannel', function () {
     beforeEach(function () {
         $this->client = Mockery::mock(KudosityClient::class);
         $this->smsResource = Mockery::mock(SmsResource::class);
-        $this->channel = new TransmitSmsChannel($this->client);
+        $this->channel = new KudosityChannel($this->client);
 
         $this->client->shouldReceive('sms')
             ->andReturn($this->smsResource);
     });
 
     describe('send', function () {
-        it('sends SMS with TransmitSmsMessage object', function () {
+        it('sends SMS with KudosityMessage object', function () {
             $notifiable = new class
             {
                 public function routeNotificationFor($channel, $notification)
@@ -34,9 +34,9 @@ describe('TransmitSmsChannel', function () {
 
             $notification = new class extends Notification
             {
-                public function toTransmitSms($notifiable)
+                public function toKudosity($notifiable)
                 {
-                    return (new TransmitSmsMessage('Hello World'))
+                    return (new KudosityMessage('Hello World'))
                         ->from('MyBrand');
                 }
             };
@@ -72,7 +72,7 @@ describe('TransmitSmsChannel', function () {
 
             $notification = new class extends Notification
             {
-                public function toTransmitSms($notifiable)
+                public function toKudosity($notifiable)
                 {
                     return 'Hello from string';
                 }
@@ -106,9 +106,9 @@ describe('TransmitSmsChannel', function () {
 
             $notification = new class extends Notification
             {
-                public function toTransmitSms($notifiable)
+                public function toKudosity($notifiable)
                 {
-                    return (new TransmitSmsMessage('Test'))
+                    return (new KudosityMessage('Test'))
                         ->to('61400000002'); // Should be used
                 }
             };
@@ -141,9 +141,9 @@ describe('TransmitSmsChannel', function () {
 
             $notification = new class extends Notification
             {
-                public function toTransmitSms($notifiable)
+                public function toKudosity($notifiable)
                 {
-                    return (new TransmitSmsMessage('List blast'))
+                    return (new KudosityMessage('List blast'))
                         ->toList(999);
                 }
             };
@@ -183,9 +183,9 @@ describe('TransmitSmsChannel', function () {
 
             $notification = new class extends Notification
             {
-                public function toTransmitSms($notifiable)
+                public function toKudosity($notifiable)
                 {
-                    return (new TransmitSmsMessage('Test'))
+                    return (new KudosityMessage('Test'))
                         ->countryCode('AU')
                         ->formatNumbers();
                 }
@@ -227,9 +227,9 @@ describe('TransmitSmsChannel', function () {
 
             $notification = new class extends Notification
             {
-                public function toTransmitSms($notifiable)
+                public function toKudosity($notifiable)
                 {
-                    return new TransmitSmsMessage('Test');
+                    return new KudosityMessage('Test');
                 }
             };
 
@@ -239,7 +239,7 @@ describe('TransmitSmsChannel', function () {
         });
 
         it('uses sender from config when not set on message', function () {
-            Config::set('transmitsms.from', 'ConfigBrand');
+            Config::set('kudosity.from', 'ConfigBrand');
 
             $notifiable = new class
             {
@@ -251,9 +251,9 @@ describe('TransmitSmsChannel', function () {
 
             $notification = new class extends Notification
             {
-                public function toTransmitSms($notifiable)
+                public function toKudosity($notifiable)
                 {
-                    return new TransmitSmsMessage('Test'); // No from() set
+                    return new KudosityMessage('Test'); // No from() set
                 }
             };
 
@@ -285,9 +285,9 @@ describe('TransmitSmsChannel', function () {
 
             $notification = new class extends Notification
             {
-                public function toTransmitSms($notifiable)
+                public function toKudosity($notifiable)
                 {
-                    return (new TransmitSmsMessage('Test'))
+                    return (new KudosityMessage('Test'))
                         ->sendAt('2025-12-25 00:00:00');
                 }
             };
@@ -320,9 +320,9 @@ describe('TransmitSmsChannel', function () {
 
             $notification = new class extends Notification
             {
-                public function toTransmitSms($notifiable)
+                public function toKudosity($notifiable)
                 {
-                    return (new TransmitSmsMessage('Test'))
+                    return (new KudosityMessage('Test'))
                         ->validity(60)
                         ->countryCode('AU')
                         ->repliesToEmail('test@example.com');
@@ -359,11 +359,11 @@ describe('TransmitSmsChannel', function () {
 
             $notification = new class extends Notification
             {
-                public function toTransmitSms($notifiable)
+                public function toKudosity($notifiable)
                 {
                     // Create a message with content that will trigger validation
                     // We need to trigger validation in the channel
-                    return new TransmitSmsMessage(str_repeat('a', 613));
+                    return new KudosityMessage(str_repeat('a', 613));
                 }
             };
 
@@ -382,9 +382,9 @@ describe('TransmitSmsChannel', function () {
 
             $notification = new class extends Notification
             {
-                public function toTransmitSms($notifiable)
+                public function toKudosity($notifiable)
                 {
-                    return new TransmitSmsMessage('Test');
+                    return new KudosityMessage('Test');
                 }
             };
 

@@ -13,7 +13,7 @@ use Saloon\Http\Response;
  *
  * Returns the current account balance and currency.
  *
- * @see https://developer.transmitsms.com/#get-balance
+ * @see https://developers.kudosity.com
  */
 class GetBalanceRequest extends KudosityV1Request
 {

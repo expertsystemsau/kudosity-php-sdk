@@ -23,15 +23,15 @@ php artisan vendor:publish --tag="transmitsms-config"
 Add your credentials to your `.env` file:
 
 ```env
-TRANSMITSMS_API_KEY=your-api-key
-TRANSMITSMS_API_SECRET=your-api-secret
+KUDOSITY_API_KEY=your-api-key
+KUDOSITY_API_SECRET=your-api-secret
 # Optional default sender ID — see "Sender IDs" below before setting this
-TRANSMITSMS_FROM=
+KUDOSITY_FROM=
 ```
 
 ### Sender IDs
 
-`TRANSMITSMS_FROM` (or the per-message `from()` / `from` option) is the sender ID
+`KUDOSITY_FROM` (or the per-message `from()` / `from` option) is the sender ID
 recipients see. It can be:
 
 - A **dedicated virtual number (VMN)** in international format, e.g. `61412345678` —
@@ -47,7 +47,7 @@ recipients see. It can be:
 > (enforced from 1 July 2026) — an unregistered sender ID is replaced with
 > **"Unverified"** on the recipient's device. Registration requires your registered
 > entity name, ABN, and an authorised contact. Register your sender IDs through the
-> TransmitSMS dashboard before setting `TRANSMITSMS_FROM`; until then, leave it empty
+> TransmitSMS dashboard before setting `KUDOSITY_FROM`; until then, leave it empty
 > to send from a shared number.
 
 ## Usage
@@ -79,10 +79,10 @@ class OrderShipped extends Notification
 {
     public function via($notifiable): array
     {
-        return ['transmitsms'];
+        return ['kudosity'];
     }
 
-    public function toTransmitSms($notifiable): TransmitSmsMessage
+    public function toKudosity($notifiable): TransmitSmsMessage
     {
         return TransmitSmsMessage::create('Your order has been shipped!')
             ->from('MyStore');
@@ -90,14 +90,14 @@ class OrderShipped extends Notification
 }
 ```
 
-Add the `routeNotificationForTransmitsms` method to your notifiable model:
+Add the `routeNotificationForKudosity` method to your notifiable model:
 
 ```php
 class User extends Authenticatable
 {
     use Notifiable;
 
-    public function routeNotificationForTransmitsms($notification): ?string
+    public function routeNotificationForKudosity($notification): ?string
     {
         return $this->phone_number;
     }
@@ -129,7 +129,7 @@ To send to a TransmitSMS contact list instead of the notifiable's number, use
 `toList()` — the resolved recipient is then ignored:
 
 ```php
-public function toTransmitSms($notifiable): TransmitSmsMessage
+public function toKudosity($notifiable): TransmitSmsMessage
 {
     return TransmitSmsMessage::create('Flash sale for members!')
         ->toList(12345);
@@ -153,10 +153,10 @@ class OrderShipped extends Notification
 
     public function via($notifiable): array
     {
-        return ['transmitsms'];
+        return ['kudosity'];
     }
 
-    public function toTransmitSms($notifiable): TransmitSmsMessage
+    public function toKudosity($notifiable): TransmitSmsMessage
     {
         return TransmitSmsMessage::create("Your order #{$this->order->id} has shipped!")
             ->from('MYSTORE')
@@ -333,36 +333,36 @@ The webhook routes are automatically registered. You can customize them in `conf
 ```php
 'webhooks' => [
     // Enable/disable webhook routes
-    'enabled' => env('TRANSMITSMS_WEBHOOKS_ENABLED', true),
+    'enabled' => env('KUDOSITY_WEBHOOKS_ENABLED', true),
 
-    // Route prefix (e.g., /webhooks/transmitsms/dlr)
-    'prefix' => env('TRANSMITSMS_WEBHOOKS_PREFIX', 'webhooks/transmitsms'),
+    // Route prefix (e.g., /webhooks/kudosity/dlr)
+    'prefix' => env('KUDOSITY_WEBHOOKS_PREFIX', 'webhooks/kudosity'),
 
     // Middleware for webhook routes
     'middleware' => ['api'],
 
     // Custom signing key (defaults to APP_KEY)
-    'signing_key' => env('TRANSMITSMS_SIGNING_KEY'),
+    'signing_key' => env('KUDOSITY_SIGNING_KEY'),
 
     // DLR callback settings
     'dlr' => [
         'enabled' => true,
         'path' => 'dlr',
-        'queue' => env('TRANSMITSMS_DLR_QUEUE', 'default'),
+        'queue' => env('KUDOSITY_DLR_QUEUE', 'default'),
     ],
 
     // Reply callback settings
     'reply' => [
         'enabled' => true,
         'path' => 'reply',
-        'queue' => env('TRANSMITSMS_REPLY_QUEUE', 'default'),
+        'queue' => env('KUDOSITY_REPLY_QUEUE', 'default'),
     ],
 
     // Link hits callback settings
     'link_hits' => [
         'enabled' => true,
         'path' => 'link-hits',
-        'queue' => env('TRANSMITSMS_LINK_HITS_QUEUE', 'default'),
+        'queue' => env('KUDOSITY_LINK_HITS_QUEUE', 'default'),
     ],
 ],
 ```
@@ -428,7 +428,7 @@ Helper methods: `isDelivered()`, `isFailed()`, `isPending()`
 │                    │                                                │
 │                    ▼                                                │
 │  Package builds signed callback URL                                │
-│  https://app.com/webhooks/transmitsms/dlr?h=...&c=...&s=...       │
+│  https://app.com/webhooks/kudosity/dlr?h=...&c=...&s=...       │
 └─────────────────────────────────────────────────────────────────────┘
                      │
                      ▼

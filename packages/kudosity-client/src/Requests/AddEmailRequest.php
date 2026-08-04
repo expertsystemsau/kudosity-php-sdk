@@ -10,7 +10,7 @@ use Saloon\Http\Response;
 /**
  * Authorize an email address for Email SMS.
  *
- * @see https://developer.transmitsms.com/#add-email
+ * @see https://developers.kudosity.com
  */
 class AddEmailRequest extends KudosityV1Request
 {

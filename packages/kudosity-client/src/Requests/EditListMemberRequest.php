@@ -7,7 +7,7 @@ namespace ExpertSystems\Kudosity\Requests;
 /**
  * Edit a contact in a list.
  *
- * @see https://developer.transmitsms.com/#edit-list-member
+ * @see https://developers.kudosity.com
  */
 class EditListMemberRequest extends KudosityV1Request
 {

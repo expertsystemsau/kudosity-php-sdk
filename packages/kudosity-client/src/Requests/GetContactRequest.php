@@ -10,7 +10,7 @@ use Saloon\Http\Response;
 /**
  * Get a contact from a list.
  *
- * @see https://developer.transmitsms.com/#get-contact
+ * @see https://developers.kudosity.com
  */
 class GetContactRequest extends KudosityV1Request
 {

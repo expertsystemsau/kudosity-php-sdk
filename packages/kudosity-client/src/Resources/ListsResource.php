@@ -26,7 +26,7 @@ use ExpertSystems\Kudosity\Requests\RemoveListRequest;
 /**
  * Lists resource for managing contact lists.
  *
- * @see https://developer.transmitsms.com/#lists
+ * @see https://developers.kudosity.com
  */
 class ListsResource extends Resource
 {

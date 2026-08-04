@@ -9,7 +9,7 @@ use ExpertSystems\Kudosity\Contracts\PaginatesResults;
 /**
  * Get all contact lists (paginated).
  *
- * @see https://developer.transmitsms.com/#get-lists
+ * @see https://developers.kudosity.com
  */
 class GetListsRequest extends KudosityV1Request implements PaginatesResults
 {

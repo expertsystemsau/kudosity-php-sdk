@@ -15,7 +15,7 @@ abstract class KudosityV1Request extends Request implements HasBody
 
     /**
      * The HTTP method for the request.
-     * TransmitSMS API supports both GET and POST, but POST is preferred for sending data.
+     * Kudosity API supports both GET and POST, but POST is preferred for sending data.
      */
     protected Method $method = Method::POST;
 

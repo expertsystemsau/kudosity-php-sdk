@@ -10,7 +10,7 @@ use Saloon\Http\Response;
 /**
  * Get information about a message or campaign that has been sent.
  *
- * @see https://developer.transmitsms.com/#get-sms
+ * @see https://developers.kudosity.com
  */
 class GetSmsRequest extends KudosityV1Request
 {

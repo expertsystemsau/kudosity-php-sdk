@@ -10,7 +10,7 @@ use Saloon\Http\Response;
 /**
  * Add a keyword to a virtual number.
  *
- * @see https://developer.transmitsms.com/#add-keyword
+ * @see https://developers.kudosity.com
  */
 class AddKeywordRequest extends KudosityV1Request
 {

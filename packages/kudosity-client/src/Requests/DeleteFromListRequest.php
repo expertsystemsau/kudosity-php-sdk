@@ -7,7 +7,7 @@ namespace ExpertSystems\Kudosity\Requests;
 /**
  * Delete a contact from a list.
  *
- * @see https://developer.transmitsms.com/#delete-from-list
+ * @see https://developers.kudosity.com
  */
 class DeleteFromListRequest extends KudosityV1Request
 {

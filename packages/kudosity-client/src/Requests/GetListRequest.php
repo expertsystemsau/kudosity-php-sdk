@@ -14,7 +14,7 @@ use Saloon\Http\Response;
  * When iterated via the paginator (e.g. `lists()->getContacts()`), it pages
  * through the list's members. When sent directly it returns the list itself.
  *
- * @see https://developer.transmitsms.com/#get-list
+ * @see https://developers.kudosity.com
  */
 class GetListRequest extends KudosityV1Request implements PaginatesResults
 {

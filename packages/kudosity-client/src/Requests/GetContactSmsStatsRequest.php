@@ -11,7 +11,7 @@ use Saloon\Http\Response;
 /**
  * Get SMS statistics for a specific contact/mobile number.
  *
- * @see https://developer.transmitsms.com/#get-contact-sms-stats
+ * @see https://developers.kudosity.com
  */
 class GetContactSmsStatsRequest extends KudosityV1Request
 {

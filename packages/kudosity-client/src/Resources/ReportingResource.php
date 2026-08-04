@@ -25,7 +25,7 @@ use ExpertSystems\Kudosity\Requests\GetUserSmsSentRequest;
 /**
  * Reporting resource for retrieving SMS delivery and statistics.
  *
- * @see https://developer.transmitsms.com/#sms
+ * @see https://developers.kudosity.com
  */
 class ReportingResource extends Resource
 {

@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 use ExpertSystems\Kudosity\KudosityClient;
 use ExpertSystems\Kudosity\KudosityV1Connector;
-use ExpertSystems\Kudosity\Laravel\Notifications\TransmitSmsChannel;
-use ExpertSystems\Kudosity\Laravel\TransmitSmsServiceProvider;
+use ExpertSystems\Kudosity\Laravel\KudosityServiceProvider;
+use ExpertSystems\Kudosity\Laravel\Notifications\KudosityChannel;
 use Illuminate\Notifications\ChannelManager;
 use Illuminate\Support\Facades\Notification;
 
-describe('TransmitSmsServiceProvider', function () {
+describe('KudosityServiceProvider', function () {
     describe('service registration', function () {
         it('registers KudosityV1Connector as singleton', function () {
             $connector1 = app(KudosityV1Connector::class);
@@ -36,15 +36,15 @@ describe('TransmitSmsServiceProvider', function () {
     });
 
     describe('aliases', function () {
-        it('resolves transmitsms alias to client', function () {
-            $client = app('transmitsms');
+        it('resolves kudosity alias to client', function () {
+            $client = app('kudosity');
 
             expect($client)->toBeInstanceOf(KudosityClient::class);
             expect($client)->toBe(app(KudosityClient::class));
         });
 
-        it('resolves transmitsms.connector alias to connector', function () {
-            $connector = app('transmitsms.connector');
+        it('resolves kudosity.connector alias to connector', function () {
+            $connector = app('kudosity.connector');
 
             expect($connector)->toBeInstanceOf(KudosityV1Connector::class);
             expect($connector)->toBe(app(KudosityV1Connector::class));
@@ -53,10 +53,10 @@ describe('TransmitSmsServiceProvider', function () {
 
     describe('configuration', function () {
         it('uses config values for connector', function () {
-            config()->set('transmitsms.api_key', 'my-api-key');
-            config()->set('transmitsms.api_secret', 'my-api-secret');
-            config()->set('transmitsms.base_url', 'https://custom.api.com');
-            config()->set('transmitsms.timeout', 60);
+            config()->set('kudosity.api_key', 'my-api-key');
+            config()->set('kudosity.api_secret', 'my-api-secret');
+            config()->set('kudosity.base_url', 'https://custom.api.com');
+            config()->set('kudosity.timeout', 60);
 
             // Clear the existing singleton to force re-creation
             app()->forgetInstance(KudosityV1Connector::class);
@@ -71,7 +71,7 @@ describe('TransmitSmsServiceProvider', function () {
         });
 
         it('sets default from when configured', function () {
-            config()->set('transmitsms.from', 'MyBrand');
+            config()->set('kudosity.from', 'MyBrand');
 
             // Clear the existing singleton to force re-creation
             app()->forgetInstance(KudosityV1Connector::class);
@@ -82,7 +82,7 @@ describe('TransmitSmsServiceProvider', function () {
         });
 
         it('does not set default from when empty', function () {
-            config()->set('transmitsms.from', '');
+            config()->set('kudosity.from', '');
 
             // Clear the existing singleton to force re-creation
             app()->forgetInstance(KudosityV1Connector::class);
@@ -94,26 +94,26 @@ describe('TransmitSmsServiceProvider', function () {
     });
 
     describe('notification channel', function () {
-        it('registers transmitsms notification channel', function () {
+        it('registers kudosity notification channel', function () {
             /** @var ChannelManager $channelManager */
             $channelManager = Notification::getFacadeRoot();
 
-            $channel = $channelManager->driver('transmitsms');
+            $channel = $channelManager->driver('kudosity');
 
-            expect($channel)->toBeInstanceOf(TransmitSmsChannel::class);
+            expect($channel)->toBeInstanceOf(KudosityChannel::class);
         });
     });
 
     describe('provides', function () {
         it('provides the correct services', function () {
-            $provider = app()->getProvider(TransmitSmsServiceProvider::class);
+            $provider = app()->getProvider(KudosityServiceProvider::class);
 
             $provides = $provider->provides();
 
             expect($provides)->toContain(KudosityClient::class);
             expect($provides)->toContain(KudosityV1Connector::class);
-            expect($provides)->toContain('transmitsms');
-            expect($provides)->toContain('transmitsms.connector');
+            expect($provides)->toContain('kudosity');
+            expect($provides)->toContain('kudosity.connector');
         });
     });
 });

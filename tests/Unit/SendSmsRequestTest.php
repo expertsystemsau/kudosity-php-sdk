@@ -210,7 +210,7 @@ describe('SendSmsRequest', function () {
         });
 
         it('trackedLinkUrl allows localhost (not a callback)', function () {
-            // trackedLinkUrl is for the user to click, not for TransmitSMS to hit
+            // trackedLinkUrl is for the user to click, not for Kudosity to hit
             // so it doesn't need SSRF protection
             $request = (new SendSmsRequest('Test'))
                 ->trackedLinkUrl('http://localhost/page');

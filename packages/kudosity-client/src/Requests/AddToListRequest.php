@@ -10,7 +10,7 @@ use Saloon\Http\Response;
 /**
  * Add a contact to a list.
  *
- * @see https://developer.transmitsms.com/#add-to-list
+ * @see https://developers.kudosity.com
  */
 class AddToListRequest extends KudosityV1Request
 {

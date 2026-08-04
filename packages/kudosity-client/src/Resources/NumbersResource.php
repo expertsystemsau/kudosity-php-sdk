@@ -16,7 +16,7 @@ use ExpertSystems\Kudosity\Requests\LeaseNumberRequest;
 /**
  * Numbers resource for managing virtual mobile numbers.
  *
- * @see https://developer.transmitsms.com/#numbers
+ * @see https://developers.kudosity.com
  */
 class NumbersResource extends Resource
 {

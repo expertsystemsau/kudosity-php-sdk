@@ -34,7 +34,7 @@ use ExpertSystems\Kudosity\Data\DlrCallbackData;
 interface HandlesDlrCallback
 {
     /**
-     * @param  DlrCallbackData  $dlr  The delivery receipt data from TransmitSMS
+     * @param  DlrCallbackData  $dlr  The delivery receipt data from Kudosity
      * @param  array<string, mixed>  $context  The context data passed when sending the message
      */
     public function __construct(DlrCallbackData $dlr, array $context);

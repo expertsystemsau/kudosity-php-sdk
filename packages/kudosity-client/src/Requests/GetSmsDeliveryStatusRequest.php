@@ -10,7 +10,7 @@ use Saloon\Http\Response;
 /**
  * Get delivery status for a specific message to a specific recipient.
  *
- * @see https://developer.transmitsms.com/#get-sms-delivery-status
+ * @see https://developers.kudosity.com
  */
 class GetSmsDeliveryStatusRequest extends KudosityV1Request
 {

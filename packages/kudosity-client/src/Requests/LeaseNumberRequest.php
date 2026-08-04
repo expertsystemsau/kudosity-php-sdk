@@ -10,7 +10,7 @@ use Saloon\Http\Response;
 /**
  * Lease a virtual mobile number.
  *
- * @see https://developer.transmitsms.com/#lease-number
+ * @see https://developers.kudosity.com
  */
 class LeaseNumberRequest extends KudosityV1Request
 {

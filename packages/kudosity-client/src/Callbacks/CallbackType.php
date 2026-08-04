@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace ExpertSystems\Kudosity\Callbacks;
 
 /**
- * Types of callbacks supported by TransmitSMS.
+ * Types of callbacks supported by Kudosity.
  */
 enum CallbackType: string
 {

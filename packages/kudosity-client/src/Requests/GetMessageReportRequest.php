@@ -11,7 +11,7 @@ use Saloon\Http\Response;
 /**
  * Get message report for a date range.
  *
- * @see https://developer.transmitsms.com/#get-message-report
+ * @see https://developers.kudosity.com
  */
 class GetMessageReportRequest extends KudosityV1Request
 {

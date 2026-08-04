@@ -14,7 +14,7 @@ use Saloon\Http\Response;
  *
  * This is a paginated endpoint. Use with connector->paginate() for iteration.
  *
- * @see https://developer.transmitsms.com/#get-user-sms-responses
+ * @see https://developers.kudosity.com
  */
 class GetUserSmsResponsesRequest extends KudosityV1Request implements PaginatesResults
 {

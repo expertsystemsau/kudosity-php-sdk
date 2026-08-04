@@ -7,7 +7,7 @@ namespace ExpertSystems\Kudosity\Data;
 /**
  * Data transfer object for DLR (Delivery Receipt) callback payload.
  *
- * This DTO represents the data sent by TransmitSMS when a delivery
+ * This DTO represents the data sent by Kudosity when a delivery
  * receipt is received for a sent message.
  */
 final readonly class DlrCallbackData

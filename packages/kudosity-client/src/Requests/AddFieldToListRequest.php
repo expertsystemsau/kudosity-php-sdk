@@ -7,7 +7,7 @@ namespace ExpertSystems\Kudosity\Requests;
 /**
  * Add a custom field to a list.
  *
- * @see https://developer.transmitsms.com/#add-field-to-list
+ * @see https://developers.kudosity.com
  */
 class AddFieldToListRequest extends KudosityV1Request
 {

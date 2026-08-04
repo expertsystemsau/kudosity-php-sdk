@@ -1,10 +1,10 @@
 {
     "name": "expertsystemsau/kudosity-laravel-client",
-    "description": "Laravel notification channel and integration for the TransmitSMS API",
+    "description": "Laravel notification channel and integration for the Kudosity API",
     "keywords": [
         "ExpertSystems",
         "laravel",
-        "transmitsms",
+        "kudosity",
         "sms",
         "notification-channel"
     ],
@@ -42,10 +42,10 @@
     "extra": {
         "laravel": {
             "providers": [
-                "ExpertSystems\\Kudosity\\Laravel\\TransmitSmsServiceProvider"
+                "ExpertSystems\\Kudosity\\Laravel\\KudosityServiceProvider"
             ],
             "aliases": {
-                "TransmitSms": "ExpertSystems\\Kudosity\\Laravel\\Facades\\TransmitSms"
+                "Kudosity": "ExpertSystems\\Kudosity\\Laravel\\Facades\\Kudosity"
             }
         }
     },

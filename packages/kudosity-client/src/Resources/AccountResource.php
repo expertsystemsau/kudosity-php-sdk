@@ -11,7 +11,7 @@ use ExpertSystems\Kudosity\Requests\GetBalanceRequest;
 /**
  * Account resource for account-related API operations.
  *
- * @see https://developer.transmitsms.com/#account
+ * @see https://developers.kudosity.com
  */
 class AccountResource extends Resource
 {
@@ -22,7 +22,7 @@ class AccountResource extends Resource
      *
      * @throws KudosityException
      *
-     * @see https://developer.transmitsms.com/#get-balance
+     * @see https://developers.kudosity.com
      */
     public function getBalance(): BalanceData
     {

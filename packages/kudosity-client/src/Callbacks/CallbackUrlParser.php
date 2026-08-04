@@ -7,7 +7,7 @@ namespace ExpertSystems\Kudosity\Callbacks;
 use ExpertSystems\Kudosity\Exceptions\InvalidSignatureException;
 
 /**
- * Parses and verifies signed callback URLs from TransmitSMS webhooks.
+ * Parses and verifies signed callback URLs from Kudosity webhooks.
  *
  * Validates the HMAC signature to ensure the callback URL hasn't been tampered with.
  */

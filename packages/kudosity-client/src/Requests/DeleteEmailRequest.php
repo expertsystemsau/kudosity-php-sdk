@@ -7,7 +7,7 @@ namespace ExpertSystems\Kudosity\Requests;
 /**
  * Delete an authorized email address.
  *
- * @see https://developer.transmitsms.com/#delete-email
+ * @see https://developers.kudosity.com
  */
 class DeleteEmailRequest extends KudosityV1Request
 {

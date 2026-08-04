@@ -5,31 +5,31 @@ use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| TransmitSMS Webhook Routes
+| Kudosity Webhook Routes
 |--------------------------------------------------------------------------
 |
-| These routes handle incoming callbacks from TransmitSMS for delivery
+| These routes handle incoming callbacks from Kudosity for delivery
 | receipts (DLR), replies, and link hits.
 |
 */
 
-if (config('transmitsms.webhooks.dlr.enabled', true)) {
+if (config('kudosity.webhooks.dlr.enabled', true)) {
     Route::get(
-        config('transmitsms.webhooks.dlr.path', 'dlr'),
+        config('kudosity.webhooks.dlr.path', 'dlr'),
         [WebhookController::class, 'dlr']
-    )->name('transmitsms.webhooks.dlr');
+    )->name('kudosity.webhooks.dlr');
 }
 
-if (config('transmitsms.webhooks.reply.enabled', true)) {
+if (config('kudosity.webhooks.reply.enabled', true)) {
     Route::get(
-        config('transmitsms.webhooks.reply.path', 'reply'),
+        config('kudosity.webhooks.reply.path', 'reply'),
         [WebhookController::class, 'reply']
-    )->name('transmitsms.webhooks.reply');
+    )->name('kudosity.webhooks.reply');
 }
 
-if (config('transmitsms.webhooks.link_hits.enabled', true)) {
+if (config('kudosity.webhooks.link_hits.enabled', true)) {
     Route::get(
-        config('transmitsms.webhooks.link_hits.path', 'link-hits'),
+        config('kudosity.webhooks.link_hits.path', 'link-hits'),
         [WebhookController::class, 'linkHits']
-    )->name('transmitsms.webhooks.link-hits');
+    )->name('kudosity.webhooks.link-hits');
 }

@@ -7,7 +7,7 @@ namespace ExpertSystems\Kudosity\Requests;
 /**
  * Edit a keyword.
  *
- * @see https://developer.transmitsms.com/#edit-keyword
+ * @see https://developers.kudosity.com
  */
 class EditKeywordRequest extends KudosityV1Request
 {

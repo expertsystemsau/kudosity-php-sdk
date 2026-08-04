@@ -3,7 +3,7 @@
     "description": "TransmitSMS PHP Client Monorepo - Contains both the core PHP client and Laravel integration",
     "keywords": [
         "ExpertSystems",
-        "transmitsms",
+        "kudosity",
         "sms",
         "laravel",
         "api-client"
@@ -82,10 +82,10 @@
     "extra": {
         "laravel": {
             "providers": [
-                "ExpertSystems\\Kudosity\\Laravel\\TransmitSmsServiceProvider"
+                "ExpertSystems\\Kudosity\\Laravel\\KudosityServiceProvider"
             ],
             "aliases": {
-                "TransmitSms": "ExpertSystems\\Kudosity\\Laravel\\Facades\\TransmitSms"
+                "Kudosity": "ExpertSystems\\Kudosity\\Laravel\\Facades\\Kudosity"
             }
         }
     },

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace ExpertSystems\Kudosity\Callbacks;
 
 /**
- * Builds signed callback URLs with encoded context for TransmitSMS webhooks.
+ * Builds signed callback URLs with encoded context for Kudosity webhooks.
  *
  * The callback URL includes:
  * - h: Base64-encoded handler class name
@@ -13,12 +13,12 @@ namespace ExpertSystems\Kudosity\Callbacks;
  * - s: HMAC-SHA256 signature for verification
  *
  * Example URL:
- * https://app.com/webhooks/transmitsms/dlr?h=QXBwXEpvYnM=&c=eyJpZCI6MX0=&s=abc123
+ * https://app.com/webhooks/kudosity/dlr?h=QXBwXEpvYnM=&c=eyJpZCI6MX0=&s=abc123
  */
 class CallbackUrlBuilder
 {
     /**
-     * @param  string  $baseUrl  Base URL for webhooks (e.g., https://app.com/webhooks/transmitsms)
+     * @param  string  $baseUrl  Base URL for webhooks (e.g., https://app.com/webhooks/kudosity)
      * @param  string  $signingKey  Secret key for HMAC signing
      */
     public function __construct(

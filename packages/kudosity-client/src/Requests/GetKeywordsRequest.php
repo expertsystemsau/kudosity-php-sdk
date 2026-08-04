@@ -9,7 +9,7 @@ use ExpertSystems\Kudosity\Contracts\PaginatesResults;
 /**
  * Get all keywords (paginated).
  *
- * @see https://developer.transmitsms.com/#get-keywords
+ * @see https://developers.kudosity.com
  */
 class GetKeywordsRequest extends KudosityV1Request implements PaginatesResults
 {
