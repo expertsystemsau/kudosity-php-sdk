@@ -125,3 +125,34 @@ it('skips vendor and .git directories', function () {
 
     expect(file_get_contents($vendored))->toContain('TransmitSmsClient');
 });
+
+it('leaves every file untouched when the preserve guard fires anywhere in the run (atomic write)', function () {
+    // A deliberately over-broad map entry: an unquoted, unanchored "transmitsms"
+    // matches inside the preserved hostname too, so this run must trip the guard.
+    $map = json_decode(file_get_contents(dirname(__DIR__, 2).'/rename-map.json'), true);
+    $map['strings']['transmitsms'] = 'kudosity';
+    $badMap = $this->project.'/bad-map.json';
+    file_put_contents($badMap, json_encode($map, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+
+    // "0-" sorts before "1-" so a single-pass, write-as-you-go implementation
+    // would rewrite this file on disk before it ever reaches the violation.
+    $legit = $this->project.'/app/Notifications/0-legit.php';
+    $violation = $this->project.'/app/Notifications/1-violation.php';
+
+    file_put_contents($legit, '<?php use ExpertSystems\TransmitSms\TransmitSmsClient;');
+    file_put_contents($violation, "<?php\n\nreturn ['base' => 'https://api.transmitsms.com'];\n");
+
+    $legitBefore = file_get_contents($legit);
+    $violationBefore = file_get_contents($violation);
+
+    $codemod = dirname(__DIR__, 2).'/bin/kudosity-codemod';
+    $cmd = escapeshellcmd(PHP_BINARY).' '.escapeshellarg($codemod)
+        .' '.escapeshellarg($this->project).' --write --map='.escapeshellarg($badMap);
+
+    exec($cmd.' 2>&1', $output, $status);
+
+    expect($status)->toBe(1)
+        ->and(implode("\n", $output))->toContain("preserved literal 'api.transmitsms.com'")
+        ->and(file_get_contents($violation))->toBe($violationBefore)
+        ->and(file_get_contents($legit))->toBe($legitBefore);
+});

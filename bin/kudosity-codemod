@@ -7,7 +7,7 @@ declare(strict_types=1);
  * Rewrites a project's references from the TransmitSMS SDK (1.x) to the
  * Kudosity SDK (2.x), driven by rename-map.json.
  *
- * Usage: kudosity-codemod <path-to-project> [--write]
+ * Usage: kudosity-codemod <path-to-project> [--write] [--map=PATH]
  *
  * Without --write it reports what it would change and exits 0.
  */
@@ -17,10 +17,18 @@ const SKIP_DIRS = ['vendor', 'node_modules', '.git', 'storage', 'bootstrap/cache
 
 $args = array_slice($argv, 1);
 $write = in_array('--write', $args, true);
+$mapArg = null;
+
+foreach ($args as $arg) {
+    if (str_starts_with($arg, '--map=')) {
+        $mapArg = substr($arg, strlen('--map='));
+    }
+}
+
 $paths = array_values(array_filter($args, static fn (string $a): bool => ! str_starts_with($a, '--')));
 
 if (count($paths) !== 1) {
-    fwrite(STDERR, "Usage: kudosity-codemod <path-to-project> [--write]\n");
+    fwrite(STDERR, "Usage: kudosity-codemod <path-to-project> [--write] [--map=PATH]\n");
     exit(2);
 }
 
@@ -31,8 +39,20 @@ if ($root === false || ! is_dir($root)) {
     exit(2);
 }
 
-$mapPath = __DIR__.'/../rename-map.json';
-$map = json_decode((string) file_get_contents($mapPath), true, 512, JSON_THROW_ON_ERROR);
+$mapPath = $mapArg ?? __DIR__.'/../rename-map.json';
+$mapContents = @file_get_contents($mapPath);
+
+if ($mapContents === false) {
+    fwrite(STDERR, "Could not read rename map: {$mapPath}\n");
+    exit(2);
+}
+
+try {
+    $map = json_decode($mapContents, true, 512, JSON_THROW_ON_ERROR);
+} catch (JsonException $e) {
+    fwrite(STDERR, "Malformed rename map ({$mapPath}): {$e->getMessage()}\n");
+    exit(2);
+}
 
 /** Ordered replacement pairs. Namespaces first, then classes, then everything else. */
 $replacements = [];
@@ -53,9 +73,15 @@ foreach (['namespaces', 'classes', 'methods', 'strings', 'env', 'packages'] as $
     }
 }
 
+$needsHumanKeys = array_keys(array_filter($map['methods'], static fn ($v): bool => $v === null));
+
 $changed = [];
 $manual = [];
+$toWrite = [];
 
+// Pass one — plan. Compute every file's rewritten content and check the
+// preserve guard before touching disk, so a violation found on file N can't
+// leave files 1..N-1 already mutated.
 foreach (files($root) as $file) {
     $original = (string) file_get_contents($file);
     $updated = $original;
@@ -66,7 +92,9 @@ foreach (files($root) as $file) {
             : str_replace($from, $to, $updated);
     }
 
-    // Guard: never rewrite a preserved literal.
+    // Guard: never rewrite a preserved literal. Exiting here — before pass
+    // two writes anything — is what keeps the guard atomic across the whole
+    // run, not just the one file that tripped it.
     foreach ($map['preserve'] as $literal) {
         if (str_contains($original, $literal) && ! str_contains($updated, $literal)) {
             fwrite(STDERR, "Refusing to rewrite preserved literal '{$literal}' in {$file}\n");
@@ -74,7 +102,7 @@ foreach (files($root) as $file) {
         }
     }
 
-    foreach (array_keys(array_filter($map['methods'], static fn ($v): bool => $v === null)) as $needsHuman) {
+    foreach ($needsHumanKeys as $needsHuman) {
         if (str_contains($original, $needsHuman.'(')) {
             $manual[] = [$file, $needsHuman];
         }
@@ -85,8 +113,12 @@ foreach (files($root) as $file) {
     }
 
     $changed[] = [$file, countDiff($original, $updated)];
+    $toWrite[] = [$file, $updated];
+}
 
-    if ($write) {
+// Pass two — commit. Only reached once every file has cleared the guard.
+if ($write) {
+    foreach ($toWrite as [$file, $updated]) {
         file_put_contents($file, $updated);
     }
 }
