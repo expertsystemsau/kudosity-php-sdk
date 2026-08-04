@@ -948,7 +948,11 @@ php bin/kudosity-codemod packages 2>&1 | tail -3
 php bin/kudosity-codemod tests 2>&1 | tail -3
 ```
 
-Expected from each: `0 files would change (dry run — pass --write to apply)`. Any hit means Task 1–3 left something behind — fix that, not the codemod.
+Expected: `packages` reports `0 files would change`. `tests` reports `1 file would change` — and that one file is `tests/Unit/CodemodTest.php` itself, which necessarily contains old-brand fixture strings to drive the script under test. That is correct and must not be "fixed"; confirm the named file is that one and no other.
+
+Any other hit means Task 1–3 left something behind — fix the content, not the codemod. Expect the `packages` run to surface the two package `README.md` files on a first pass, since Task 3 deferred them; renaming their symbol references here is in scope, but they still need Task 5's substantive rewrite (install commands, package table, usage samples).
+
+The run also prints `review by hand: Unit/DtoTest.php uses fromResponse()`, which is the `null` map entry working as designed — a human-review pointer, not a change.
 
 - [ ] **Step 7: Verify the whole suite and static analysis**
 
@@ -1130,6 +1134,6 @@ git commit -m "docs: rewrite READMEs, add UPGRADING.md, log the Kudosity rebrand
 
 - `git grep -i transmitsms` returns hits only in `.agents/skills/`, `CHANGELOG.md`, `UPGRADING.md`, `rename-map.json`, and as the literal hostname `api.transmitsms.com`.
 - 249 tests pass; PHPStan level 6 clean; Pint clean; all three composer manifests validate strictly.
-- `php bin/kudosity-codemod packages` and `php bin/kudosity-codemod tests` each report zero changes.
+- `php bin/kudosity-codemod packages` reports zero changes; `php bin/kudosity-codemod tests` reports exactly one — `tests/Unit/CodemodTest.php`, whose old-brand fixtures are what drive the script under test.
 - No behaviour changed. Every V1 request still hits the same URL with the same body and the same auth.
 - Phase 2 can begin: `KudosityV2Connector`, `KudosityV2Request` and `KudosityException::fromV2Response()` have names reserved and nothing occupying them.
