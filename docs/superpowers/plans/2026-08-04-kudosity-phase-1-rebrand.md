@@ -415,13 +415,15 @@ git ls-files -z '*.php' | xargs -0 sed -i \
 
 - [ ] **Step 3: Rewrite config keys, env keys, the channel string and the method hook**
 
-The pathspec excludes are mandatory. `.agents/skills/` is vendored upstream
-reference material and must never be rewritten, and `CHANGELOG.md` documents the
-old names on purpose — rewriting it would falsify released history.
+The pathspec excludes are mandatory, and all three earn their place:
+
+- `.agents/skills/` is vendored upstream reference material and must never be rewritten.
+- `CHANGELOG.md` documents the old names on purpose — rewriting it falsifies released history.
+- `docs/` holds tracked files that quote the old names deliberately. `docs/Transmit SMS.postman_collection.json` embeds the V1 hostname as a JSON host array, where `"transmitsms"` is a path segment — rewriting it yields the non-existent `api.kudosity.com` and breaks the hostname-survival constraint in 122 places. `docs/superpowers/specs/` and `docs/superpowers/plans/` hold this migration's own before/after tables, which a rename collapses into no-op pairs like `"toKudosity": "toKudosity"`. (`docs/` is in `.gitignore`, but these three files were force-added and so are tracked — `git ls-files` returns them.)
 
 ```bash
 git ls-files -z '*.php' '*.json' '*.yml' '*.md' \
-  ':(exclude).agents/*' ':(exclude)CHANGELOG.md' | xargs -0 sed -i \
+  ':(exclude).agents/*' ':(exclude)CHANGELOG.md' ':(exclude)docs/*' | xargs -0 sed -i \
   -e 's/\btoTransmitSms\b/toKudosity/g' \
   -e 's/\brouteNotificationForTransmitsms\b/routeNotificationForKudosity/g' \
   -e 's/\bTRANSMITSMS_/KUDOSITY_/g' \
