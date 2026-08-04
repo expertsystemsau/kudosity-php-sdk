@@ -47,6 +47,11 @@ if ($mapContents === false) {
     exit(2);
 }
 
+// Resolved so the planning loop below can skip the map itself — without
+// this, a documented workflow that keeps the map inside the scanned project
+// rewrites its own class-rename pairs into no-ops on every run.
+$mapReal = realpath($mapPath);
+
 try {
     $map = json_decode($mapContents, true, 512, JSON_THROW_ON_ERROR);
 } catch (JsonException $e) {
@@ -57,7 +62,7 @@ try {
 /** Ordered replacement pairs. Namespaces first, then classes, then everything else. */
 $replacements = [];
 
-foreach (['namespaces', 'classes', 'methods', 'strings', 'env', 'packages'] as $group) {
+foreach (['namespaces', 'classes', 'methods', 'constants', 'strings', 'env', 'packages'] as $group) {
     foreach ($map[$group] as $from => $to) {
         if ($to === null) {
             continue;   // documented manually — see UPGRADING.md
@@ -67,13 +72,19 @@ foreach (['namespaces', 'classes', 'methods', 'strings', 'env', 'packages'] as $
         // json_encode() escapes "/" as "\/" by default (e.g. composer.json),
         // so also match that form. "/" doesn't need escaping in JSON, so the
         // unescaped replacement value is still valid output.
-        if (! in_array($group, ['classes', 'methods'], true) && str_contains($from, '/')) {
+        if (! in_array($group, ['classes', 'methods', 'constants'], true) && str_contains($from, '/')) {
             $replacements[] = [$group, str_replace('/', '\/', $from), $to];
         }
     }
 }
 
-$needsHumanKeys = array_keys(array_filter($map['methods'], static fn ($v): bool => $v === null));
+// Symbols flagged for manual review rather than rewritten: null-valued
+// `methods` entries (e.g. fromResponse(), ambiguous with unrelated DTO
+// factories of the same name) plus everything Task 2 removed outright.
+$needsHumanKeys = array_merge(
+    array_keys(array_filter($map['methods'], static fn ($v): bool => $v === null)),
+    array_keys($map['removed'])
+);
 
 $changed = [];
 $manual = [];
@@ -83,11 +94,19 @@ $toWrite = [];
 // preserve guard before touching disk, so a violation found on file N can't
 // leave files 1..N-1 already mutated.
 foreach (files($root) as $file) {
+    // Skip the rename map and this script itself. The documented workflow
+    // drops both inside the project it migrates, and without this guard the
+    // map's own rename pairs get rewritten into no-ops (e.g.
+    // "KudosityV1Connector": "KudosityV1Connector") on the very first run.
+    if ($file === $mapReal || $file === __FILE__) {
+        continue;
+    }
+
     $original = (string) file_get_contents($file);
     $updated = $original;
 
     foreach ($replacements as [$group, $from, $to]) {
-        $updated = in_array($group, ['classes', 'methods'], true)
+        $updated = in_array($group, ['classes', 'methods', 'constants'], true)
             ? preg_replace_callback('/\b'.preg_quote($from, '/').'\b/', static fn (): string => $to, $updated)
             : str_replace($from, $to, $updated);
     }
@@ -103,8 +122,20 @@ foreach (files($root) as $file) {
     }
 
     foreach ($needsHumanKeys as $needsHuman) {
-        if (str_contains($original, $needsHuman.'(')) {
-            $manual[] = [$file, $needsHuman];
+        // Method-shaped symbols (fromResponse, useSmsUrl, useMmsUrl) are
+        // only flagged as call sites — the trailing "(" is what stops
+        // fromResponseWithMetadata( from false-positiving on fromResponse.
+        // That trick doesn't apply to a bare constant (BASE_URL_MMS), which
+        // has no "(" to anchor on, so those match on the plain symbol with
+        // word boundaries instead.
+        $isConstantShaped = (bool) preg_match('/^[A-Z0-9_]+$/', $needsHuman);
+
+        $found = $isConstantShaped
+            ? preg_match('/\b'.preg_quote($needsHuman, '/').'\b/', $original) === 1
+            : str_contains($original, $needsHuman.'(');
+
+        if ($found) {
+            $manual[] = [$file, $needsHuman, $isConstantShaped];
         }
     }
 
@@ -135,8 +166,12 @@ foreach ($map['files'] as $from => $to) {
     }
 }
 
-foreach ($manual as [$file, $symbol]) {
-    printf("review by hand: %s uses %s() — see UPGRADING.md\n", $relative($file), $symbol);
+foreach ($manual as [$file, $symbol, $isConstantShaped]) {
+    printf(
+        $isConstantShaped ? "review by hand: %s uses %s — see UPGRADING.md\n" : "review by hand: %s uses %s() — see UPGRADING.md\n",
+        $relative($file),
+        $symbol
+    );
 }
 
 printf(
@@ -167,6 +202,12 @@ function files(string $root): iterable
         )
     );
 
+    // Collected and sorted rather than yielded as the iterator walks the
+    // tree: RecursiveDirectoryIterator's order isn't guaranteed, and a
+    // deterministic order is what lets tests rely on which file the
+    // preserve guard trips on first.
+    $matched = [];
+
     foreach ($iterator as $file) {
         if (! $file->isFile()) {
             continue;
@@ -175,19 +216,23 @@ function files(string $root): iterable
         $name = $file->getFilename();
 
         if (str_starts_with($name, '.env')) {
-            yield $file->getPathname();
+            $matched[] = $file->getPathname();
 
             continue;
         }
 
         foreach (EXTENSIONS as $ext) {
             if (str_ends_with($name, '.'.$ext)) {
-                yield $file->getPathname();
+                $matched[] = $file->getPathname();
 
                 continue 2;
             }
         }
     }
+
+    sort($matched);
+
+    yield from $matched;
 }
 
 function countDiff(string $before, string $after): int

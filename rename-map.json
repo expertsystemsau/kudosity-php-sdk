@@ -15,10 +15,18 @@
     "TransmitSmsClient": "KudosityClient",
     "TransmitSms": "Kudosity"
   },
+  "constants": {
+    "BASE_URL_SMS": "BASE_URL"
+  },
   "methods": {
     "toTransmitSms": "toKudosity",
     "routeNotificationForTransmitsms": "routeNotificationForKudosity",
     "fromResponse": null
+  },
+  "removed": {
+    "useSmsUrl": null,
+    "useMmsUrl": null,
+    "BASE_URL_MMS": null
   },
   "strings": {
     "'transmitsms'": "'kudosity'",

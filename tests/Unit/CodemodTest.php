@@ -131,11 +131,22 @@ it('leaves every file untouched when the preserve guard fires anywhere in the ru
     // matches inside the preserved hostname too, so this run must trip the guard.
     $map = json_decode(file_get_contents(dirname(__DIR__, 2).'/rename-map.json'), true);
     $map['strings']['transmitsms'] = 'kudosity';
-    $badMap = $this->project.'/bad-map.json';
+
+    // Written outside the scanned project root. If it lived inside — as an
+    // earlier version of this test had it — the map's own corrupted
+    // "api.transmitsms.com" preserve entry would trip the guard on the map
+    // file itself, which the (sorted) iterator always reaches before
+    // app/Notifications/*. That would pass even against a single-pass,
+    // write-as-you-go implementation that never got as far as the files
+    // below, so the map has to sit outside the tree it migrates for this
+    // test to mean anything.
+    $badMap = sys_get_temp_dir().'/kudosity-codemod-badmap-'.bin2hex(random_bytes(6)).'.json';
     file_put_contents($badMap, json_encode($map, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
 
-    // "0-" sorts before "1-" so a single-pass, write-as-you-go implementation
-    // would rewrite this file on disk before it ever reaches the violation.
+    // "0-" sorts before "1-", and files() now yields in sorted order, so this
+    // is a guarantee, not an empirical observation: a single-pass,
+    // write-as-you-go implementation would rewrite this file on disk before
+    // it ever reaches the violation.
     $legit = $this->project.'/app/Notifications/0-legit.php';
     $violation = $this->project.'/app/Notifications/1-violation.php';
 
@@ -151,8 +162,73 @@ it('leaves every file untouched when the preserve guard fires anywhere in the ru
 
     exec($cmd.' 2>&1', $output, $status);
 
+    unlink($badMap);
+
     expect($status)->toBe(1)
         ->and(implode("\n", $output))->toContain("preserved literal 'api.transmitsms.com'")
         ->and(file_get_contents($violation))->toBe($violationBefore)
         ->and(file_get_contents($legit))->toBe($legitBefore);
+});
+
+it('renames BASE_URL_SMS and flags the removed connector members for manual review', function () {
+    $file = $this->project.'/app/Notifications/Legacy.php';
+    file_put_contents($file, <<<'PHP'
+        <?php
+
+        use ExpertSystems\TransmitSms\TransmitSmsConnector;
+
+        $c = new TransmitSmsConnector('k', 's', TransmitSmsConnector::BASE_URL_SMS);
+        $c->useSmsUrl();
+        $c->useMmsUrl();
+        echo TransmitSmsConnector::BASE_URL_MMS;
+        PHP);
+
+    $output = runCodemod($this->project);
+
+    expect(file_get_contents($file))
+        ->toContain('KudosityV1Connector::BASE_URL)')
+        ->toContain('$c->useSmsUrl();')
+        ->toContain('$c->useMmsUrl();')
+        ->toContain('KudosityV1Connector::BASE_URL_MMS;')
+        ->not->toContain('BASE_URL_SMS');
+
+    expect($output)
+        ->toContain('review by hand: app/Notifications/Legacy.php uses useSmsUrl() — see UPGRADING.md')
+        ->toContain('review by hand: app/Notifications/Legacy.php uses useMmsUrl() — see UPGRADING.md')
+        ->toContain('review by hand: app/Notifications/Legacy.php uses BASE_URL_MMS — see UPGRADING.md');
+});
+
+it('does not rewrite the rename map itself when it lives inside the scanned project', function () {
+    // This is exactly how UPGRADING.md tells consumers to lay the project
+    // out: script and map dropped into the project root, --map pointing at
+    // the copy. Without a self-exclusion, the map's own rename pairs (e.g.
+    // "TransmitSmsClient": "KudosityClient") get rewritten into no-op pairs
+    // on the very first run, and every subsequent run silently no-ops.
+    $mapContents = file_get_contents(dirname(__DIR__, 2).'/rename-map.json');
+    $mapPath = $this->project.'/rename-map.json';
+    file_put_contents($mapPath, $mapContents);
+
+    file_put_contents(
+        $this->project.'/app/Notifications/OrderShipped.php',
+        '<?php use ExpertSystems\TransmitSms\TransmitSmsClient;'
+    );
+
+    $codemod = dirname(__DIR__, 2).'/bin/kudosity-codemod';
+    $cmd = escapeshellcmd(PHP_BINARY).' '.escapeshellarg($codemod)
+        .' '.escapeshellarg($this->project).' --write --map='.escapeshellarg($mapPath);
+
+    exec($cmd.' 2>&1', $output, $status);
+
+    expect($status)->toBe(0)
+        ->and(file_get_contents($mapPath))->toBe($mapContents)
+        ->and(file_get_contents($this->project.'/app/Notifications/OrderShipped.php'))
+        ->toContain('KudosityClient');
+});
+
+it('flags config/transmitsms.php for a manual rename', function () {
+    file_put_contents($this->project.'/config/transmitsms.php', "<?php\n\nreturn [];\n");
+
+    $output = runCodemod($this->project, write: false);
+
+    expect($output)->toContain('would need: rename config/transmitsms.php -> config/kudosity.php');
 });
