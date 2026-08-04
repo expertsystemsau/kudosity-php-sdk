@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace ExpertSystems\Kudosity\Resources;
 
 use ExpertSystems\Kudosity\Data\KeywordData;
-use ExpertSystems\Kudosity\Exceptions\TransmitSmsException;
-use ExpertSystems\Kudosity\Pagination\TransmitSmsPaginator;
+use ExpertSystems\Kudosity\Exceptions\KudosityException;
+use ExpertSystems\Kudosity\Pagination\V1PagedPaginator;
 use ExpertSystems\Kudosity\Requests\AddKeywordRequest;
 use ExpertSystems\Kudosity\Requests\EditKeywordRequest;
 use ExpertSystems\Kudosity\Requests\GetKeywordsRequest;
@@ -24,7 +24,7 @@ class KeywordsResource extends Resource
      * @param  string  $keyword  The keyword (e.g., "JOIN")
      * @param  string  $number  The virtual number
      *
-     * @throws TransmitSmsException
+     * @throws KudosityException
      */
     public function add(string $keyword, string $number): KeywordData
     {
@@ -39,7 +39,7 @@ class KeywordsResource extends Resource
      *
      * Use this to set additional options.
      *
-     * @throws TransmitSmsException
+     * @throws KudosityException
      */
     public function addRequest(AddKeywordRequest $request): KeywordData
     {
@@ -50,7 +50,7 @@ class KeywordsResource extends Resource
     /**
      * Get all keywords (paginated).
      */
-    public function all(): TransmitSmsPaginator
+    public function all(): V1PagedPaginator
     {
         return $this->connector->paginate(new GetKeywordsRequest);
     }
@@ -60,7 +60,7 @@ class KeywordsResource extends Resource
      *
      * @param  string  $number  The virtual number to filter by
      */
-    public function forNumber(string $number): TransmitSmsPaginator
+    public function forNumber(string $number): V1PagedPaginator
     {
         $request = (new GetKeywordsRequest)->number($number);
 
@@ -70,7 +70,7 @@ class KeywordsResource extends Resource
     /**
      * Get all keywords using a custom request.
      */
-    public function allRequest(GetKeywordsRequest $request): TransmitSmsPaginator
+    public function allRequest(GetKeywordsRequest $request): V1PagedPaginator
     {
         return $this->connector->paginate($request);
     }
@@ -91,7 +91,7 @@ class KeywordsResource extends Resource
     /**
      * Edit a keyword using a custom request.
      *
-     * @throws TransmitSmsException
+     * @throws KudosityException
      */
     public function editRequest(EditKeywordRequest $request): bool
     {
@@ -107,7 +107,7 @@ class KeywordsResource extends Resource
      * @param  string  $keyword  The keyword
      * @param  string  $number  The virtual number
      *
-     * @throws TransmitSmsException
+     * @throws KudosityException
      */
     public function activate(string $keyword, string $number): bool
     {
@@ -122,7 +122,7 @@ class KeywordsResource extends Resource
      * @param  string  $keyword  The keyword
      * @param  string  $number  The virtual number
      *
-     * @throws TransmitSmsException
+     * @throws KudosityException
      */
     public function deactivate(string $keyword, string $number): bool
     {

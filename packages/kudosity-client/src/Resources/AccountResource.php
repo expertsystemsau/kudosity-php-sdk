@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace ExpertSystems\Kudosity\Resources;
 
 use ExpertSystems\Kudosity\Data\BalanceData;
-use ExpertSystems\Kudosity\Exceptions\TransmitSmsException;
+use ExpertSystems\Kudosity\Exceptions\KudosityException;
 use ExpertSystems\Kudosity\Requests\GetBalanceRequest;
 
 /**
@@ -20,7 +20,7 @@ class AccountResource extends Resource
      *
      * Returns the current account balance and currency.
      *
-     * @throws TransmitSmsException
+     * @throws KudosityException
      *
      * @see https://developer.transmitsms.com/#get-balance
      */

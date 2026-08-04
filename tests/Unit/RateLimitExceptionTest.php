@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
+use ExpertSystems\Kudosity\Exceptions\KudosityException;
 use ExpertSystems\Kudosity\Exceptions\RateLimitException;
-use ExpertSystems\Kudosity\Exceptions\TransmitSmsException;
 
 describe('RateLimitException', function () {
     describe('rate limit metadata', function () {
@@ -112,10 +112,10 @@ describe('RateLimitException', function () {
             expect($exception->getResetTime())->toBeNull();
         });
 
-        it('extends TransmitSmsException', function () {
+        it('extends KudosityException', function () {
             $exception = new RateLimitException('Rate limit exceeded');
 
-            expect($exception)->toBeInstanceOf(TransmitSmsException::class);
+            expect($exception)->toBeInstanceOf(KudosityException::class);
         });
     });
 

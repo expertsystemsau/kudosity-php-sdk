@@ -6,8 +6,8 @@ namespace ExpertSystems\Kudosity\Resources;
 
 use ExpertSystems\Kudosity\Data\LeaseResultData;
 use ExpertSystems\Kudosity\Data\NumberData;
-use ExpertSystems\Kudosity\Exceptions\TransmitSmsException;
-use ExpertSystems\Kudosity\Pagination\TransmitSmsPaginator;
+use ExpertSystems\Kudosity\Exceptions\KudosityException;
+use ExpertSystems\Kudosity\Pagination\V1PagedPaginator;
 use ExpertSystems\Kudosity\Requests\EditNumberOptionsRequest;
 use ExpertSystems\Kudosity\Requests\GetNumberRequest;
 use ExpertSystems\Kudosity\Requests\GetNumbersRequest;
@@ -25,7 +25,7 @@ class NumbersResource extends Resource
      *
      * @param  string  $number  The number to lease
      *
-     * @throws TransmitSmsException
+     * @throws KudosityException
      */
     public function lease(string $number): LeaseResultData
     {
@@ -38,7 +38,7 @@ class NumbersResource extends Resource
     /**
      * Get all virtual numbers (paginated).
      */
-    public function all(): TransmitSmsPaginator
+    public function all(): V1PagedPaginator
     {
         return $this->connector->paginate(new GetNumbersRequest);
     }
@@ -46,7 +46,7 @@ class NumbersResource extends Resource
     /**
      * Get all virtual numbers using a custom request.
      */
-    public function allRequest(GetNumbersRequest $request): TransmitSmsPaginator
+    public function allRequest(GetNumbersRequest $request): V1PagedPaginator
     {
         return $this->connector->paginate($request);
     }
@@ -56,7 +56,7 @@ class NumbersResource extends Resource
      *
      * @param  string  $number  The number to get
      *
-     * @throws TransmitSmsException
+     * @throws KudosityException
      */
     public function get(string $number): NumberData
     {
@@ -81,7 +81,7 @@ class NumbersResource extends Resource
     /**
      * Edit options using a custom request.
      *
-     * @throws TransmitSmsException
+     * @throws KudosityException
      */
     public function editRequest(EditNumberOptionsRequest $request): bool
     {
@@ -97,7 +97,7 @@ class NumbersResource extends Resource
      * @param  string  $number  The number to edit
      * @param  string  $email  Email to forward messages to
      *
-     * @throws TransmitSmsException
+     * @throws KudosityException
      */
     public function setForwardEmail(string $number, string $email): bool
     {
@@ -112,7 +112,7 @@ class NumbersResource extends Resource
      * @param  string  $number  The number to edit
      * @param  string  $url  URL to forward messages to
      *
-     * @throws TransmitSmsException
+     * @throws KudosityException
      */
     public function setForwardUrl(string $number, string $url): bool
     {
@@ -127,7 +127,7 @@ class NumbersResource extends Resource
      * @param  string  $number  The number to edit
      * @param  int  $listId  The list ID
      *
-     * @throws TransmitSmsException
+     * @throws KudosityException
      */
     public function setList(string $number, int $listId): bool
     {

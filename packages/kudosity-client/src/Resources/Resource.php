@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace ExpertSystems\Kudosity\Resources;
 
-use ExpertSystems\Kudosity\Exceptions\TransmitSmsException;
-use ExpertSystems\Kudosity\Requests\TransmitSmsRequest;
-use ExpertSystems\Kudosity\TransmitSmsConnector;
+use ExpertSystems\Kudosity\Exceptions\KudosityException;
+use ExpertSystems\Kudosity\KudosityV1Connector;
+use ExpertSystems\Kudosity\Requests\KudosityV1Request;
 
 /**
  * Base resource class for grouping related API requests.
@@ -19,7 +19,7 @@ use ExpertSystems\Kudosity\TransmitSmsConnector;
 abstract class Resource
 {
     public function __construct(
-        protected TransmitSmsConnector $connector,
+        protected KudosityV1Connector $connector,
     ) {}
 
     /**
@@ -29,14 +29,14 @@ abstract class Resource
      * hasRequestFailed() and getRequestException() methods for proper
      * error detection and custom exception handling.
      *
-     * @param  TransmitSmsRequest  $request  The request to send
+     * @param  KudosityV1Request  $request  The request to send
      * @return mixed The DTO created from the response
      *
-     * @throws TransmitSmsException If the API returns an error
+     * @throws KudosityException If the API returns an error
      *
      * @see https://docs.saloon.dev/the-basics/handling-failures
      */
-    protected function sendAndDto(TransmitSmsRequest $request): mixed
+    protected function sendAndDto(KudosityV1Request $request): mixed
     {
         $response = $this->connector->send($request);
 

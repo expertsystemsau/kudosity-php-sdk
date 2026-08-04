@@ -15,7 +15,7 @@ use Saloon\Http\Response;
  *
  * @see https://developer.transmitsms.com/#get-sms-responses
  */
-class GetSmsResponsesRequest extends TransmitSmsRequest implements PaginatesResults
+class GetSmsResponsesRequest extends KudosityV1Request implements PaginatesResults
 {
     protected ?int $messageId = null;
 

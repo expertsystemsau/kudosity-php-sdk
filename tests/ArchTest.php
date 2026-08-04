@@ -11,4 +11,4 @@ arch('client package does not depend on Laravel')
 
 arch('laravel package uses the client')
     ->expect('ExpertSystems\Kudosity\Laravel')
-    ->toUse('ExpertSystems\Kudosity\TransmitSmsClient');
+    ->toUse('ExpertSystems\Kudosity\KudosityClient');

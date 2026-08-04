@@ -9,7 +9,7 @@ namespace ExpertSystems\Kudosity\Requests;
  *
  * @see https://developer.transmitsms.com/#edit-list-member
  */
-class EditListMemberRequest extends TransmitSmsRequest
+class EditListMemberRequest extends KudosityV1Request
 {
     protected ?string $firstName = null;
 

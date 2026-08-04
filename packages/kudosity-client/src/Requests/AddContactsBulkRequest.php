@@ -12,7 +12,7 @@ use Saloon\Http\Response;
  *
  * @see https://developer.transmitsms.com/#add-contacts-bulk
  */
-class AddContactsBulkRequest extends TransmitSmsRequest
+class AddContactsBulkRequest extends KudosityV1Request
 {
     protected ?int $listId = null;
 

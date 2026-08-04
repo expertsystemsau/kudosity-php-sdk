@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use ExpertSystems\Kudosity\KudosityClient;
+use ExpertSystems\Kudosity\KudosityV1Connector;
 use ExpertSystems\Kudosity\Requests\GetKeywordsRequest;
 use ExpertSystems\Kudosity\Requests\GetListRequest;
 use ExpertSystems\Kudosity\Requests\GetListsRequest;
@@ -10,8 +12,6 @@ use ExpertSystems\Kudosity\Requests\GetSmsResponsesRequest;
 use ExpertSystems\Kudosity\Requests\GetSmsSentRequest;
 use ExpertSystems\Kudosity\Requests\GetUserSmsResponsesRequest;
 use ExpertSystems\Kudosity\Requests\GetUserSmsSentRequest;
-use ExpertSystems\Kudosity\TransmitSmsClient;
-use ExpertSystems\Kudosity\TransmitSmsConnector;
 use Saloon\Http\Faking\MockClient;
 use Saloon\Http\Faking\MockResponse;
 
@@ -30,15 +30,15 @@ function smsPage(string $key, array $items): array
     ];
 }
 
-function mockedSmsClient(array $responses): TransmitSmsClient
+function mockedSmsClient(array $responses): KudosityClient
 {
-    $connector = new TransmitSmsConnector('key', 'secret');
+    $connector = new KudosityV1Connector('key', 'secret');
     $connector->withMockClient(new MockClient($responses));
 
-    return TransmitSmsClient::fromConnector($connector);
+    return KudosityClient::fromConnector($connector);
 }
 
-describe('TransmitSmsPaginator item keys', function () {
+describe('V1PagedPaginator item keys', function () {
     // The API uses a different envelope key per endpoint. Before this was
     // resolved per-request, every non-"responses" endpoint iterated to zero
     // items silently. Each case iterates a real page and asserts the items

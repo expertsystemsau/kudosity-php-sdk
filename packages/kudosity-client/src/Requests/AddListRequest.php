@@ -12,7 +12,7 @@ use Saloon\Http\Response;
  *
  * @see https://developer.transmitsms.com/#add-list
  */
-class AddListRequest extends TransmitSmsRequest
+class AddListRequest extends KudosityV1Request
 {
     /**
      * @var array<string, string>

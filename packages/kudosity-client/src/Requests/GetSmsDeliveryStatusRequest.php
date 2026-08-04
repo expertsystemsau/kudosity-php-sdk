@@ -12,7 +12,7 @@ use Saloon\Http\Response;
  *
  * @see https://developer.transmitsms.com/#get-sms-delivery-status
  */
-class GetSmsDeliveryStatusRequest extends TransmitSmsRequest
+class GetSmsDeliveryStatusRequest extends KudosityV1Request
 {
     public function __construct(
         protected int $messageId,

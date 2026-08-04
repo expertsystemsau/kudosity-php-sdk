@@ -20,7 +20,7 @@ use Saloon\Http\Response;
  *
  * @see https://developer.transmitsms.com/#send-sms
  */
-class SendSmsRequest extends TransmitSmsRequest
+class SendSmsRequest extends KudosityV1Request
 {
     /**
      * Maximum message length in characters (standard SMS concatenation limit).

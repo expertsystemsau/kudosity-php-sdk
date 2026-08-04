@@ -10,4 +10,4 @@ namespace ExpertSystems\Kudosity\Exceptions;
  * Error codes: AUTH_FAILED, AUTH_FAILED_NO_DATA
  * HTTP status: 401
  */
-class AuthenticationException extends TransmitSmsException {}
+class AuthenticationException extends KudosityException {}

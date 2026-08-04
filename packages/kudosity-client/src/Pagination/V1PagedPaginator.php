@@ -30,7 +30,7 @@ use Saloon\PaginationPlugin\PagedPaginator;
  *
  * @see https://docs.saloon.dev/installable-plugins/pagination/paged-pagination
  */
-class TransmitSmsPaginator extends PagedPaginator
+class V1PagedPaginator extends PagedPaginator
 {
     /**
      * Fallback key used when a request does not declare its own items key.

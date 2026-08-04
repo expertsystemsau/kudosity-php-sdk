@@ -9,7 +9,7 @@ namespace ExpertSystems\Kudosity\Requests;
  *
  * @see https://developer.transmitsms.com/#edit-keyword
  */
-class EditKeywordRequest extends TransmitSmsRequest
+class EditKeywordRequest extends KudosityV1Request
 {
     protected ?string $forwardUrl = null;
 

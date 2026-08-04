@@ -1,9 +1,9 @@
 <?php
 
-use ExpertSystems\Kudosity\TransmitSmsClient;
+use ExpertSystems\Kudosity\KudosityClient;
 
 it('can instantiate the TransmitSms client', function () {
-    $client = new TransmitSmsClient('api-key', 'api-secret');
+    $client = new KudosityClient('api-key', 'api-secret');
 
-    expect($client)->toBeInstanceOf(TransmitSmsClient::class);
+    expect($client)->toBeInstanceOf(KudosityClient::class);
 });

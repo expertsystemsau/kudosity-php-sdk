@@ -13,7 +13,7 @@ use Saloon\Http\Response;
  *
  * @see https://developer.transmitsms.com/#get-message-report
  */
-class GetMessageReportRequest extends TransmitSmsRequest
+class GetMessageReportRequest extends KudosityV1Request
 {
     protected string $start;
 

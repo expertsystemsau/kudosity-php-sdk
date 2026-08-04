@@ -12,7 +12,7 @@ use Saloon\Http\Response;
  *
  * @see https://developer.transmitsms.com/#get-sms-stats
  */
-class GetSmsStatsRequest extends TransmitSmsRequest
+class GetSmsStatsRequest extends KudosityV1Request
 {
     public function __construct(
         protected int $messageId,

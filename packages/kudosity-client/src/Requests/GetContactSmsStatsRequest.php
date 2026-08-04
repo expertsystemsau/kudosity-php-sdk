@@ -13,7 +13,7 @@ use Saloon\Http\Response;
  *
  * @see https://developer.transmitsms.com/#get-contact-sms-stats
  */
-class GetContactSmsStatsRequest extends TransmitSmsRequest
+class GetContactSmsStatsRequest extends KudosityV1Request
 {
     protected ?string $countryCode = null;
 

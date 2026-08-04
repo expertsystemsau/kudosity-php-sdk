@@ -9,7 +9,7 @@ namespace ExpertSystems\Kudosity\Requests;
  *
  * @see https://developer.transmitsms.com/#delete-from-list
  */
-class DeleteFromListRequest extends TransmitSmsRequest
+class DeleteFromListRequest extends KudosityV1Request
 {
     public function __construct(
         protected int $listId,

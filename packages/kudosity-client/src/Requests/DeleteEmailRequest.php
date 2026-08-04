@@ -9,7 +9,7 @@ namespace ExpertSystems\Kudosity\Requests;
  *
  * @see https://developer.transmitsms.com/#delete-email
  */
-class DeleteEmailRequest extends TransmitSmsRequest
+class DeleteEmailRequest extends KudosityV1Request
 {
     public function __construct(
         protected string $email,

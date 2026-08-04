@@ -6,8 +6,8 @@ namespace ExpertSystems\Kudosity\Resources;
 
 use ExpertSystems\Kudosity\Data\FormattedNumberData;
 use ExpertSystems\Kudosity\Data\SmsData;
-use ExpertSystems\Kudosity\Exceptions\TransmitSmsException;
-use ExpertSystems\Kudosity\Pagination\TransmitSmsPaginator;
+use ExpertSystems\Kudosity\Exceptions\KudosityException;
+use ExpertSystems\Kudosity\Pagination\V1PagedPaginator;
 use ExpertSystems\Kudosity\Requests\CancelSmsRequest;
 use ExpertSystems\Kudosity\Requests\FormatNumberRequest;
 use ExpertSystems\Kudosity\Requests\GetSmsResponsesRequest;
@@ -42,7 +42,7 @@ class SmsResource extends Resource
      * @param  string|null  $from  Override the default sender ID (optional)
      * @param  (callable(SendSmsRequest): mixed)|null  $configure  Configure the request before sending (optional)
      *
-     * @throws TransmitSmsException
+     * @throws KudosityException
      */
     public function send(string $message, string $to, ?string $from = null, ?callable $configure = null): SmsData
     {
@@ -72,7 +72,7 @@ class SmsResource extends Resource
      * @param  string|null  $from  Override the default sender ID (optional)
      * @param  (callable(SendSmsRequest): mixed)|null  $configure  Configure the request before sending (optional)
      *
-     * @throws TransmitSmsException
+     * @throws KudosityException
      */
     public function sendToList(string $message, int $listId, ?string $from = null, ?callable $configure = null): SmsData
     {
@@ -94,7 +94,7 @@ class SmsResource extends Resource
      * Use this for advanced scenarios where you need full control over the request.
      * Note: Defaults are NOT applied when using this method - configure the request directly.
      *
-     * @throws TransmitSmsException
+     * @throws KudosityException
      */
     public function sendRequest(SendSmsRequest $request): SmsData
     {
@@ -107,7 +107,7 @@ class SmsResource extends Resource
      *
      * @param  int  $messageId  The message ID to cancel
      *
-     * @throws TransmitSmsException
+     * @throws KudosityException
      */
     public function cancel(int $messageId): bool
     {
@@ -126,14 +126,14 @@ class SmsResource extends Resource
      * @param  string  $number  The phone number to format
      * @param  string|null  $countryCode  2-letter ISO country code (e.g., 'AU', 'NZ', 'US')
      *
-     * @throws TransmitSmsException
+     * @throws KudosityException
      */
     public function formatNumber(string $number, ?string $countryCode = null): FormattedNumberData
     {
         $countryCode ??= $this->connector->getDefaultCountryCode();
 
         if ($countryCode === null) {
-            throw new TransmitSmsException(
+            throw new KudosityException(
                 'Country code is required. Set it on the connector or pass it as a parameter.'
             );
         }
@@ -197,7 +197,7 @@ class SmsResource extends Resource
      *
      * @param  int  $messageId  The message ID to get responses for
      */
-    public function getResponses(int $messageId): TransmitSmsPaginator
+    public function getResponses(int $messageId): V1PagedPaginator
     {
         $request = GetSmsResponsesRequest::forMessage($messageId);
 
@@ -211,7 +211,7 @@ class SmsResource extends Resource
      *
      * @param  int  $keywordId  The keyword ID
      */
-    public function getResponsesByKeywordId(int $keywordId): TransmitSmsPaginator
+    public function getResponsesByKeywordId(int $keywordId): V1PagedPaginator
     {
         $request = GetSmsResponsesRequest::forKeywordId($keywordId);
 
@@ -226,7 +226,7 @@ class SmsResource extends Resource
      * @param  string  $keyword  The keyword name
      * @param  string  $number  The VMN number
      */
-    public function getResponsesByKeyword(string $keyword, string $number): TransmitSmsPaginator
+    public function getResponsesByKeyword(string $keyword, string $number): V1PagedPaginator
     {
         $request = GetSmsResponsesRequest::forKeyword($keyword, $number);
 
@@ -238,7 +238,7 @@ class SmsResource extends Resource
      *
      * Use this for advanced filtering options.
      */
-    public function getResponsesRequest(GetSmsResponsesRequest $request): TransmitSmsPaginator
+    public function getResponsesRequest(GetSmsResponsesRequest $request): V1PagedPaginator
     {
         return $this->connector->paginate($request);
     }
@@ -249,7 +249,7 @@ class SmsResource extends Resource
      * Returns a paginator that can be iterated to get all responses.
      * By default returns responses from the last 30 days.
      */
-    public function getAllResponses(): TransmitSmsPaginator
+    public function getAllResponses(): V1PagedPaginator
     {
         return $this->connector->paginate(new GetUserSmsResponsesRequest);
     }
@@ -259,7 +259,7 @@ class SmsResource extends Resource
      *
      * Use this for advanced filtering options.
      */
-    public function getAllResponsesRequest(GetUserSmsResponsesRequest $request): TransmitSmsPaginator
+    public function getAllResponsesRequest(GetUserSmsResponsesRequest $request): V1PagedPaginator
     {
         return $this->connector->paginate($request);
     }

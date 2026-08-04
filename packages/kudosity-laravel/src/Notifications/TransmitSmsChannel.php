@@ -7,17 +7,17 @@ namespace ExpertSystems\Kudosity\Laravel\Notifications;
 use ExpertSystems\Kudosity\Callbacks\CallbackType;
 use ExpertSystems\Kudosity\Callbacks\CallbackUrlBuilder;
 use ExpertSystems\Kudosity\Data\SmsData;
-use ExpertSystems\Kudosity\Exceptions\TransmitSmsException;
+use ExpertSystems\Kudosity\Exceptions\KudosityException;
 use ExpertSystems\Kudosity\Exceptions\ValidationException;
+use ExpertSystems\Kudosity\KudosityClient;
 use ExpertSystems\Kudosity\Requests\SendSmsRequest;
-use ExpertSystems\Kudosity\TransmitSmsClient;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\Config;
 
 class TransmitSmsChannel
 {
     public function __construct(
-        protected TransmitSmsClient $client,
+        protected KudosityClient $client,
         protected ?CallbackUrlBuilder $urlBuilder = null,
     ) {}
 
@@ -27,7 +27,7 @@ class TransmitSmsChannel
      * @param  mixed  $notifiable
      * @return SmsData|null The SMS data response, or null if no recipient
      *
-     * @throws TransmitSmsException
+     * @throws KudosityException
      */
     public function send($notifiable, Notification $notification): ?SmsData
     {
@@ -92,8 +92,8 @@ class TransmitSmsChannel
             $this->applyCallbackUrls($request, $message);
 
         } catch (ValidationException $e) {
-            // Re-throw validation errors as TransmitSmsException for consistent error handling
-            throw new TransmitSmsException(
+            // Re-throw validation errors as KudosityException for consistent error handling
+            throw new KudosityException(
                 $e->getMessage(),
                 $e->getCode(),
                 $e,

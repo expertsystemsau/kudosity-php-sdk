@@ -10,4 +10,4 @@ namespace ExpertSystems\Kudosity\Exceptions;
  * Error code: BAD_CALLER_ID
  * HTTP status: 400
  */
-class InvalidSenderException extends TransmitSmsException {}
+class InvalidSenderException extends KudosityException {}

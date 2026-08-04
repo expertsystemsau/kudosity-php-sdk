@@ -11,8 +11,8 @@ use ExpertSystems\Kudosity\Data\MessageData;
 use ExpertSystems\Kudosity\Data\MessageReportData;
 use ExpertSystems\Kudosity\Data\SmsSentCountData;
 use ExpertSystems\Kudosity\Data\SmsStatsData;
-use ExpertSystems\Kudosity\Exceptions\TransmitSmsException;
-use ExpertSystems\Kudosity\Pagination\TransmitSmsPaginator;
+use ExpertSystems\Kudosity\Exceptions\KudosityException;
+use ExpertSystems\Kudosity\Pagination\V1PagedPaginator;
 use ExpertSystems\Kudosity\Requests\GetContactSmsStatsRequest;
 use ExpertSystems\Kudosity\Requests\GetMessageReportRequest;
 use ExpertSystems\Kudosity\Requests\GetSmsDeliveryStatusRequest;
@@ -34,7 +34,7 @@ class ReportingResource extends Resource
      *
      * @param  int  $messageId  The message ID to retrieve
      *
-     * @throws TransmitSmsException
+     * @throws KudosityException
      */
     public function getMessage(int $messageId): MessageData
     {
@@ -50,7 +50,7 @@ class ReportingResource extends Resource
      * @param  int  $messageId  The message ID
      * @param  string  $mobile  The recipient mobile number
      *
-     * @throws TransmitSmsException
+     * @throws KudosityException
      */
     public function getDeliveryStatus(int $messageId, string $mobile): DeliveryStatusData
     {
@@ -65,7 +65,7 @@ class ReportingResource extends Resource
      *
      * @param  int  $messageId  The message ID
      *
-     * @throws TransmitSmsException
+     * @throws KudosityException
      */
     public function getStats(int $messageId): SmsStatsData
     {
@@ -81,7 +81,7 @@ class ReportingResource extends Resource
      * @param  string|DateTimeInterface|null  $start  Start date for the count
      * @param  string|DateTimeInterface|null  $end  End date for the count
      *
-     * @throws TransmitSmsException
+     * @throws KudosityException
      */
     public function getSentCount(
         string|DateTimeInterface|null $start = null,
@@ -108,7 +108,7 @@ class ReportingResource extends Resource
      *
      * @param  int  $messageId  The message ID
      */
-    public function getSent(int $messageId): TransmitSmsPaginator
+    public function getSent(int $messageId): V1PagedPaginator
     {
         $request = new GetSmsSentRequest($messageId);
 
@@ -120,7 +120,7 @@ class ReportingResource extends Resource
      *
      * Use this for advanced filtering options.
      */
-    public function getSentRequest(GetSmsSentRequest $request): TransmitSmsPaginator
+    public function getSentRequest(GetSmsSentRequest $request): V1PagedPaginator
     {
         return $this->connector->paginate($request);
     }
@@ -130,7 +130,7 @@ class ReportingResource extends Resource
      *
      * Returns a paginator that can be iterated to get all sent SMS.
      */
-    public function getUserSent(): TransmitSmsPaginator
+    public function getUserSent(): V1PagedPaginator
     {
         return $this->connector->paginate(new GetUserSmsSentRequest);
     }
@@ -140,7 +140,7 @@ class ReportingResource extends Resource
      *
      * Use this for advanced filtering options.
      */
-    public function getUserSentRequest(GetUserSmsSentRequest $request): TransmitSmsPaginator
+    public function getUserSentRequest(GetUserSmsSentRequest $request): V1PagedPaginator
     {
         return $this->connector->paginate($request);
     }
@@ -151,7 +151,7 @@ class ReportingResource extends Resource
      * @param  string|DateTimeInterface  $start  Start date for the report
      * @param  string|DateTimeInterface  $end  End date for the report
      *
-     * @throws TransmitSmsException
+     * @throws KudosityException
      */
     public function getMessageReport(
         string|DateTimeInterface $start,
@@ -168,7 +168,7 @@ class ReportingResource extends Resource
      *
      * Use this for advanced filtering options.
      *
-     * @throws TransmitSmsException
+     * @throws KudosityException
      */
     public function getMessageReportRequest(GetMessageReportRequest $request): MessageReportData
     {
@@ -182,7 +182,7 @@ class ReportingResource extends Resource
      * @param  string  $mobile  The mobile number
      * @param  string|null  $countryCode  Country code for local numbers
      *
-     * @throws TransmitSmsException
+     * @throws KudosityException
      */
     public function getContactStats(string $mobile, ?string $countryCode = null): ContactSmsStatsData
     {
@@ -203,7 +203,7 @@ class ReportingResource extends Resource
      *
      * Use this for advanced filtering options.
      *
-     * @throws TransmitSmsException
+     * @throws KudosityException
      */
     public function getContactStatsRequest(GetContactSmsStatsRequest $request): ContactSmsStatsData
     {

@@ -12,7 +12,7 @@ use ExpertSystems\Kudosity\Contracts\PaginatesResults;
  *
  * @see https://developer.transmitsms.com/#get-user-sms-sent
  */
-class GetUserSmsSentRequest extends TransmitSmsRequest implements PaginatesResults
+class GetUserSmsSentRequest extends KudosityV1Request implements PaginatesResults
 {
     protected ?int $page = null;
 

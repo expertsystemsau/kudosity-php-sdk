@@ -10,4 +10,4 @@ namespace ExpertSystems\Kudosity\Exceptions;
  * Error codes: RECIPIENTS_ERROR, LIST_EMPTY
  * HTTP status: 400
  */
-class InvalidRecipientsException extends TransmitSmsException {}
+class InvalidRecipientsException extends KudosityException {}

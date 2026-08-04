@@ -19,7 +19,7 @@ use Throwable;
  * This exception exposes rate limit metadata from response headers
  * to enable smarter retry strategies.
  */
-class RateLimitException extends TransmitSmsException
+class RateLimitException extends KudosityException
 {
     /**
      * Number of requests remaining in the current rate limit window.

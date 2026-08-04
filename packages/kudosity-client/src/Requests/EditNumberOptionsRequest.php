@@ -9,7 +9,7 @@ namespace ExpertSystems\Kudosity\Requests;
  *
  * @see https://developer.transmitsms.com/#edit-number-options
  */
-class EditNumberOptionsRequest extends TransmitSmsRequest
+class EditNumberOptionsRequest extends KudosityV1Request
 {
     protected ?string $forwardEmail = null;
 

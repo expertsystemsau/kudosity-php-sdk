@@ -14,7 +14,7 @@ use Saloon\Http\Response;
  *
  * @see https://developer.transmitsms.com/#format-number
  */
-class FormatNumberRequest extends TransmitSmsRequest
+class FormatNumberRequest extends KudosityV1Request
 {
     /**
      * Create a new FormatNumberRequest.

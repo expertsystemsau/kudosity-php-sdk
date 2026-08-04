@@ -9,7 +9,7 @@ namespace ExpertSystems\Kudosity\Requests;
  *
  * @see https://developer.transmitsms.com/#optout-list-member
  */
-class OptoutListMemberRequest extends TransmitSmsRequest
+class OptoutListMemberRequest extends KudosityV1Request
 {
     public function __construct(
         protected int $listId,

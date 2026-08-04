@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-use ExpertSystems\Kudosity\TransmitSmsConnector;
+use ExpertSystems\Kudosity\KudosityV1Connector;
 
-describe('TransmitSmsConnector', function () {
+describe('KudosityV1Connector', function () {
     describe('retry configuration', function () {
         it('configures retry with default values', function () {
-            $connector = new TransmitSmsConnector('key', 'secret');
+            $connector = new KudosityV1Connector('key', 'secret');
             $connector->withRetry();
 
             expect($connector->tries)->toBe(3);
@@ -17,7 +17,7 @@ describe('TransmitSmsConnector', function () {
         });
 
         it('configures retry with custom values', function () {
-            $connector = new TransmitSmsConnector('key', 'secret');
+            $connector = new KudosityV1Connector('key', 'secret');
             $connector->withRetry(
                 tries: 5,
                 intervalMs: 500,
@@ -32,7 +32,7 @@ describe('TransmitSmsConnector', function () {
         });
 
         it('returns self for method chaining', function () {
-            $connector = new TransmitSmsConnector('key', 'secret');
+            $connector = new KudosityV1Connector('key', 'secret');
 
             $result = $connector->withRetry();
 
@@ -40,7 +40,7 @@ describe('TransmitSmsConnector', function () {
         });
 
         it('disables retry configuration', function () {
-            $connector = new TransmitSmsConnector('key', 'secret');
+            $connector = new KudosityV1Connector('key', 'secret');
             $connector->withRetry(tries: 3);
             $connector->withoutRetry();
 
@@ -51,7 +51,7 @@ describe('TransmitSmsConnector', function () {
         });
 
         it('withoutRetry returns self for method chaining', function () {
-            $connector = new TransmitSmsConnector('key', 'secret');
+            $connector = new KudosityV1Connector('key', 'secret');
 
             $result = $connector->withoutRetry();
 

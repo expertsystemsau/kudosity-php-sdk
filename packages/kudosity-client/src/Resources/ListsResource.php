@@ -8,8 +8,8 @@ use ExpertSystems\Kudosity\Data\BulkAddResultData;
 use ExpertSystems\Kudosity\Data\BulkProgressData;
 use ExpertSystems\Kudosity\Data\ContactData;
 use ExpertSystems\Kudosity\Data\ListData;
-use ExpertSystems\Kudosity\Exceptions\TransmitSmsException;
-use ExpertSystems\Kudosity\Pagination\TransmitSmsPaginator;
+use ExpertSystems\Kudosity\Exceptions\KudosityException;
+use ExpertSystems\Kudosity\Pagination\V1PagedPaginator;
 use ExpertSystems\Kudosity\Requests\AddContactsBulkProgressRequest;
 use ExpertSystems\Kudosity\Requests\AddContactsBulkRequest;
 use ExpertSystems\Kudosity\Requests\AddFieldToListRequest;
@@ -35,7 +35,7 @@ class ListsResource extends Resource
      *
      * @param  string  $name  The list name
      *
-     * @throws TransmitSmsException
+     * @throws KudosityException
      */
     public function create(string $name): ListData
     {
@@ -50,7 +50,7 @@ class ListsResource extends Resource
      *
      * Use this to set custom fields on the list.
      *
-     * @throws TransmitSmsException
+     * @throws KudosityException
      */
     public function createRequest(AddListRequest $request): ListData
     {
@@ -61,7 +61,7 @@ class ListsResource extends Resource
     /**
      * Get all contact lists (paginated).
      */
-    public function all(): TransmitSmsPaginator
+    public function all(): V1PagedPaginator
     {
         return $this->connector->paginate(new GetListsRequest);
     }
@@ -69,7 +69,7 @@ class ListsResource extends Resource
     /**
      * Get all contact lists using a custom request.
      */
-    public function allRequest(GetListsRequest $request): TransmitSmsPaginator
+    public function allRequest(GetListsRequest $request): V1PagedPaginator
     {
         return $this->connector->paginate($request);
     }
@@ -79,7 +79,7 @@ class ListsResource extends Resource
      *
      * @param  int  $listId  The list ID
      *
-     * @throws TransmitSmsException
+     * @throws KudosityException
      */
     public function get(int $listId): ListData
     {
@@ -94,7 +94,7 @@ class ListsResource extends Resource
      *
      * @param  int  $listId  The list ID
      */
-    public function getContacts(int $listId): TransmitSmsPaginator
+    public function getContacts(int $listId): V1PagedPaginator
     {
         $request = new GetListRequest($listId);
 
@@ -106,7 +106,7 @@ class ListsResource extends Resource
      *
      * @param  int  $listId  The list ID
      *
-     * @throws TransmitSmsException
+     * @throws KudosityException
      */
     public function delete(int $listId): bool
     {
@@ -123,7 +123,7 @@ class ListsResource extends Resource
      * @param  int  $fieldNumber  Field number (1-10)
      * @param  string  $fieldName  Field name/label
      *
-     * @throws TransmitSmsException
+     * @throws KudosityException
      */
     public function addField(int $listId, int $fieldNumber, string $fieldName): bool
     {
@@ -145,7 +145,7 @@ class ListsResource extends Resource
      * @param  string|null  $firstName  Contact first name
      * @param  string|null  $lastName  Contact last name
      *
-     * @throws TransmitSmsException
+     * @throws KudosityException
      */
     public function addContact(
         int $listId,
@@ -178,7 +178,7 @@ class ListsResource extends Resource
      *
      * Use this to set custom fields on the contact.
      *
-     * @throws TransmitSmsException
+     * @throws KudosityException
      */
     public function addContactRequest(AddToListRequest $request): ContactData
     {
@@ -192,7 +192,7 @@ class ListsResource extends Resource
      * @param  int  $listId  The list ID
      * @param  string  $mobile  The mobile number
      *
-     * @throws TransmitSmsException
+     * @throws KudosityException
      */
     public function getContact(int $listId, string $mobile): ContactData
     {
@@ -210,7 +210,7 @@ class ListsResource extends Resource
      * @param  string|null  $firstName  New first name (optional)
      * @param  string|null  $lastName  New last name (optional)
      *
-     * @throws TransmitSmsException
+     * @throws KudosityException
      */
     public function updateContact(
         int $listId,
@@ -239,7 +239,7 @@ class ListsResource extends Resource
      *
      * Use this to update custom fields on the contact.
      *
-     * @throws TransmitSmsException
+     * @throws KudosityException
      */
     public function updateContactRequest(EditListMemberRequest $request): bool
     {
@@ -255,7 +255,7 @@ class ListsResource extends Resource
      * @param  int  $listId  The list ID
      * @param  string  $mobile  The mobile number
      *
-     * @throws TransmitSmsException
+     * @throws KudosityException
      */
     public function deleteContact(int $listId, string $mobile): bool
     {
@@ -271,7 +271,7 @@ class ListsResource extends Resource
      * @param  int  $listId  The list ID
      * @param  string  $mobile  The mobile number
      *
-     * @throws TransmitSmsException
+     * @throws KudosityException
      */
     public function optoutContact(int $listId, string $mobile): bool
     {
@@ -292,7 +292,7 @@ class ListsResource extends Resource
      * @param  int|null  $listId  Existing list ID (optional)
      * @param  string|null  $name  New list name (if not using listId)
      *
-     * @throws TransmitSmsException
+     * @throws KudosityException
      */
     public function bulkAdd(string $fileUrl, ?int $listId = null, ?string $name = null): BulkAddResultData
     {
@@ -313,7 +313,7 @@ class ListsResource extends Resource
     /**
      * Bulk add contacts using a custom request.
      *
-     * @throws TransmitSmsException
+     * @throws KudosityException
      */
     public function bulkAddRequest(AddContactsBulkRequest $request): BulkAddResultData
     {
@@ -326,7 +326,7 @@ class ListsResource extends Resource
      *
      * @param  int  $listId  The list ID
      *
-     * @throws TransmitSmsException
+     * @throws KudosityException
      */
     public function bulkAddProgress(int $listId): BulkProgressData
     {

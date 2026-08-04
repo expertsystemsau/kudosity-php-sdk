@@ -2,34 +2,34 @@
 
 declare(strict_types=1);
 
+use ExpertSystems\Kudosity\KudosityClient;
+use ExpertSystems\Kudosity\KudosityV1Connector;
 use ExpertSystems\Kudosity\Laravel\Notifications\TransmitSmsChannel;
 use ExpertSystems\Kudosity\Laravel\TransmitSmsServiceProvider;
-use ExpertSystems\Kudosity\TransmitSmsClient;
-use ExpertSystems\Kudosity\TransmitSmsConnector;
 use Illuminate\Notifications\ChannelManager;
 use Illuminate\Support\Facades\Notification;
 
 describe('TransmitSmsServiceProvider', function () {
     describe('service registration', function () {
-        it('registers TransmitSmsConnector as singleton', function () {
-            $connector1 = app(TransmitSmsConnector::class);
-            $connector2 = app(TransmitSmsConnector::class);
+        it('registers KudosityV1Connector as singleton', function () {
+            $connector1 = app(KudosityV1Connector::class);
+            $connector2 = app(KudosityV1Connector::class);
 
             expect($connector1)->toBe($connector2);
-            expect($connector1)->toBeInstanceOf(TransmitSmsConnector::class);
+            expect($connector1)->toBeInstanceOf(KudosityV1Connector::class);
         });
 
-        it('registers TransmitSmsClient as singleton', function () {
-            $client1 = app(TransmitSmsClient::class);
-            $client2 = app(TransmitSmsClient::class);
+        it('registers KudosityClient as singleton', function () {
+            $client1 = app(KudosityClient::class);
+            $client2 = app(KudosityClient::class);
 
             expect($client1)->toBe($client2);
-            expect($client1)->toBeInstanceOf(TransmitSmsClient::class);
+            expect($client1)->toBeInstanceOf(KudosityClient::class);
         });
 
         it('creates client from connector', function () {
-            $connector = app(TransmitSmsConnector::class);
-            $client = app(TransmitSmsClient::class);
+            $connector = app(KudosityV1Connector::class);
+            $client = app(KudosityClient::class);
 
             expect($client->connector())->toBe($connector);
         });
@@ -39,15 +39,15 @@ describe('TransmitSmsServiceProvider', function () {
         it('resolves transmitsms alias to client', function () {
             $client = app('transmitsms');
 
-            expect($client)->toBeInstanceOf(TransmitSmsClient::class);
-            expect($client)->toBe(app(TransmitSmsClient::class));
+            expect($client)->toBeInstanceOf(KudosityClient::class);
+            expect($client)->toBe(app(KudosityClient::class));
         });
 
         it('resolves transmitsms.connector alias to connector', function () {
             $connector = app('transmitsms.connector');
 
-            expect($connector)->toBeInstanceOf(TransmitSmsConnector::class);
-            expect($connector)->toBe(app(TransmitSmsConnector::class));
+            expect($connector)->toBeInstanceOf(KudosityV1Connector::class);
+            expect($connector)->toBe(app(KudosityV1Connector::class));
         });
     });
 
@@ -59,10 +59,10 @@ describe('TransmitSmsServiceProvider', function () {
             config()->set('transmitsms.timeout', 60);
 
             // Clear the existing singleton to force re-creation
-            app()->forgetInstance(TransmitSmsConnector::class);
-            app()->forgetInstance(TransmitSmsClient::class);
+            app()->forgetInstance(KudosityV1Connector::class);
+            app()->forgetInstance(KudosityClient::class);
 
-            $connector = app(TransmitSmsConnector::class);
+            $connector = app(KudosityV1Connector::class);
 
             expect($connector->getApiKey())->toBe('my-api-key');
             expect($connector->getApiSecret())->toBe('my-api-secret');
@@ -74,9 +74,9 @@ describe('TransmitSmsServiceProvider', function () {
             config()->set('transmitsms.from', 'MyBrand');
 
             // Clear the existing singleton to force re-creation
-            app()->forgetInstance(TransmitSmsConnector::class);
+            app()->forgetInstance(KudosityV1Connector::class);
 
-            $connector = app(TransmitSmsConnector::class);
+            $connector = app(KudosityV1Connector::class);
 
             expect($connector->getDefaultFrom())->toBe('MyBrand');
         });
@@ -85,9 +85,9 @@ describe('TransmitSmsServiceProvider', function () {
             config()->set('transmitsms.from', '');
 
             // Clear the existing singleton to force re-creation
-            app()->forgetInstance(TransmitSmsConnector::class);
+            app()->forgetInstance(KudosityV1Connector::class);
 
-            $connector = app(TransmitSmsConnector::class);
+            $connector = app(KudosityV1Connector::class);
 
             expect($connector->getDefaultFrom())->toBeNull();
         });
@@ -110,8 +110,8 @@ describe('TransmitSmsServiceProvider', function () {
 
             $provides = $provider->provides();
 
-            expect($provides)->toContain(TransmitSmsClient::class);
-            expect($provides)->toContain(TransmitSmsConnector::class);
+            expect($provides)->toContain(KudosityClient::class);
+            expect($provides)->toContain(KudosityV1Connector::class);
             expect($provides)->toContain('transmitsms');
             expect($provides)->toContain('transmitsms.connector');
         });

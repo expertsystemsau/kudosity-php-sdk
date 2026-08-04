@@ -12,7 +12,7 @@ use Saloon\Http\Response;
  *
  * @see https://developer.transmitsms.com/#get-number
  */
-class GetNumberRequest extends TransmitSmsRequest
+class GetNumberRequest extends KudosityV1Request
 {
     public function __construct(
         protected string $number,

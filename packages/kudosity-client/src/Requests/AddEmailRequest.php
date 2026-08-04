@@ -12,7 +12,7 @@ use Saloon\Http\Response;
  *
  * @see https://developer.transmitsms.com/#add-email
  */
-class AddEmailRequest extends TransmitSmsRequest
+class AddEmailRequest extends KudosityV1Request
 {
     protected ?int $maxSms = null;
 

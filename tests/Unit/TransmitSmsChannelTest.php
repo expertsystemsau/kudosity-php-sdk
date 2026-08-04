@@ -3,18 +3,18 @@
 declare(strict_types=1);
 
 use ExpertSystems\Kudosity\Data\SmsData;
-use ExpertSystems\Kudosity\Exceptions\TransmitSmsException;
+use ExpertSystems\Kudosity\Exceptions\KudosityException;
+use ExpertSystems\Kudosity\KudosityClient;
 use ExpertSystems\Kudosity\Laravel\Notifications\TransmitSmsChannel;
 use ExpertSystems\Kudosity\Laravel\Notifications\TransmitSmsMessage;
 use ExpertSystems\Kudosity\Requests\SendSmsRequest;
 use ExpertSystems\Kudosity\Resources\SmsResource;
-use ExpertSystems\Kudosity\TransmitSmsClient;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\Config;
 
 describe('TransmitSmsChannel', function () {
     beforeEach(function () {
-        $this->client = Mockery::mock(TransmitSmsClient::class);
+        $this->client = Mockery::mock(KudosityClient::class);
         $this->smsResource = Mockery::mock(SmsResource::class);
         $this->channel = new TransmitSmsChannel($this->client);
 
@@ -348,7 +348,7 @@ describe('TransmitSmsChannel', function () {
     });
 
     describe('error handling', function () {
-        it('wraps ValidationException in TransmitSmsException', function () {
+        it('wraps ValidationException in KudosityException', function () {
             $notifiable = new class
             {
                 public function routeNotificationFor($channel, $notification)
@@ -368,10 +368,10 @@ describe('TransmitSmsChannel', function () {
             };
 
             expect(fn () => $this->channel->send($notifiable, $notification))
-                ->toThrow(TransmitSmsException::class);
+                ->toThrow(KudosityException::class);
         });
 
-        it('propagates TransmitSmsException from client', function () {
+        it('propagates KudosityException from client', function () {
             $notifiable = new class
             {
                 public function routeNotificationFor($channel, $notification)
@@ -390,10 +390,10 @@ describe('TransmitSmsChannel', function () {
 
             $this->smsResource->shouldReceive('sendRequest')
                 ->once()
-                ->andThrow(new TransmitSmsException('API Error', 400, null, 'INVALID_RECIPIENT'));
+                ->andThrow(new KudosityException('API Error', 400, null, 'INVALID_RECIPIENT'));
 
             expect(fn () => $this->channel->send($notifiable, $notification))
-                ->toThrow(TransmitSmsException::class, 'API Error');
+                ->toThrow(KudosityException::class, 'API Error');
         });
     });
 });

@@ -6,9 +6,9 @@ namespace ExpertSystems\Kudosity\Laravel;
 
 use ExpertSystems\Kudosity\Callbacks\CallbackUrlBuilder;
 use ExpertSystems\Kudosity\Callbacks\CallbackUrlParser;
+use ExpertSystems\Kudosity\KudosityClient;
+use ExpertSystems\Kudosity\KudosityV1Connector;
 use ExpertSystems\Kudosity\Laravel\Notifications\TransmitSmsChannel;
-use ExpertSystems\Kudosity\TransmitSmsClient;
-use ExpertSystems\Kudosity\TransmitSmsConnector;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Notifications\ChannelManager;
 use Illuminate\Support\Facades\Notification;
@@ -28,11 +28,11 @@ class TransmitSmsServiceProvider extends ServiceProvider
         );
 
         // Register the connector as a singleton
-        $this->app->singleton(TransmitSmsConnector::class, function ($app) {
+        $this->app->singleton(KudosityV1Connector::class, function ($app) {
             /** @var array{api_key: string, api_secret: string, base_url: string, timeout: int, from: string} $config */
             $config = $app['config']['transmitsms'];
 
-            $connector = new TransmitSmsConnector(
+            $connector = new KudosityV1Connector(
                 apiKey: $config['api_key'],
                 apiSecret: $config['api_secret'],
                 baseUrl: $config['base_url'],
@@ -48,9 +48,9 @@ class TransmitSmsServiceProvider extends ServiceProvider
         });
 
         // Register the client as a singleton, using the connector
-        $this->app->singleton(TransmitSmsClient::class, function ($app) {
-            return TransmitSmsClient::fromConnector(
-                $app->make(TransmitSmsConnector::class)
+        $this->app->singleton(KudosityClient::class, function ($app) {
+            return KudosityClient::fromConnector(
+                $app->make(KudosityV1Connector::class)
             );
         });
 
@@ -72,14 +72,14 @@ class TransmitSmsServiceProvider extends ServiceProvider
         // Register the notification channel
         $this->app->singleton(TransmitSmsChannel::class, function ($app) {
             return new TransmitSmsChannel(
-                $app->make(TransmitSmsClient::class),
+                $app->make(KudosityClient::class),
                 $app->make(CallbackUrlBuilder::class)
             );
         });
 
         // Create aliases for easier resolution
-        $this->app->alias(TransmitSmsClient::class, 'transmitsms');
-        $this->app->alias(TransmitSmsConnector::class, 'transmitsms.connector');
+        $this->app->alias(KudosityClient::class, 'transmitsms');
+        $this->app->alias(KudosityV1Connector::class, 'transmitsms.connector');
     }
 
     /**
@@ -164,8 +164,8 @@ class TransmitSmsServiceProvider extends ServiceProvider
     public function provides(): array
     {
         return [
-            TransmitSmsClient::class,
-            TransmitSmsConnector::class,
+            KudosityClient::class,
+            KudosityV1Connector::class,
             TransmitSmsChannel::class,
             CallbackUrlBuilder::class,
             CallbackUrlParser::class,

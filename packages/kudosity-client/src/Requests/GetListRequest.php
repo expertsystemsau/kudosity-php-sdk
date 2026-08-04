@@ -16,7 +16,7 @@ use Saloon\Http\Response;
  *
  * @see https://developer.transmitsms.com/#get-list
  */
-class GetListRequest extends TransmitSmsRequest implements PaginatesResults
+class GetListRequest extends KudosityV1Request implements PaginatesResults
 {
     protected ?int $page = null;
 

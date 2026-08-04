@@ -12,7 +12,7 @@ use Saloon\Http\Response;
  *
  * @see https://developer.transmitsms.com/#add-to-list
  */
-class AddToListRequest extends TransmitSmsRequest
+class AddToListRequest extends KudosityV1Request
 {
     protected ?string $firstName = null;
 

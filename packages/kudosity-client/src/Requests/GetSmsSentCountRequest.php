@@ -13,7 +13,7 @@ use Saloon\Http\Response;
  *
  * @see https://developer.transmitsms.com/#get-sms-sent-count
  */
-class GetSmsSentCountRequest extends TransmitSmsRequest
+class GetSmsSentCountRequest extends KudosityV1Request
 {
     protected ?string $start = null;
 

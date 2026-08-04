@@ -11,7 +11,7 @@ use ExpertSystems\Kudosity\Contracts\PaginatesResults;
  *
  * @see https://developer.transmitsms.com/#get-lists
  */
-class GetListsRequest extends TransmitSmsRequest implements PaginatesResults
+class GetListsRequest extends KudosityV1Request implements PaginatesResults
 {
     protected ?int $page = null;
 

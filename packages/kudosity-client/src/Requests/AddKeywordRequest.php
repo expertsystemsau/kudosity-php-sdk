@@ -12,7 +12,7 @@ use Saloon\Http\Response;
  *
  * @see https://developer.transmitsms.com/#add-keyword
  */
-class AddKeywordRequest extends TransmitSmsRequest
+class AddKeywordRequest extends KudosityV1Request
 {
     protected ?string $forwardUrl = null;
 

@@ -16,7 +16,7 @@ use Saloon\Http\Response;
  *
  * @see https://developer.transmitsms.com/#get-user-sms-responses
  */
-class GetUserSmsResponsesRequest extends TransmitSmsRequest implements PaginatesResults
+class GetUserSmsResponsesRequest extends KudosityV1Request implements PaginatesResults
 {
     protected Method $method = Method::GET;
 

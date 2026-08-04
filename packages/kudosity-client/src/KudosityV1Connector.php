@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace ExpertSystems\Kudosity;
 
 use ExpertSystems\Kudosity\Exceptions\RateLimitException;
-use ExpertSystems\Kudosity\Pagination\TransmitSmsPaginator;
+use ExpertSystems\Kudosity\Pagination\V1PagedPaginator;
 use Saloon\Exceptions\Request\FatalRequestException;
 use Saloon\Exceptions\Request\RequestException;
 use Saloon\Http\Auth\BasicAuthenticator;
@@ -15,13 +15,11 @@ use Saloon\Http\Response;
 use Saloon\PaginationPlugin\Contracts\HasPagination;
 use Saloon\Traits\Plugins\AcceptsJson;
 
-class TransmitSmsConnector extends Connector implements HasPagination
+class KudosityV1Connector extends Connector implements HasPagination
 {
     use AcceptsJson;
 
-    public const BASE_URL_SMS = 'https://api.transmitsms.com';
-
-    public const BASE_URL_MMS = 'https://api.transmitmessage.com';
+    public const BASE_URL = 'https://api.transmitsms.com';
 
     /**
      * Default sender ID (VMN, short code, or alphanumeric).
@@ -36,7 +34,7 @@ class TransmitSmsConnector extends Connector implements HasPagination
     public function __construct(
         protected string $apiKey,
         protected string $apiSecret,
-        protected string $baseUrl = self::BASE_URL_SMS,
+        protected string $baseUrl = self::BASE_URL,
         protected int $timeout = 30,
     ) {}
 
@@ -115,22 +113,6 @@ class TransmitSmsConnector extends Connector implements HasPagination
     }
 
     /**
-     * Use the SMS base URL.
-     */
-    public function useSmsUrl(): self
-    {
-        return $this->setBaseUrl(self::BASE_URL_SMS);
-    }
-
-    /**
-     * Use the MMS base URL.
-     */
-    public function useMmsUrl(): self
-    {
-        return $this->setBaseUrl(self::BASE_URL_MMS);
-    }
-
-    /**
      * Get the timeout.
      */
     public function getTimeout(): int
@@ -203,9 +185,9 @@ class TransmitSmsConnector extends Connector implements HasPagination
      *
      * @see https://docs.saloon.dev/installable-plugins/pagination
      */
-    public function paginate(Request $request): TransmitSmsPaginator
+    public function paginate(Request $request): V1PagedPaginator
     {
-        return new TransmitSmsPaginator($this, $request);
+        return new V1PagedPaginator($this, $request);
     }
 
     // =========================================================================
@@ -320,14 +302,14 @@ class TransmitSmsConnector extends Connector implements HasPagination
     /**
      * Get the request exception for a failed request.
      *
-     * Returns a TransmitSmsException with error details from the API response.
+     * Returns a KudosityException with error details from the API response.
      * This is called by Saloon when throw() is invoked on a failed response.
      *
      * @see https://docs.saloon.dev/the-basics/handling-failures#custom-exceptions
      */
     public function getRequestException(Response $response, ?\Throwable $senderException): ?\Throwable
     {
-        return Exceptions\TransmitSmsException::fromResponse($response);
+        return Exceptions\KudosityException::fromV1Response($response);
     }
 
     /**

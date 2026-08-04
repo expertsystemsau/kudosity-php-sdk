@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace ExpertSystems\Kudosity;
 
-use ExpertSystems\Kudosity\Exceptions\TransmitSmsException;
-use ExpertSystems\Kudosity\Requests\TransmitSmsRequest;
+use ExpertSystems\Kudosity\Exceptions\KudosityException;
+use ExpertSystems\Kudosity\Requests\KudosityV1Request;
 use ExpertSystems\Kudosity\Resources\AccountResource;
 use ExpertSystems\Kudosity\Resources\EmailSmsResource;
 use ExpertSystems\Kudosity\Resources\KeywordsResource;
@@ -15,9 +15,9 @@ use ExpertSystems\Kudosity\Resources\ReportingResource;
 use ExpertSystems\Kudosity\Resources\SmsResource;
 use Saloon\Http\Response;
 
-class TransmitSmsClient
+class KudosityClient
 {
-    protected TransmitSmsConnector $connector;
+    protected KudosityV1Connector $connector;
 
     /**
      * Cached resource instances.
@@ -49,16 +49,16 @@ class TransmitSmsClient
      *
      * @param  string  $apiKey  Your TransmitSMS API key
      * @param  string  $apiSecret  Your TransmitSMS API secret
-     * @param  string  $baseUrl  The base URL for the API (defaults to SMS API)
+     * @param  string  $baseUrl  The base URL for the API
      * @param  int  $timeout  Request timeout in seconds
      */
     public function __construct(
         string $apiKey,
         string $apiSecret,
-        string $baseUrl = TransmitSmsConnector::BASE_URL_SMS,
+        string $baseUrl = KudosityV1Connector::BASE_URL,
         int $timeout = 30,
     ) {
-        $this->connector = new TransmitSmsConnector(
+        $this->connector = new KudosityV1Connector(
             apiKey: $apiKey,
             apiSecret: $apiSecret,
             baseUrl: $baseUrl,
@@ -77,10 +77,10 @@ class TransmitSmsClient
      * connector's configuration (API key, secret, etc.). Invalid or empty
      * credentials will result in authentication failures when making requests.
      *
-     * @param  TransmitSmsConnector  $connector  A pre-configured connector instance
+     * @param  KudosityV1Connector  $connector  A pre-configured connector instance
      * @return self A new client using the provided connector
      */
-    public static function fromConnector(TransmitSmsConnector $connector): self
+    public static function fromConnector(KudosityV1Connector $connector): self
     {
         // Create a new instance using the connector's credentials
         // The connector stores these values, so we extract them for proper initialization
@@ -101,7 +101,7 @@ class TransmitSmsClient
     /**
      * Get the underlying connector.
      */
-    public function connector(): TransmitSmsConnector
+    public function connector(): KudosityV1Connector
     {
         return $this->connector;
     }
@@ -190,9 +190,9 @@ class TransmitSmsClient
      * Use this for advanced use cases where you need direct access to the response.
      * For most cases, prefer using the resource methods (e.g., $client->account()->getBalance()).
      *
-     * @throws TransmitSmsException
+     * @throws KudosityException
      */
-    public function send(TransmitSmsRequest $request): Response
+    public function send(KudosityV1Request $request): Response
     {
         $response = $this->connector->send($request);
 
@@ -209,9 +209,9 @@ class TransmitSmsClient
      *
      * @return array<string, mixed>
      *
-     * @throws TransmitSmsException
+     * @throws KudosityException
      */
-    public function sendAndGetJson(TransmitSmsRequest $request): array
+    public function sendAndGetJson(KudosityV1Request $request): array
     {
         return $this->send($request)->json();
     }
@@ -223,45 +223,21 @@ class TransmitSmsClient
     /**
      * Validate the API response and throw exception if error.
      *
-     * @throws TransmitSmsException
+     * @throws KudosityException
      */
     protected function validateResponse(Response $response): void
     {
         // Check for HTTP errors (4xx, 5xx)
         if ($response->failed()) {
-            throw TransmitSmsException::fromResponse($response);
+            throw KudosityException::fromV1Response($response);
         }
 
         // Check for API-level errors in the response body
         $data = $response->json();
 
         if (isset($data['error']) && ($data['error']['code'] ?? 'SUCCESS') !== 'SUCCESS') {
-            throw TransmitSmsException::fromResponse($response);
+            throw KudosityException::fromV1Response($response);
         }
-    }
-
-    // =========================================================================
-    // URL Configuration
-    // =========================================================================
-
-    /**
-     * Use the SMS base URL.
-     */
-    public function useSmsUrl(): self
-    {
-        $this->connector->useSmsUrl();
-
-        return $this;
-    }
-
-    /**
-     * Use the MMS base URL.
-     */
-    public function useMmsUrl(): self
-    {
-        $this->connector->useMmsUrl();
-
-        return $this;
     }
 
     /**

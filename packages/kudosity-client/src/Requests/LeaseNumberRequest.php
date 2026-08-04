@@ -12,7 +12,7 @@ use Saloon\Http\Response;
  *
  * @see https://developer.transmitsms.com/#lease-number
  */
-class LeaseNumberRequest extends TransmitSmsRequest
+class LeaseNumberRequest extends KudosityV1Request
 {
     public function __construct(
         protected string $number,

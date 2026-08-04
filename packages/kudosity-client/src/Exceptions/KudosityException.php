@@ -8,12 +8,12 @@ use Exception;
 use Saloon\Http\Response;
 use Throwable;
 
-class TransmitSmsException extends Exception
+class KudosityException extends Exception
 {
     /**
      * Error code to exception class mapping.
      *
-     * @var array<string, class-string<TransmitSmsException>>
+     * @var array<string, class-string<KudosityException>>
      */
     protected static array $errorMap = [
         'AUTH_FAILED' => AuthenticationException::class,
@@ -46,12 +46,12 @@ class TransmitSmsException extends Exception
     }
 
     /**
-     * Create an exception from a Saloon response.
+     * Create an exception from a V1 API response.
      *
      * Returns a specific exception type based on the error code.
      * For rate limit exceptions, extracts rate limit metadata from headers.
      */
-    public static function fromResponse(Response $response): self
+    public static function fromV1Response(Response $response): self
     {
         $data = $response->json();
         $error = $data['error'] ?? [];

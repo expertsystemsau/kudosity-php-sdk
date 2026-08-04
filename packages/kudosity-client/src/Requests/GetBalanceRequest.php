@@ -15,7 +15,7 @@ use Saloon\Http\Response;
  *
  * @see https://developer.transmitsms.com/#get-balance
  */
-class GetBalanceRequest extends TransmitSmsRequest
+class GetBalanceRequest extends KudosityV1Request
 {
     /**
      * The HTTP method for this request.

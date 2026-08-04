@@ -12,7 +12,7 @@ use Saloon\Http\Response;
  *
  * @see https://developer.transmitsms.com/#add-contacts-bulk-progress
  */
-class AddContactsBulkProgressRequest extends TransmitSmsRequest
+class AddContactsBulkProgressRequest extends KudosityV1Request
 {
     public function __construct(
         protected int $listId,

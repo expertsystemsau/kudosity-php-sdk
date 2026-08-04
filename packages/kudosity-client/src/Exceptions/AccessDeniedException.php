@@ -10,4 +10,4 @@ namespace ExpertSystems\Kudosity\Exceptions;
  * Error code: NO_ACCESS
  * HTTP status: 400
  */
-class AccessDeniedException extends TransmitSmsException {}
+class AccessDeniedException extends KudosityException {}

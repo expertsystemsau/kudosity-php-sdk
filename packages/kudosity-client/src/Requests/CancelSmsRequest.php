@@ -9,7 +9,7 @@ namespace ExpertSystems\Kudosity\Requests;
  *
  * @see https://developer.transmitsms.com/#cancel-sms
  */
-class CancelSmsRequest extends TransmitSmsRequest
+class CancelSmsRequest extends KudosityV1Request
 {
     /**
      * Create a new CancelSmsRequest.

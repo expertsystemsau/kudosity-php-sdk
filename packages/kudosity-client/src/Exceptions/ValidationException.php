@@ -10,4 +10,4 @@ namespace ExpertSystems\Kudosity\Exceptions;
  * Error codes: FIELD_EMPTY, FIELD_INVALID
  * HTTP status: 400
  */
-class ValidationException extends TransmitSmsException {}
+class ValidationException extends KudosityException {}

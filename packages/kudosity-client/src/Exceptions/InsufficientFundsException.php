@@ -10,4 +10,4 @@ namespace ExpertSystems\Kudosity\Exceptions;
  * Error code: LEDGER_ERROR
  * HTTP status: 400
  */
-class InsufficientFundsException extends TransmitSmsException {}
+class InsufficientFundsException extends KudosityException {}

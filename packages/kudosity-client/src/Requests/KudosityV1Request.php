@@ -9,7 +9,7 @@ use Saloon\Enums\Method;
 use Saloon\Http\Request;
 use Saloon\Traits\Body\HasFormBody;
 
-abstract class TransmitSmsRequest extends Request implements HasBody
+abstract class KudosityV1Request extends Request implements HasBody
 {
     use HasFormBody;
 
