@@ -1139,7 +1139,7 @@ git commit -m "docs: rewrite READMEs, add UPGRADING.md, log the Kudosity rebrand
 
 ## Definition of done
 
-- `git grep -i transmitsms` returns hits only in `.agents/skills/`, `CHANGELOG.md`, `UPGRADING.md`, `rename-map.json`, `bin/kudosity-codemod`, `tests/Unit/CodemodTest.php`, as the literal hostname `api.transmitsms.com`, and in the one sentence of `CLAUDE.md` recording that TransmitSMS rebranded to Kudosity.
+- `git grep -i transmitsms` returns hits only in `.agents/skills/`, `docs/`, `CHANGELOG.md`, `UPGRADING.md`, `rename-map.json`, `bin/kudosity-codemod`, `tests/Unit/CodemodTest.php`, as the literal hostname `api.transmitsms.com`, and in the one sentence of `CLAUDE.md` recording that TransmitSMS rebranded to Kudosity.
 - 249 tests pass; PHPStan level 6 clean; Pint clean; all three composer manifests validate strictly.
 - `php bin/kudosity-codemod packages` reports zero changes; `php bin/kudosity-codemod tests` reports exactly one — `tests/Unit/CodemodTest.php`, whose old-brand fixtures are what drive the script under test.
 - No behaviour changed. Every V1 request still hits the same URL with the same body and the same auth.
