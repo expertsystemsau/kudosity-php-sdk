@@ -38,6 +38,8 @@ The full rebrand, from the design spec:
 | `toTransmitSms()` | `toKudosity()` |
 | channel string `'transmitsms'` | `'kudosity'` |
 | `routeNotificationForTransmitsms()` | `routeNotificationForKudosity()` |
+| route names `transmitsms.webhooks.dlr` / `.reply` / `.link-hits` | `kudosity.webhooks.dlr` / `.reply` / `.link-hits` |
+| container aliases `transmitsms` / `transmitsms.connector` | `kudosity` / `kudosity.connector` |
 
 The API hostnames stay `api.transmitsms.com` and `api.transmitmessage.com` —
 Kudosity has not renamed them — so those string constants keep their real
@@ -126,6 +128,17 @@ Notes:
 - It also flags every call site it finds using `fromResponse()` for manual
   review rather than rewriting it — see
   [`fromResponse()` → `fromV1Response()`](#fromresponse--fromv1response) below.
+- It renames the `BASE_URL_SMS` constant to `BASE_URL`, and flags every use
+  of `useSmsUrl()`, `useMmsUrl()` and `BASE_URL_MMS` for manual review —
+  those three were removed outright in this phase, with no automatic
+  replacement; see [Removed APIs](#removed-apis) below.
+- The text-level rules operate on plain text, not the AST, so they can also
+  hit your own code: `\bTransmitSms\b` → `Kudosity` will rename your own
+  `TransmitSms`-named class without renaming its file (breaking autoload),
+  and `'transmitsms'` → `'kudosity'` will rewrite an unrelated array key of
+  the same name. Review `git diff` for your own same-named symbols before
+  committing. The tool never renames files — it only *reports*
+  `config/transmitsms.php` as needing a manual rename.
 
 ## Rector
 
