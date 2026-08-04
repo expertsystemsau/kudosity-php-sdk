@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "skills": {
+    "kudosity-contacts-lists": {
+      "source": "kudosity/skills",
+      "sourceType": "github",
+      "skillPath": "skills/kudosity-contacts-lists/SKILL.md",
+      "computedHash": "b82dd8ba9640440750d7c77fa3c128ab1ace16541fbf72b84f19fde6b3d93d3a"
+    },
+    "kudosity-mms": {
+      "source": "kudosity/skills",
+      "sourceType": "github",
+      "skillPath": "skills/kudosity-mms/SKILL.md",
+      "computedHash": "136d9c0832d8008f9260aa9b832d1626f58acdb448a2a787168e4ff8e5588fe8"
+    },
+    "kudosity-rcs": {
+      "source": "kudosity/skills",
+      "sourceType": "github",
+      "skillPath": "skills/kudosity-rcs/SKILL.md",
+      "computedHash": "94d6c587069db2ad9134cb5234dd392f4844a15259e65e4ba10da8411059b29c"
+    },
+    "kudosity-setup": {
+      "source": "kudosity/skills",
+      "sourceType": "github",
+      "skillPath": "skills/kudosity-setup/SKILL.md",
+      "computedHash": "78af97be6f9823fbb8be315050ffff18ef818a8244b4ceb2eeecc018cb2fb385"
+    },
+    "kudosity-sms": {
+      "source": "kudosity/skills",
+      "sourceType": "github",
+      "skillPath": "skills/kudosity-sms/SKILL.md",
+      "computedHash": "f73f3b0020c751a92d5f45d54c2318227f65ef78f9b7be13b56fa7720428ef27"
+    },
+    "kudosity-webhooks": {
+      "source": "kudosity/skills",
+      "sourceType": "github",
+      "skillPath": "skills/kudosity-webhooks/SKILL.md",
+      "computedHash": "616ce41c8be16e12224293667b1e50360355e7366cf0e3416ab99c63647e5fb2"
+    },
+    "kudosity-whatsapp": {
+      "source": "kudosity/skills",
+      "sourceType": "github",
+      "skillPath": "skills/kudosity-whatsapp/SKILL.md",
+      "computedHash": "b5fb73a07cd6c21a6268c12f699568285e7d7131d2d0ecee1707f0e93437bad6"
+    },
+    "kudosity-whatsapp-templates": {
+      "source": "kudosity/skills",
+      "sourceType": "github",
+      "skillPath": "skills/kudosity-whatsapp-templates/SKILL.md",
+      "computedHash": "ee79a420e4b7337ee670cd8d4df4ecd2916f3e0e76f9bf812d9e0c666fdaa264"
+    }
+  }
+}
