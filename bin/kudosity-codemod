@@ -1,0 +1,174 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+/**
+ * Rewrites a project's references from the TransmitSMS SDK (1.x) to the
+ * Kudosity SDK (2.x), driven by rename-map.json.
+ *
+ * Usage: kudosity-codemod <path-to-project> [--write]
+ *
+ * Without --write it reports what it would change and exits 0.
+ */
+
+const EXTENSIONS = ['php', 'json', 'yml', 'yaml', 'md', 'blade.php'];
+const SKIP_DIRS = ['vendor', 'node_modules', '.git', 'storage', 'bootstrap/cache', 'public/build'];
+
+$args = array_slice($argv, 1);
+$write = in_array('--write', $args, true);
+$paths = array_values(array_filter($args, static fn (string $a): bool => ! str_starts_with($a, '--')));
+
+if (count($paths) !== 1) {
+    fwrite(STDERR, "Usage: kudosity-codemod <path-to-project> [--write]\n");
+    exit(2);
+}
+
+$root = realpath($paths[0]);
+
+if ($root === false || ! is_dir($root)) {
+    fwrite(STDERR, "Not a directory: {$paths[0]}\n");
+    exit(2);
+}
+
+$mapPath = __DIR__.'/../rename-map.json';
+$map = json_decode((string) file_get_contents($mapPath), true, 512, JSON_THROW_ON_ERROR);
+
+/** Ordered replacement pairs. Namespaces first, then classes, then everything else. */
+$replacements = [];
+
+foreach (['namespaces', 'classes', 'methods', 'strings', 'env', 'packages'] as $group) {
+    foreach ($map[$group] as $from => $to) {
+        if ($to === null) {
+            continue;   // documented manually — see UPGRADING.md
+        }
+        $replacements[] = [$group, $from, $to];
+
+        // json_encode() escapes "/" as "\/" by default (e.g. composer.json),
+        // so also match that form. "/" doesn't need escaping in JSON, so the
+        // unescaped replacement value is still valid output.
+        if (! in_array($group, ['classes', 'methods'], true) && str_contains($from, '/')) {
+            $replacements[] = [$group, str_replace('/', '\/', $from), $to];
+        }
+    }
+}
+
+$changed = [];
+$manual = [];
+
+foreach (files($root) as $file) {
+    $original = (string) file_get_contents($file);
+    $updated = $original;
+
+    foreach ($replacements as [$group, $from, $to]) {
+        $updated = in_array($group, ['classes', 'methods'], true)
+            ? preg_replace_callback('/\b'.preg_quote($from, '/').'\b/', static fn (): string => $to, $updated)
+            : str_replace($from, $to, $updated);
+    }
+
+    // Guard: never rewrite a preserved literal.
+    foreach ($map['preserve'] as $literal) {
+        if (str_contains($original, $literal) && ! str_contains($updated, $literal)) {
+            fwrite(STDERR, "Refusing to rewrite preserved literal '{$literal}' in {$file}\n");
+            exit(1);
+        }
+    }
+
+    foreach (array_keys(array_filter($map['methods'], static fn ($v): bool => $v === null)) as $needsHuman) {
+        if (str_contains($original, $needsHuman.'(')) {
+            $manual[] = [$file, $needsHuman];
+        }
+    }
+
+    if ($updated === $original) {
+        continue;
+    }
+
+    $changed[] = [$file, countDiff($original, $updated)];
+
+    if ($write) {
+        file_put_contents($file, $updated);
+    }
+}
+
+$relative = static fn (string $f): string => ltrim(substr($f, strlen($root)), DIRECTORY_SEPARATOR);
+
+foreach ($changed as [$file, $lines]) {
+    printf("%s %s (%d line%s)\n", $write ? 'updated' : 'would update', $relative($file), $lines, $lines === 1 ? '' : 's');
+}
+
+foreach ($map['files'] as $from => $to) {
+    if (is_file($root.'/'.$from)) {
+        printf("%s rename %s -> %s\n", $write ? 'TODO:' : 'would need:', $from, $to);
+    }
+}
+
+foreach ($manual as [$file, $symbol]) {
+    printf("review by hand: %s uses %s() — see UPGRADING.md\n", $relative($file), $symbol);
+}
+
+printf(
+    "\n%d file%s %s.\n",
+    count($changed),
+    count($changed) === 1 ? '' : 's',
+    $write ? 'updated' : 'would change (dry run — pass --write to apply)'
+);
+
+exit(0);
+
+/**
+ * @return iterable<string>
+ */
+function files(string $root): iterable
+{
+    $iterator = new RecursiveIteratorIterator(
+        new RecursiveCallbackFilterIterator(
+            new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS),
+            static function (SplFileInfo $current) use ($root): bool {
+                if (! $current->isDir()) {
+                    return true;
+                }
+                $rel = str_replace('\\', '/', ltrim(substr($current->getPathname(), strlen($root)), '/\\'));
+
+                return ! in_array($rel, SKIP_DIRS, true) && ! in_array($current->getFilename(), SKIP_DIRS, true);
+            }
+        )
+    );
+
+    foreach ($iterator as $file) {
+        if (! $file->isFile()) {
+            continue;
+        }
+
+        $name = $file->getFilename();
+
+        if (str_starts_with($name, '.env')) {
+            yield $file->getPathname();
+
+            continue;
+        }
+
+        foreach (EXTENSIONS as $ext) {
+            if (str_ends_with($name, '.'.$ext)) {
+                yield $file->getPathname();
+
+                continue 2;
+            }
+        }
+    }
+}
+
+function countDiff(string $before, string $after): int
+{
+    $a = explode("\n", $before);
+    $b = explode("\n", $after);
+    $n = 0;
+
+    foreach ($a as $i => $line) {
+        if (($b[$i] ?? null) !== $line) {
+            $n++;
+        }
+    }
+
+    return $n;
+}

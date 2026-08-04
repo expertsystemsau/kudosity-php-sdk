@@ -1,0 +1,45 @@
+{
+  "version": "2.0.0",
+  "namespaces": {
+    "ExpertSystems\\TransmitSms\\Laravel\\": "ExpertSystems\\Kudosity\\Laravel\\",
+    "ExpertSystems\\TransmitSms\\": "ExpertSystems\\Kudosity\\"
+  },
+  "classes": {
+    "TransmitSmsServiceProvider": "KudosityServiceProvider",
+    "TransmitSmsConnector": "KudosityV1Connector",
+    "TransmitSmsPaginator": "V1PagedPaginator",
+    "TransmitSmsException": "KudosityException",
+    "TransmitSmsRequest": "KudosityV1Request",
+    "TransmitSmsChannel": "KudosityChannel",
+    "TransmitSmsMessage": "KudosityMessage",
+    "TransmitSmsClient": "KudosityClient",
+    "TransmitSms": "Kudosity"
+  },
+  "methods": {
+    "toTransmitSms": "toKudosity",
+    "routeNotificationForTransmitsms": "routeNotificationForKudosity",
+    "fromResponse": null
+  },
+  "strings": {
+    "'transmitsms'": "'kudosity'",
+    "\"transmitsms\"": "\"kudosity\"",
+    "'transmitsms.": "'kudosity.",
+    "\"transmitsms.": "\"kudosity.",
+    "webhooks/transmitsms": "webhooks/kudosity",
+    "transmitsms-config": "kudosity-config"
+  },
+  "env": {
+    "TRANSMITSMS_": "KUDOSITY_"
+  },
+  "packages": {
+    "expertsystemsau/transmitsms-php-client": "expertsystemsau/kudosity-php-client",
+    "expertsystemsau/transmitsms-laravel-client": "expertsystemsau/kudosity-laravel-client"
+  },
+  "files": {
+    "config/transmitsms.php": "config/kudosity.php"
+  },
+  "preserve": [
+    "api.transmitsms.com",
+    "api.transmitmessage.com"
+  ]
+}
