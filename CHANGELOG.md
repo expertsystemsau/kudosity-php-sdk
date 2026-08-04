@@ -2,6 +2,23 @@
 
 All notable changes to `transmitsms-php-client` will be documented in this file.
 
+## Unreleased
+
+### Breaking
+
+- Renamed the packages: `expertsystemsau/transmitsms-php-client` is now `expertsystemsau/kudosity-php-client`, and `expertsystemsau/transmitsms-laravel-client` is now `expertsystemsau/kudosity-laravel-client`. The old packages are abandoned and point at the replacements.
+- Renamed the namespace `ExpertSystems\TransmitSms\` to `ExpertSystems\Kudosity\`.
+- Renamed `TransmitSmsClient` to `KudosityClient`, `TransmitSmsConnector` to `KudosityV1Connector`, `TransmitSmsRequest` to `KudosityV1Request`, `TransmitSmsException` to `KudosityException`, `TransmitSmsPaginator` to `V1PagedPaginator`, `TransmitSmsServiceProvider` to `KudosityServiceProvider`, `TransmitSmsChannel` to `KudosityChannel`, `TransmitSmsMessage` to `KudosityMessage`, and the `TransmitSms` facade to `Kudosity`.
+- Renamed the notification method `toTransmitSms()` to `toKudosity()` and the channel string `'transmitsms'` to `'kudosity'`.
+- Renamed the config file `config/transmitsms.php` to `config/kudosity.php`, its publish tag `transmitsms-config` to `kudosity-config`, and every `TRANSMITSMS_*` environment variable to `KUDOSITY_*`. The default webhook prefix moved from `webhooks/transmitsms` to `webhooks/kudosity`.
+- Renamed `KudosityException::fromResponse()` to `fromV1Response()`, making room for the V2 error format. The identically named factories on the `Data\*` DTOs are unchanged.
+- Removed `useSmsUrl()` and `useMmsUrl()` from the client and connector, and the `BASE_URL_MMS` constant. `BASE_URL_SMS` is now `BASE_URL`. Nothing in the SDK ever issued a request against the MMS host; V2 support arrives with a dedicated connector.
+
+### Added
+
+- `rename-map.json` and `bin/kudosity-codemod`, which rewrite a consuming project's class references, notification hook, channel string, config keys, environment variables and composer requirements. Dry-run by default.
+- `UPGRADING.md`.
+
 ## 1.9.0 - 2026-07-03
 
 ### Fixed

@@ -1,15 +1,17 @@
-# TransmitSMS Laravel Integration
+# Kudosity Laravel Integration
 
-[![Latest Version on Packagist](https://img.shields.io/packagist/v/expertsystemsau/transmitsms-laravel.svg?style=flat-square)](https://packagist.org/packages/expertsystemsau/transmitsms-laravel)
-[![Total Downloads](https://img.shields.io/packagist/dt/expertsystemsau/transmitsms-laravel.svg?style=flat-square)](https://packagist.org/packages/expertsystemsau/transmitsms-laravel)
-[![License](https://img.shields.io/packagist/l/expertsystemsau/transmitsms-laravel.svg?style=flat-square)](https://packagist.org/packages/expertsystemsau/transmitsms-laravel)
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/expertsystemsau/kudosity-laravel-client.svg?style=flat-square)](https://packagist.org/packages/expertsystemsau/kudosity-laravel-client)
+[![Total Downloads](https://img.shields.io/packagist/dt/expertsystemsau/kudosity-laravel-client.svg?style=flat-square)](https://packagist.org/packages/expertsystemsau/kudosity-laravel-client)
+[![License](https://img.shields.io/packagist/l/expertsystemsau/kudosity-laravel-client.svg?style=flat-square)](https://packagist.org/packages/expertsystemsau/kudosity-laravel-client)
 
-Laravel notification channel and integration for the [TransmitSMS API](https://transmitsms.com/).
+Laravel notification channel and integration for the [Kudosity API](https://kudosity.com/).
+This is the 2.x line — see [UPGRADING.md](../../UPGRADING.md) if you're
+migrating from 1.x.
 
 ## Installation
 
 ```bash
-composer require expertsystemsau/transmitsms-laravel
+composer require expertsystemsau/kudosity-laravel-client
 ```
 
 Publish the configuration file:
@@ -38,7 +40,7 @@ recipients see. It can be:
   supports two-way messaging (recipients can reply).
 - An **alphanumeric sender ID** ("alpha tag") such as `MyBrand` — max 11 characters,
   letters and digits only, no spaces. One-way only; recipients cannot reply.
-- **Omitted** (leave empty) — TransmitSMS falls back to a shared number for the
+- **Omitted** (leave empty) — Kudosity falls back to a shared number for the
   destination country.
 
 > ⚠️ **Alpha tags must be registered and approved before you can send with them.**
@@ -47,7 +49,7 @@ recipients see. It can be:
 > (enforced from 1 July 2026) — an unregistered sender ID is replaced with
 > **"Unverified"** on the recipient's device. Registration requires your registered
 > entity name, ABN, and an authorised contact. Register your sender IDs through the
-> TransmitSMS dashboard before setting `KUDOSITY_FROM`; until then, leave it empty
+> Kudosity dashboard before setting `KUDOSITY_FROM`; until then, leave it empty
 > to send from a shared number.
 
 ## Usage
@@ -69,7 +71,7 @@ $balance = Kudosity::account()->getBalance();
 
 ### Notifications
 
-Create a notification that uses the TransmitSMS channel:
+Create a notification that uses the Kudosity channel:
 
 ```php
 use Illuminate\Notifications\Notification;
@@ -125,7 +127,7 @@ KudosityMessage::create('Your order has shipped!')
     ->trackedLinkUrl('https://example.com');  // [tracked-link] target
 ```
 
-To send to a TransmitSMS contact list instead of the notifiable's number, use
+To send to a Kudosity contact list instead of the notifiable's number, use
 `toList()` — the resolved recipient is then ignored:
 
 ```php
@@ -328,7 +330,7 @@ class LogDlrCallback
 
 ### Webhook Configuration
 
-The webhook routes are automatically registered. You can customize them in `config/transmitsms.php`:
+The webhook routes are automatically registered. You can customize them in `config/kudosity.php`:
 
 ```php
 'webhooks' => [
@@ -411,7 +413,7 @@ Helper methods: `isDelivered()`, `isFailed()`, `isPending()`
 
 1. **Sending**: When you use `onDlr()`, `onReply()`, or `onLinkHit()`, the package builds a signed callback URL containing your handler class and context data.
 
-2. **Receiving**: When TransmitSMS calls the webhook, the package:
+2. **Receiving**: When Kudosity calls the webhook, the package:
    - Verifies the HMAC signature
    - Parses the callback data into a DTO
    - Dispatches a global event (for logging/monitoring)
@@ -423,18 +425,18 @@ Helper methods: `isDelivered()`, `isFailed()`, `isPending()`
 ┌─────────────────────────────────────────────────────────────────────┐
 │  Your App                                                           │
 │  ────────                                                           │
-│  KudosityMessage::create('Hello')                               │
-│      ->onDlr(MyJob::class, ['id' => 1])                           │
+│  KudosityMessage::create('Hello')                                   │
+│      ->onDlr(MyJob::class, ['id' => 1])                             │
 │                    │                                                │
 │                    ▼                                                │
 │  Package builds signed callback URL                                │
-│  https://app.com/webhooks/kudosity/dlr?h=...&c=...&s=...       │
+│  https://app.com/webhooks/kudosity/dlr?h=...&c=...&s=...            │
 └─────────────────────────────────────────────────────────────────────┘
                      │
                      ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│  TransmitSMS                                                        │
-│  ───────────                                                        │
+│  Kudosity                                                           │
+│  ────────                                                           │
 │  Sends SMS → Receives DLR → Calls your webhook URL                 │
 └─────────────────────────────────────────────────────────────────────┘
                      │

@@ -4,10 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a PHP monorepo containing two packages for the TransmitSMS API:
+This is a PHP monorepo containing two packages for the Kudosity API:
 
-- **`packages/transmitsms-client`** (`expertsystemsau/transmitsms-client`) - Framework-agnostic PHP client built on Saloon v3
-- **`packages/transmitsms-laravel`** (`expertsystemsau/transmitsms-laravel`) - Laravel notification channel integration (supports Laravel 11, 12)
+- **`packages/kudosity-client`** (`expertsystemsau/kudosity-php-client`) - Framework-agnostic PHP client built on Saloon v4
+- **`packages/kudosity-laravel`** (`expertsystemsau/kudosity-laravel-client`) - Laravel notification channel integration (supports Laravel 11, 12)
 
 ## Common Commands
 
@@ -27,7 +27,7 @@ vendor/bin/pest tests/ExampleTest.php
 # Run a specific test
 vendor/bin/pest --filter="test name pattern"
 
-# Static analysis (PHPStan level 5)
+# Static analysis (PHPStan level 6)
 composer analyse
 
 # Code formatting (Laravel Pint)
@@ -36,32 +36,32 @@ composer format
 
 ## Architecture
 
-### Core Client (transmitsms-client)
+### Core Client (kudosity-client)
 
-Built on Saloon PHP v3:
+Built on Saloon PHP v4:
 
-- **TransmitSmsConnector** - Configures base URL, authentication (Basic Auth), headers, and timeout
-- **TransmitSmsClient** - High-level client wrapper with response validation
-- **TransmitSmsRequest** - Abstract base for API requests (uses form body, all endpoints must end with `.json`)
+- **KudosityV1Connector** - Configures the V1 base URL, authentication (Basic Auth), headers, and timeout
+- **KudosityClient** - High-level client wrapper with response validation
+- **KudosityV1Request** - Abstract base for V1 API requests (uses form body, all endpoints must end with `.json`)
 
-Two base URLs are supported:
-- SMS: `https://api.transmitsms.com`
-- MMS: `https://api.transmitmessage.com`
+This package currently speaks only the V1 API (`https://api.transmitsms.com`,
+`KudosityV1Connector::BASE_URL`). See "Two APIs, two auth schemes" below for
+how the V2 API (`api.transmitmessage.com`) fits in once it lands.
 
-### Laravel Integration (transmitsms-laravel)
+### Laravel Integration (kudosity-laravel)
 
-- **TransmitSmsServiceProvider** - Registers singletons for `TransmitSmsConnector` and `TransmitSmsClient`, extends notification channel manager
-- **TransmitSms Facade** - Proxies to `TransmitSmsClient`
-- **TransmitSmsChannel** - Laravel notification channel (expects `toKudosity()` method on notifications)
-- **TransmitSmsMessage** - Fluent message builder for notifications
+- **KudosityServiceProvider** - Registers singletons for `KudosityV1Connector` and `KudosityClient`, extends notification channel manager
+- **Kudosity Facade** - Proxies to `KudosityClient`
+- **KudosityChannel** - Laravel notification channel (expects `toKudosity()` method on notifications)
+- **KudosityMessage** - Fluent message builder for notifications
 
-Config file published to `config/transmitsms.php` with keys: `api_key`, `api_secret`, `base_url`, `from`, `timeout`
+Config file published to `config/kudosity.php` with keys: `api_key`, `api_secret`, `base_url`, `from`, `timeout`, `webhooks`
 
 ## Namespaces
 
-- `ExpertSystems\TransmitSms\` - Core client classes
-- `ExpertSystems\TransmitSms\Laravel\` - Laravel-specific classes
-- `ExpertSystems\TransmitSms\Tests\` - Test classes
+- `ExpertSystems\Kudosity\` - Core client classes
+- `ExpertSystems\Kudosity\Laravel\` - Laravel-specific classes
+- `ExpertSystems\Kudosity\Tests\` - Test classes
 
 ## Testing
 

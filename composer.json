@@ -1,6 +1,6 @@
 {
     "name": "expertsystemsau/kudosity-php-sdk",
-    "description": "TransmitSMS PHP Client Monorepo - Contains both the core PHP client and Laravel integration",
+    "description": "Kudosity PHP Client Monorepo - Contains both the core PHP client and Laravel integration",
     "keywords": [
         "ExpertSystems",
         "kudosity",

@@ -1,20 +1,37 @@
-# TransmitSMS PHP SDK
+# Kudosity PHP SDK
 
-A PHP client for the [TransmitSMS API](https://transmitsms.com/). This monorepo contains two packages:
+A PHP client for the [Kudosity API](https://kudosity.com/). This monorepo
+contains two packages:
 
-### expertsystemsau/transmitsms-php-client
+| Package | For | Repository |
+|---|---|---|
+| `expertsystemsau/kudosity-php-client` | Framework-agnostic PHP | [expertsystemsau/kudosity-php-client](https://github.com/expertsystemsau/kudosity-php-client) |
+| `expertsystemsau/kudosity-laravel-client` | Laravel (includes the core client) | [expertsystemsau/kudosity-laravel-client](https://github.com/expertsystemsau/kudosity-laravel-client) |
 
-[![Latest Version on Packagist](https://img.shields.io/packagist/v/expertsystemsau/transmitsms-php-client.svg?style=flat-square)](https://packagist.org/packages/expertsystemsau/transmitsms-php-client)
-[![Total Downloads](https://img.shields.io/packagist/dt/expertsystemsau/transmitsms-php-client.svg?style=flat-square)](https://packagist.org/packages/expertsystemsau/transmitsms-php-client)
-[![License](https://img.shields.io/packagist/l/expertsystemsau/transmitsms-php-client.svg?style=flat-square)](https://packagist.org/packages/expertsystemsau/transmitsms-php-client)
+Both are split from this monorepo's `packages/` directory on every push to
+`main` and every `v*` tag — see `.github/workflows/split.yml`.
 
-Framework-agnostic PHP client for the TransmitSMS API.
+> This is the 2.x line of the SDK. Kudosity runs two APIs: **V1**
+> (`api.transmitsms.com`, HTTP Basic auth with an API key *and* secret) and
+> **V2** (`api.transmitmessage.com`, header auth with the key alone). This
+> phase renames every package, class, config key and environment variable to
+> Kudosity and ships V1 support under the new names; V2 support (MMS,
+> WhatsApp, RCS, API-managed webhooks) arrives before this line reaches
+> `2.0.0`. Upgrading from 1.x? See [UPGRADING.md](UPGRADING.md).
 
-### expertsystemsau/transmitsms-laravel-client
+### expertsystemsau/kudosity-php-client
 
-[![Latest Version on Packagist](https://img.shields.io/packagist/v/expertsystemsau/transmitsms-laravel-client.svg?style=flat-square)](https://packagist.org/packages/expertsystemsau/transmitsms-laravel-client)
-[![Total Downloads](https://img.shields.io/packagist/dt/expertsystemsau/transmitsms-laravel-client.svg?style=flat-square)](https://packagist.org/packages/expertsystemsau/transmitsms-laravel-client)
-[![License](https://img.shields.io/packagist/l/expertsystemsau/transmitsms-laravel-client.svg?style=flat-square)](https://packagist.org/packages/expertsystemsau/transmitsms-laravel-client)
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/expertsystemsau/kudosity-php-client.svg?style=flat-square)](https://packagist.org/packages/expertsystemsau/kudosity-php-client)
+[![Total Downloads](https://img.shields.io/packagist/dt/expertsystemsau/kudosity-php-client.svg?style=flat-square)](https://packagist.org/packages/expertsystemsau/kudosity-php-client)
+[![License](https://img.shields.io/packagist/l/expertsystemsau/kudosity-php-client.svg?style=flat-square)](https://packagist.org/packages/expertsystemsau/kudosity-php-client)
+
+Framework-agnostic PHP client for the Kudosity API.
+
+### expertsystemsau/kudosity-laravel-client
+
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/expertsystemsau/kudosity-laravel-client.svg?style=flat-square)](https://packagist.org/packages/expertsystemsau/kudosity-laravel-client)
+[![Total Downloads](https://img.shields.io/packagist/dt/expertsystemsau/kudosity-laravel-client.svg?style=flat-square)](https://packagist.org/packages/expertsystemsau/kudosity-laravel-client)
+[![License](https://img.shields.io/packagist/l/expertsystemsau/kudosity-laravel-client.svg?style=flat-square)](https://packagist.org/packages/expertsystemsau/kudosity-laravel-client)
 
 Laravel notification channel integration (includes the core client).
 
@@ -25,7 +42,7 @@ Laravel notification channel integration (includes the core client).
 Install the core client package:
 
 ```bash
-composer require expertsystemsau/transmitsms-php-client
+composer require expertsystemsau/kudosity-php-client
 ```
 
 ### For Laravel Projects
@@ -33,13 +50,13 @@ composer require expertsystemsau/transmitsms-php-client
 Install the Laravel integration package (includes the core client):
 
 ```bash
-composer require expertsystemsau/transmitsms-laravel-client
+composer require expertsystemsau/kudosity-laravel-client
 ```
 
 Then publish the configuration file:
 
 ```bash
-php artisan vendor:publish --tag="transmitsms-config"
+php artisan vendor:publish --tag="kudosity-config"
 ```
 
 ## Configuration
@@ -47,9 +64,9 @@ php artisan vendor:publish --tag="transmitsms-config"
 ### Plain PHP
 
 ```php
-use ExpertSystems\TransmitSms\TransmitSmsClient;
+use ExpertSystems\Kudosity\KudosityClient;
 
-$client = new TransmitSmsClient(
+$client = new KudosityClient(
     apiKey: 'your-api-key',
     apiSecret: 'your-api-secret'
 );
@@ -76,7 +93,7 @@ ID recipients see. It can be:
 - An **alphanumeric sender ID** ("alpha tag") such as `MyBrand` — max 11 characters,
   letters and digits only, no spaces (validated by `PhoneNumber::isValidSenderId()`).
   One-way only; recipients cannot reply.
-- **Omitted** (leave empty) — TransmitSMS falls back to a shared number for the
+- **Omitted** (leave empty) — Kudosity falls back to a shared number for the
   destination country.
 
 > ⚠️ **Alpha tags must be registered and approved before you can send with them.**
@@ -85,7 +102,7 @@ ID recipients see. It can be:
 > (enforced from 1 July 2026) — an unregistered sender ID is replaced with
 > **"Unverified"** on the recipient's device. Registration requires your registered
 > entity name, ABN, and an authorised contact. Register your sender IDs through the
-> TransmitSMS dashboard before setting `KUDOSITY_FROM`; until then, leave `from`
+> Kudosity dashboard before setting `KUDOSITY_FROM`; until then, leave `from`
 > empty to send from a shared number.
 
 ## Usage
@@ -96,13 +113,13 @@ The client is resource-based: SMS operations live on `$client->sms()`, account
 operations on `$client->account()`, reporting on `$client->reporting()`, and so on.
 
 ```php
-use ExpertSystems\TransmitSms\TransmitSmsClient;
-use ExpertSystems\TransmitSms\Requests\SendSmsRequest;
+use ExpertSystems\Kudosity\KudosityClient;
+use ExpertSystems\Kudosity\Requests\SendSmsRequest;
 
-$client = new TransmitSmsClient('api-key', 'api-secret');
+$client = new KudosityClient('api-key', 'api-secret');
 
 // Send an SMS — send(string $message, string $to, ?string $from = null, ?callable $configure = null)
-$sms = $client->sms()->send('Hello from TransmitSMS!', '+61400000000');
+$sms = $client->sms()->send('Hello from Kudosity!', '+61400000000');
 $messageId = $sms->messageId;
 
 // Send to multiple recipients (comma-separated, up to 500)
@@ -167,22 +184,22 @@ uses (`numbers`, `lists`, `recipients`, `messages`, `members`, `responses`, …)
 The facade proxies to the same resources as the core client.
 
 ```php
-use ExpertSystems\TransmitSms\Laravel\Facades\TransmitSms;
+use ExpertSystems\Kudosity\Laravel\Facades\Kudosity;
 
 // Send an SMS
-TransmitSms::sms()->send('Hello from Laravel!', '+61400000000');
+Kudosity::sms()->send('Hello from Laravel!', '+61400000000');
 
 // Get account balance
-$balance = TransmitSms::account()->getBalance();
+$balance = Kudosity::account()->getBalance();
 ```
 
 ### Laravel Notifications
 
-Create a notification that uses the TransmitSMS channel:
+Create a notification that uses the Kudosity channel:
 
 ```php
 use Illuminate\Notifications\Notification;
-use ExpertSystems\TransmitSms\Laravel\Notifications\TransmitSmsMessage;
+use ExpertSystems\Kudosity\Laravel\Notifications\KudosityMessage;
 
 class OrderShipped extends Notification
 {
@@ -191,10 +208,9 @@ class OrderShipped extends Notification
         return ['kudosity'];
     }
 
-    public function toKudosity($notifiable): TransmitSmsMessage
+    public function toKudosity($notifiable): KudosityMessage
     {
-        return (new TransmitSmsMessage())
-            ->content('Your order has been shipped!')
+        return KudosityMessage::create('Your order has been shipped!')
             ->from('MyStore');
     }
 }
@@ -224,22 +240,22 @@ $user->notify(new OrderShipped());
 
 ```
 packages/
-├── transmitsms-client/     # Core PHP client (no framework dependencies)
+├── kudosity-client/        # Core PHP client (no framework dependencies)
 │   └── src/
-│       ├── TransmitSmsClient.php
+│       ├── KudosityClient.php
 │       └── Exceptions/
-│           └── TransmitSmsException.php
+│           └── KudosityException.php
 │
-└── transmitsms-laravel/    # Laravel integration
+└── kudosity-laravel/       # Laravel integration
     ├── src/
-    │   ├── TransmitSmsServiceProvider.php
+    │   ├── KudosityServiceProvider.php
     │   ├── Facades/
-    │   │   └── TransmitSms.php
+    │   │   └── Kudosity.php
     │   └── Notifications/
-    │       ├── TransmitSmsChannel.php
-    │       └── TransmitSmsMessage.php
+    │       ├── KudosityChannel.php
+    │       └── KudosityMessage.php
     └── config/
-        └── transmitsms.php
+        └── kudosity.php
 ```
 
 ## Testing
@@ -251,6 +267,10 @@ composer test
 ## Changelog
 
 Please see [CHANGELOG](CHANGELOG.md) for more information on what has changed recently.
+
+## Upgrading
+
+Migrating from 1.x? See [UPGRADING.md](UPGRADING.md).
 
 ## Contributing
 

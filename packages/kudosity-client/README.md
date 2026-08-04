@@ -1,10 +1,12 @@
-# TransmitSMS PHP Client
+# Kudosity PHP Client
 
 [![Latest Version on Packagist](https://img.shields.io/packagist/v/expertsystemsau/kudosity-php-client.svg?style=flat-square)](https://packagist.org/packages/expertsystemsau/kudosity-php-client)
 [![Total Downloads](https://img.shields.io/packagist/dt/expertsystemsau/kudosity-php-client.svg?style=flat-square)](https://packagist.org/packages/expertsystemsau/kudosity-php-client)
 [![License](https://img.shields.io/packagist/l/expertsystemsau/kudosity-php-client.svg?style=flat-square)](https://packagist.org/packages/expertsystemsau/kudosity-php-client)
 
-A framework-agnostic PHP client for the [TransmitSMS API](https://transmitsms.com/).
+A framework-agnostic PHP client for the [Kudosity API](https://kudosity.com/).
+This is the 2.x line — see [UPGRADING.md](../../UPGRADING.md) if you're
+migrating from 1.x.
 
 ## Installation
 
@@ -25,7 +27,7 @@ use ExpertSystems\Kudosity\Requests\SendSmsRequest;
 $client = new KudosityClient('your-api-key', 'your-api-secret');
 
 // Send an SMS — send(string $message, string $to, ?string $from = null, ?callable $configure = null)
-$sms = $client->sms()->send('Hello from TransmitSMS!', '+61400000000');
+$sms = $client->sms()->send('Hello from Kudosity!', '+61400000000');
 $messageId = $sms->messageId;
 
 // Send to multiple recipients (comma-separated, up to 500)
@@ -93,7 +95,7 @@ sender ID recipients see. It can be:
 - An **alphanumeric sender ID** ("alpha tag") such as `MyBrand` — max 11 characters,
   letters and digits only, no spaces (validate with `$client->sms()->isValidSenderId()`).
   One-way only; recipients cannot reply.
-- **Omitted** — TransmitSMS falls back to a shared number for the destination country.
+- **Omitted** — Kudosity falls back to a shared number for the destination country.
 
 There is no `from` argument on the constructor. Set it one of two ways:
 
@@ -127,7 +129,7 @@ if (! $client->sms()->isValidSenderId('MyBrand')) {
 > (enforced from 1 July 2026) — an unregistered sender ID is replaced with
 > **"Unverified"** on the recipient's device. Registration requires your registered
 > entity name, ABN, and an authorised contact. Register your sender IDs through the
-> TransmitSMS dashboard before using an alpha tag; otherwise omit `from` to send from
+> Kudosity dashboard before using an alpha tag; otherwise omit `from` to send from
 > a shared number.
 
 ## DLR & Reply Callbacks
@@ -148,7 +150,7 @@ $connector = new KudosityV1Connector(
     apiKey: 'your-api-key',
     apiSecret: 'your-api-secret'
 );
-$client = new KudosityClient($connector);
+$client = KudosityClient::fromConnector($connector);
 
 // Create URL builder with your webhook base URL and signing key
 $urlBuilder = new CallbackUrlBuilder(
@@ -261,7 +263,7 @@ $linkHit->ipAddress;    // ?string - IP address
 
 ## Laravel Integration
 
-For Laravel projects, use [expertsystemsau/transmitsms-laravel](https://packagist.org/packages/expertsystemsau/transmitsms-laravel) which provides:
+For Laravel projects, use [expertsystemsau/kudosity-laravel-client](https://packagist.org/packages/expertsystemsau/kudosity-laravel-client) which provides:
 
 - Service provider with automatic configuration
 - Facade for convenient access

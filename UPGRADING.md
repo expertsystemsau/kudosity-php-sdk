@@ -1,0 +1,236 @@
+# Upgrading
+
+## 1.x (TransmitSMS) to 2.x (Kudosity)
+
+TransmitSMS has rebranded to Kudosity. Phase 1 of the 2.0 line renames every
+package, namespace, class, config key and environment variable to match —
+mechanically, with no behaviour change. Every V1 request still hits the same
+URL with the same body and the same auth. Kudosity's V2 API arrives in a
+later phase; this file will grow a **V1 to V2 method equivalents**, **Changed
+DTO shapes**, **New exceptions** and **Webhook migration** section once it
+does.
+
+### Renames
+
+The full rebrand, from the design spec:
+
+| Now | After |
+|---|---|
+| repo `expertsystemsau/transmitsms-php-sdk` | `expertsystemsau/kudosity-php-sdk` |
+| `packages/transmitsms-client` | `packages/kudosity-client` |
+| `packages/transmitsms-laravel` | `packages/kudosity-laravel` |
+| package `expertsystemsau/transmitsms-php-client` | `expertsystemsau/kudosity-php-client` |
+| package `expertsystemsau/transmitsms-laravel-client` | `expertsystemsau/kudosity-laravel-client` |
+| namespace `ExpertSystems\TransmitSms\` | `ExpertSystems\Kudosity\` |
+| namespace `ExpertSystems\TransmitSms\Laravel\` | `ExpertSystems\Kudosity\Laravel\` |
+| namespace `ExpertSystems\TransmitSms\Tests\` | `ExpertSystems\Kudosity\Tests\` |
+| `TransmitSmsClient` | `KudosityClient` |
+| `TransmitSmsConnector` | `KudosityV1Connector` + `KudosityV2Connector` |
+| `TransmitSmsRequest` | `KudosityV1Request` + `KudosityV2Request` |
+| `TransmitSmsException` | `KudosityException` |
+| `TransmitSmsPaginator` | `V1PagedPaginator` |
+| `TransmitSmsServiceProvider` | `KudosityServiceProvider` |
+| `TransmitSmsChannel` | `KudosityChannel` |
+| `TransmitSmsMessage` | `KudosityMessage` |
+| facade `TransmitSms` | `Kudosity` |
+| `config/transmitsms.php` | `config/kudosity.php` |
+| env `TRANSMITSMS_*` | `KUDOSITY_*` |
+| `toTransmitSms()` | `toKudosity()` |
+| channel string `'transmitsms'` | `'kudosity'` |
+| `routeNotificationForTransmitsms()` | `routeNotificationForKudosity()` |
+
+The API hostnames stay `api.transmitsms.com` and `api.transmitmessage.com` —
+Kudosity has not renamed them — so those string constants keep their real
+values under new constant names (`KudosityV1Connector::BASE_URL`,
+`KudosityV2Connector::BASE_URL` once V2 lands).
+
+`KudosityV2Connector`, `KudosityV2Request` and `KudosityException::fromV2Response()`
+are reserved names — nothing in Phase 1 occupies them, so a later phase can
+introduce them without another rename.
+
+### Class renames shipped in this phase
+
+Concretely, in this release:
+
+| 1.x | 2.x |
+|---|---|
+| `TransmitSmsClient` | `KudosityClient` |
+| `TransmitSmsConnector` | `KudosityV1Connector` |
+| `TransmitSmsRequest` | `KudosityV1Request` |
+| `TransmitSmsException` | `KudosityException` |
+| `TransmitSmsPaginator` | `V1PagedPaginator` |
+| `TransmitSmsServiceProvider` | `KudosityServiceProvider` |
+| `TransmitSmsChannel` | `KudosityChannel` |
+| `TransmitSmsMessage` | `KudosityMessage` |
+| facade `TransmitSms` | `Kudosity` |
+| `toTransmitSms()` | `toKudosity()` |
+| channel string `'transmitsms'` | `'kudosity'` |
+
+## Automated upgrade
+
+Install the new package:
+
+```bash
+composer require expertsystemsau/kudosity-laravel-client:^2.0
+```
+
+(Plain-PHP project, no Laravel? Install `expertsystemsau/kudosity-php-client:^2.0` instead.)
+
+`bin/kudosity-codemod` ships in the monorepo, not inside either split
+package — `.github/workflows/split.yml` only publishes `packages/*` to the
+two package repos, so the script never reaches your project's `vendor/`
+directory. Fetch it (and the rename map it depends on) directly from the
+monorepo instead:
+
+```bash
+curl -fsSL -o kudosity-codemod \
+  https://raw.githubusercontent.com/expertsystemsau/kudosity-php-sdk/main/bin/kudosity-codemod
+curl -fsSL -o rename-map.json \
+  https://raw.githubusercontent.com/expertsystemsau/kudosity-php-sdk/main/rename-map.json
+chmod +x kudosity-codemod
+```
+
+The script resolves the map relative to its own location
+(`__DIR__.'/../rename-map.json'`), so with both files dropped side by side
+as above, point it at the map explicitly with `--map`:
+
+```bash
+./kudosity-codemod . --write --map=./rename-map.json
+```
+
+`--map=PATH` is the general-purpose way to point the codemod at an explicit
+map file instead of relying on the default relative lookup — use it whenever
+the script and `rename-map.json` don't end up one directory apart. If you'd
+rather match the default lookup, place the script at `bin/kudosity-codemod`
+inside your project and `rename-map.json` at your project root, then omit
+`--map`.
+
+Then publish the new config:
+
+```bash
+php artisan vendor:publish --tag=kudosity-config
+```
+
+Notes:
+
+- Dry-run by default — the commands above with `--write` removed report
+  what *would* change and exit `0` without touching anything.
+- It skips `vendor/`, `node_modules/`, `.git/`, `storage/`, `bootstrap/cache/`
+  and `public/build/`.
+- It refuses to run — exiting non-zero — if a rewrite would damage the
+  literal `api.transmitsms.com` anywhere in your project; that hostname is
+  the real, live V1 API host and must survive untouched. The check runs as a
+  first pass over every file before anything is written, so a refusal always
+  leaves your working tree completely untouched — it never leaves you with a
+  half-migrated project.
+- It also flags every call site it finds using `fromResponse()` for manual
+  review rather than rewriting it — see
+  [`fromResponse()` → `fromV1Response()`](#fromresponse--fromv1response) below.
+
+## Rector
+
+Prefer Rector? Here's an equivalent config generated from the same map,
+covering the class renames:
+
+```php
+<?php
+
+use Rector\Config\RectorConfig;
+use Rector\Renaming\Rector\Name\RenameClassRector;
+
+return RectorConfig::configure()
+    ->withPaths([__DIR__.'/app', __DIR__.'/config', __DIR__.'/routes'])
+    ->withConfiguredRule(RenameClassRector::class, [
+        'ExpertSystems\TransmitSms\TransmitSmsClient' => 'ExpertSystems\Kudosity\KudosityClient',
+        'ExpertSystems\TransmitSms\TransmitSmsConnector' => 'ExpertSystems\Kudosity\KudosityV1Connector',
+        'ExpertSystems\TransmitSms\Requests\TransmitSmsRequest' => 'ExpertSystems\Kudosity\Requests\KudosityV1Request',
+        'ExpertSystems\TransmitSms\Exceptions\TransmitSmsException' => 'ExpertSystems\Kudosity\Exceptions\KudosityException',
+        'ExpertSystems\TransmitSms\Pagination\TransmitSmsPaginator' => 'ExpertSystems\Kudosity\Pagination\V1PagedPaginator',
+        'ExpertSystems\TransmitSms\Laravel\TransmitSmsServiceProvider' => 'ExpertSystems\Kudosity\Laravel\KudosityServiceProvider',
+        'ExpertSystems\TransmitSms\Laravel\Notifications\TransmitSmsChannel' => 'ExpertSystems\Kudosity\Laravel\Notifications\KudosityChannel',
+        'ExpertSystems\TransmitSms\Laravel\Notifications\TransmitSmsMessage' => 'ExpertSystems\Kudosity\Laravel\Notifications\KudosityMessage',
+        'ExpertSystems\TransmitSms\Laravel\Facades\TransmitSms' => 'ExpertSystems\Kudosity\Laravel\Facades\Kudosity',
+    ]);
+```
+
+Rector renames classes only. The notification hook (`toTransmitSms()` →
+`toKudosity()`), the channel string (`'transmitsms'` → `'kudosity'`), config
+keys and environment variables still need the codemod above, or a hand pass.
+
+## Config and environment
+
+`config/transmitsms.php` → `config/kudosity.php`. Publish tag
+`transmitsms-config` → `kudosity-config`.
+
+Every environment variable is renamed with the same `TRANSMITSMS_` →
+`KUDOSITY_` prefix swap:
+
+| 1.x | 2.x |
+|---|---|
+| `TRANSMITSMS_API_KEY` | `KUDOSITY_API_KEY` |
+| `TRANSMITSMS_API_SECRET` | `KUDOSITY_API_SECRET` |
+| `TRANSMITSMS_BASE_URL` | `KUDOSITY_BASE_URL` |
+| `TRANSMITSMS_TIMEOUT` | `KUDOSITY_TIMEOUT` |
+| `TRANSMITSMS_FROM` | `KUDOSITY_FROM` |
+| `TRANSMITSMS_WEBHOOKS_ENABLED` | `KUDOSITY_WEBHOOKS_ENABLED` |
+| `TRANSMITSMS_WEBHOOKS_PREFIX` | `KUDOSITY_WEBHOOKS_PREFIX` |
+| `TRANSMITSMS_SIGNING_KEY` | `KUDOSITY_SIGNING_KEY` |
+| `TRANSMITSMS_DLR_QUEUE` | `KUDOSITY_DLR_QUEUE` |
+| `TRANSMITSMS_REPLY_QUEUE` | `KUDOSITY_REPLY_QUEUE` |
+| `TRANSMITSMS_LINK_HITS_QUEUE` | `KUDOSITY_LINK_HITS_QUEUE` |
+
+`KUDOSITY_WEBHOOKS_PREFIX` defaults to `webhooks/kudosity` (was
+`webhooks/transmitsms`), so any webhook URL you've already registered with
+Kudosity, or hard-coded anywhere in your own app, needs updating to match —
+or pin the old value explicitly (`KUDOSITY_WEBHOOKS_PREFIX=webhooks/transmitsms`)
+to avoid a redeploy race where the registered URL and the route prefix
+briefly disagree.
+
+## Removed APIs
+
+| Removed | Replacement |
+|---|---|
+| `useSmsUrl()` | Removed with no replacement. The connector only ever pointed at one host; set it directly with `setBaseUrl()` if you need to override it. |
+| `useMmsUrl()` | Removed with no replacement, same reasoning — nothing in the SDK ever issued a request against the MMS host. |
+| `BASE_URL_MMS` constant | Removed with no replacement. |
+| `BASE_URL_SMS` constant | Renamed to `BASE_URL`. Replace `TransmitSmsConnector::BASE_URL_SMS` with `KudosityV1Connector::BASE_URL`. |
+| `KudosityException::fromResponse()` | Renamed to `fromV1Response()` — see below. |
+
+### `fromResponse()` → `fromV1Response()`
+
+The codemod deliberately does **not** rewrite this one for you. Several
+unrelated classes declare their own `fromResponse()` factory, so a
+text-level rename would silently corrupt code that has nothing to do with
+`KudosityException`. Instead, for every file it finds calling `fromResponse(`,
+the codemod prints:
+
+```
+review by hand: <file> uses fromResponse() — see UPGRADING.md
+```
+
+This section is what that message points at. The rule is narrow:
+
+- Only `KudosityException::fromResponse()` was renamed, to `fromV1Response()`.
+  Change `TransmitSmsException::fromResponse($response)` /
+  `KudosityException::fromResponse($response)` call sites to
+  `KudosityException::fromV1Response($response)`.
+- Every `Data\*Data` DTO (`SmsData::fromResponse()`, `BalanceData::fromResponse()`,
+  and so on) keeps its own `fromResponse()` — unchanged, and unrelated to the
+  exception factory despite the shared name.
+- `RateLimitException::fromResponseWithMetadata()` is unchanged.
+
+If a flagged file's `fromResponse(` call is on a DTO rather than
+`KudosityException`, no action is needed — the codemod flags the method name
+regardless of which class it's called on, because it can't resolve types
+from plain text.
+
+## For maintainers
+
+Release checklist:
+
+1. Rename the GitHub monorepo to `kudosity-php-sdk`.
+2. Create `expertsystemsau/kudosity-php-client` and `expertsystemsau/kudosity-laravel-client` as split targets.
+3. Register both on Packagist.
+4. Mark `transmitsms-php-client` and `transmitsms-laravel-client` abandoned, replacement set to the new packages.
+5. Tag `v2.0.0`. The `v` prefix is required or `split.yml` never fires.
+6. Confirm both sub-repo releases appeared and Packagist picked them up.
