@@ -1,8 +1,8 @@
 <?php
 
-namespace ExpertSystems\TransmitSms\Tests;
+namespace ExpertSystems\Kudosity\Tests;
 
-use ExpertSystems\TransmitSms\Laravel\TransmitSmsServiceProvider;
+use ExpertSystems\Kudosity\Laravel\TransmitSmsServiceProvider;
 use Orchestra\Testbench\TestCase as Orchestra;
 
 class TestCase extends Orchestra

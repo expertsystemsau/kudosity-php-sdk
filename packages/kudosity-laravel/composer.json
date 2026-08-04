@@ -1,0 +1,57 @@
+{
+    "name": "expertsystemsau/kudosity-laravel-client",
+    "description": "Laravel notification channel and integration for the TransmitSMS API",
+    "keywords": [
+        "ExpertSystems",
+        "laravel",
+        "transmitsms",
+        "sms",
+        "notification-channel"
+    ],
+    "homepage": "https://github.com/expertsystemsau/kudosity-laravel-client",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Mitchell Williams",
+            "email": "mitchell@expertsystems.com.au",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "expertsystemsau/kudosity-php-client": "^1.0",
+        "illuminate/notifications": "^11.0||^12.0",
+        "illuminate/support": "^11.0||^12.0",
+        "saloonphp/laravel-plugin": "^4.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^9.0||^10.0",
+        "phpunit/phpunit": "^11.0",
+        "mockery/mockery": "^1.6"
+    },
+    "autoload": {
+        "psr-4": {
+            "ExpertSystems\\Kudosity\\Laravel\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "ExpertSystems\\Kudosity\\Laravel\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "ExpertSystems\\Kudosity\\Laravel\\TransmitSmsServiceProvider"
+            ],
+            "aliases": {
+                "TransmitSms": "ExpertSystems\\Kudosity\\Laravel\\Facades\\TransmitSms"
+            }
+        }
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

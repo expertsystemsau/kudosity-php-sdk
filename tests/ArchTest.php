@@ -5,10 +5,10 @@ arch('it will not use debugging functions')
     ->each->not->toBeUsed();
 
 arch('client package does not depend on Laravel')
-    ->expect('ExpertSystems\TransmitSms')
+    ->expect('ExpertSystems\Kudosity')
     ->not->toUse(['Illuminate', 'Laravel'])
-    ->ignoring('ExpertSystems\TransmitSms\Laravel');
+    ->ignoring('ExpertSystems\Kudosity\Laravel');
 
 arch('laravel package uses the client')
-    ->expect('ExpertSystems\TransmitSms\Laravel')
-    ->toUse('ExpertSystems\TransmitSms\TransmitSmsClient');
+    ->expect('ExpertSystems\Kudosity\Laravel')
+    ->toUse('ExpertSystems\Kudosity\TransmitSmsClient');

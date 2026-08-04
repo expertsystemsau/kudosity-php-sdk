@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-use ExpertSystems\TransmitSms\Data\SmsData;
-use ExpertSystems\TransmitSms\Exceptions\TransmitSmsException;
-use ExpertSystems\TransmitSms\Laravel\Notifications\TransmitSmsChannel;
-use ExpertSystems\TransmitSms\Laravel\Notifications\TransmitSmsMessage;
-use ExpertSystems\TransmitSms\Requests\SendSmsRequest;
-use ExpertSystems\TransmitSms\Resources\SmsResource;
-use ExpertSystems\TransmitSms\TransmitSmsClient;
+use ExpertSystems\Kudosity\Data\SmsData;
+use ExpertSystems\Kudosity\Exceptions\TransmitSmsException;
+use ExpertSystems\Kudosity\Laravel\Notifications\TransmitSmsChannel;
+use ExpertSystems\Kudosity\Laravel\Notifications\TransmitSmsMessage;
+use ExpertSystems\Kudosity\Requests\SendSmsRequest;
+use ExpertSystems\Kudosity\Resources\SmsResource;
+use ExpertSystems\Kudosity\TransmitSmsClient;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\Config;
 

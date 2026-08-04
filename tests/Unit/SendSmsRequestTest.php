@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use ExpertSystems\TransmitSms\Exceptions\ValidationException;
-use ExpertSystems\TransmitSms\Requests\SendSmsRequest;
+use ExpertSystems\Kudosity\Exceptions\ValidationException;
+use ExpertSystems\Kudosity\Requests\SendSmsRequest;
 
 describe('SendSmsRequest', function () {
     describe('construction', function () {

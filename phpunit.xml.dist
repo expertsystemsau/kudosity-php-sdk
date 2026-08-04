@@ -25,8 +25,8 @@
     </logging>
     <source>
         <include>
-            <directory suffix=".php">./packages/transmitsms-client/src</directory>
-            <directory suffix=".php">./packages/transmitsms-laravel/src</directory>
+            <directory suffix=".php">./packages/kudosity-client/src</directory>
+            <directory suffix=".php">./packages/kudosity-laravel/src</directory>
         </include>
     </source>
 </phpunit>

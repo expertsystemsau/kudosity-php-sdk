@@ -21,7 +21,7 @@ updates:
 
   # Core PHP client package
   - package-ecosystem: "composer"
-    directory: "/packages/transmitsms-client"
+    directory: "/packages/kudosity-client"
     schedule:
       interval: "weekly"
     labels:
@@ -30,7 +30,7 @@ updates:
 
   # Laravel integration package
   - package-ecosystem: "composer"
-    directory: "/packages/transmitsms-laravel"
+    directory: "/packages/kudosity-laravel"
     schedule:
       interval: "weekly"
     labels:

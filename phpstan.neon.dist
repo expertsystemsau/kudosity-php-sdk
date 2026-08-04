@@ -4,17 +4,17 @@ includes:
 parameters:
     level: 6
     paths:
-        - packages/transmitsms-client/src
-        - packages/transmitsms-laravel/src
-        - packages/transmitsms-laravel/config
+        - packages/kudosity-client/src
+        - packages/kudosity-laravel/src
+        - packages/kudosity-laravel/config
     tmpDir: build/phpstan
     checkOctaneCompatibility: true
     checkModelProperties: true
     ignoreErrors:
         # Config files use env() and are published to the Laravel config directory
         - identifier: larastan.noEnvCallsOutsideOfConfig
-          path: packages/transmitsms-laravel/config/*
+          path: packages/kudosity-laravel/config/*
         # toTransmitSms is a notification convention method
         -
             message: "#Call to an undefined method Illuminate\\\\Notifications\\\\Notification::toTransmitSms#"
-            path: packages/transmitsms-laravel/src/Notifications/TransmitSmsChannel.php
+            path: packages/kudosity-laravel/src/Notifications/TransmitSmsChannel.php

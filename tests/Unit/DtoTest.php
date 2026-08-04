@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-use ExpertSystems\TransmitSms\Data\BalanceData;
-use ExpertSystems\TransmitSms\Data\ContactData;
-use ExpertSystems\TransmitSms\Data\ListData;
-use ExpertSystems\TransmitSms\Data\SmsData;
-use ExpertSystems\TransmitSms\Data\SmsStatsData;
+use ExpertSystems\Kudosity\Data\BalanceData;
+use ExpertSystems\Kudosity\Data\ContactData;
+use ExpertSystems\Kudosity\Data\ListData;
+use ExpertSystems\Kudosity\Data\SmsData;
+use ExpertSystems\Kudosity\Data\SmsStatsData;
 
 describe('DTO transformations', function () {
     describe('BalanceData', function () {

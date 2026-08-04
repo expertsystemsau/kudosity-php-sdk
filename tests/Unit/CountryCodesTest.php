@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use ExpertSystems\TransmitSms\Support\CountryCodes;
+use ExpertSystems\Kudosity\Support\CountryCodes;
 
 describe('CountryCodes', function () {
     describe('getDialingCode', function () {

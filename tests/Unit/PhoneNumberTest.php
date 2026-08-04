@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use ExpertSystems\TransmitSms\Support\PhoneNumber;
+use ExpertSystems\Kudosity\Support\PhoneNumber;
 
 describe('PhoneNumber', function () {
     describe('toInternational', function () {

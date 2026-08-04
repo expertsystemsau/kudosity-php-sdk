@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-use ExpertSystems\TransmitSms\Laravel\Notifications\TransmitSmsChannel;
-use ExpertSystems\TransmitSms\Laravel\TransmitSmsServiceProvider;
-use ExpertSystems\TransmitSms\TransmitSmsClient;
-use ExpertSystems\TransmitSms\TransmitSmsConnector;
+use ExpertSystems\Kudosity\Laravel\Notifications\TransmitSmsChannel;
+use ExpertSystems\Kudosity\Laravel\TransmitSmsServiceProvider;
+use ExpertSystems\Kudosity\TransmitSmsClient;
+use ExpertSystems\Kudosity\TransmitSmsConnector;
 use Illuminate\Notifications\ChannelManager;
 use Illuminate\Support\Facades\Notification;
 

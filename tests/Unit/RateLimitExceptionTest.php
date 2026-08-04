@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use ExpertSystems\TransmitSms\Exceptions\RateLimitException;
-use ExpertSystems\TransmitSms\Exceptions\TransmitSmsException;
+use ExpertSystems\Kudosity\Exceptions\RateLimitException;
+use ExpertSystems\Kudosity\Exceptions\TransmitSmsException;
 
 describe('RateLimitException', function () {
     describe('rate limit metadata', function () {

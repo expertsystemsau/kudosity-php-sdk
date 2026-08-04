@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use ExpertSystems\TransmitSms\TransmitSmsConnector;
+use ExpertSystems\Kudosity\TransmitSmsConnector;
 
 describe('TransmitSmsConnector', function () {
     describe('retry configuration', function () {

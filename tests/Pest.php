@@ -1,5 +1,5 @@
 <?php
 
-use ExpertSystems\TransmitSms\Tests\TestCase;
+use ExpertSystems\Kudosity\Tests\TestCase;
 
 uses(TestCase::class)->in(__DIR__);

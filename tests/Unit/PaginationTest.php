@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-use ExpertSystems\TransmitSms\Requests\GetKeywordsRequest;
-use ExpertSystems\TransmitSms\Requests\GetListRequest;
-use ExpertSystems\TransmitSms\Requests\GetListsRequest;
-use ExpertSystems\TransmitSms\Requests\GetNumbersRequest;
-use ExpertSystems\TransmitSms\Requests\GetSmsResponsesRequest;
-use ExpertSystems\TransmitSms\Requests\GetSmsSentRequest;
-use ExpertSystems\TransmitSms\Requests\GetUserSmsResponsesRequest;
-use ExpertSystems\TransmitSms\Requests\GetUserSmsSentRequest;
-use ExpertSystems\TransmitSms\TransmitSmsClient;
-use ExpertSystems\TransmitSms\TransmitSmsConnector;
+use ExpertSystems\Kudosity\Requests\GetKeywordsRequest;
+use ExpertSystems\Kudosity\Requests\GetListRequest;
+use ExpertSystems\Kudosity\Requests\GetListsRequest;
+use ExpertSystems\Kudosity\Requests\GetNumbersRequest;
+use ExpertSystems\Kudosity\Requests\GetSmsResponsesRequest;
+use ExpertSystems\Kudosity\Requests\GetSmsSentRequest;
+use ExpertSystems\Kudosity\Requests\GetUserSmsResponsesRequest;
+use ExpertSystems\Kudosity\Requests\GetUserSmsSentRequest;
+use ExpertSystems\Kudosity\TransmitSmsClient;
+use ExpertSystems\Kudosity\TransmitSmsConnector;
 use Saloon\Http\Faking\MockClient;
 use Saloon\Http\Faking\MockResponse;
 

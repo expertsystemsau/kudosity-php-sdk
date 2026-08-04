@@ -14,12 +14,12 @@ jobs:
       fail-fast: false
       matrix:
         package:
-          - name: transmitsms-client
-            path: packages/transmitsms-client
-            target: expertsystemsau/transmitsms-php-client
-          - name: transmitsms-laravel
-            path: packages/transmitsms-laravel
-            target: expertsystemsau/transmitsms-laravel-client
+          - name: kudosity-client
+            path: packages/kudosity-client
+            target: expertsystemsau/kudosity-php-client
+          - name: kudosity-laravel
+            path: packages/kudosity-laravel
+            target: expertsystemsau/kudosity-laravel-client
 
     steps:
       # Pinned to v4 on purpose (do NOT bump to match the other workflows).

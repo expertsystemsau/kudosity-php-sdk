@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-use ExpertSystems\TransmitSms\Exceptions\AccessDeniedException;
-use ExpertSystems\TransmitSms\Exceptions\AuthenticationException;
-use ExpertSystems\TransmitSms\Exceptions\InsufficientFundsException;
-use ExpertSystems\TransmitSms\Exceptions\InvalidRecipientsException;
-use ExpertSystems\TransmitSms\Exceptions\InvalidSenderException;
-use ExpertSystems\TransmitSms\Exceptions\RateLimitException;
-use ExpertSystems\TransmitSms\Exceptions\TransmitSmsException;
-use ExpertSystems\TransmitSms\Exceptions\ValidationException;
+use ExpertSystems\Kudosity\Exceptions\AccessDeniedException;
+use ExpertSystems\Kudosity\Exceptions\AuthenticationException;
+use ExpertSystems\Kudosity\Exceptions\InsufficientFundsException;
+use ExpertSystems\Kudosity\Exceptions\InvalidRecipientsException;
+use ExpertSystems\Kudosity\Exceptions\InvalidSenderException;
+use ExpertSystems\Kudosity\Exceptions\RateLimitException;
+use ExpertSystems\Kudosity\Exceptions\TransmitSmsException;
+use ExpertSystems\Kudosity\Exceptions\ValidationException;
 use Saloon\Http\Response;
 
 describe('TransmitSmsException', function () {

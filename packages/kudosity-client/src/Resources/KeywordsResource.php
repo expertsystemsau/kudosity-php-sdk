@@ -1,0 +1,133 @@
+<?php
+
+declare(strict_types=1);
+
+namespace ExpertSystems\Kudosity\Resources;
+
+use ExpertSystems\Kudosity\Data\KeywordData;
+use ExpertSystems\Kudosity\Exceptions\TransmitSmsException;
+use ExpertSystems\Kudosity\Pagination\TransmitSmsPaginator;
+use ExpertSystems\Kudosity\Requests\AddKeywordRequest;
+use ExpertSystems\Kudosity\Requests\EditKeywordRequest;
+use ExpertSystems\Kudosity\Requests\GetKeywordsRequest;
+
+/**
+ * Keywords resource for managing keyword campaigns.
+ *
+ * @see https://developer.transmitsms.com/#keywords
+ */
+class KeywordsResource extends Resource
+{
+    /**
+     * Add a keyword to a virtual number.
+     *
+     * @param  string  $keyword  The keyword (e.g., "JOIN")
+     * @param  string  $number  The virtual number
+     *
+     * @throws TransmitSmsException
+     */
+    public function add(string $keyword, string $number): KeywordData
+    {
+        $request = new AddKeywordRequest($keyword, $number);
+
+        /** @var KeywordData */
+        return $this->connector->send($request)->dtoOrFail();
+    }
+
+    /**
+     * Add a keyword using a custom request.
+     *
+     * Use this to set additional options.
+     *
+     * @throws TransmitSmsException
+     */
+    public function addRequest(AddKeywordRequest $request): KeywordData
+    {
+        /** @var KeywordData */
+        return $this->connector->send($request)->dtoOrFail();
+    }
+
+    /**
+     * Get all keywords (paginated).
+     */
+    public function all(): TransmitSmsPaginator
+    {
+        return $this->connector->paginate(new GetKeywordsRequest);
+    }
+
+    /**
+     * Get keywords for a specific number (paginated).
+     *
+     * @param  string  $number  The virtual number to filter by
+     */
+    public function forNumber(string $number): TransmitSmsPaginator
+    {
+        $request = (new GetKeywordsRequest)->number($number);
+
+        return $this->connector->paginate($request);
+    }
+
+    /**
+     * Get all keywords using a custom request.
+     */
+    public function allRequest(GetKeywordsRequest $request): TransmitSmsPaginator
+    {
+        return $this->connector->paginate($request);
+    }
+
+    /**
+     * Edit a keyword.
+     *
+     * Returns a fluent request builder for setting options.
+     *
+     * @param  string  $keyword  The keyword to edit
+     * @param  string  $number  The virtual number
+     */
+    public function edit(string $keyword, string $number): EditKeywordRequest
+    {
+        return new EditKeywordRequest($keyword, $number);
+    }
+
+    /**
+     * Edit a keyword using a custom request.
+     *
+     * @throws TransmitSmsException
+     */
+    public function editRequest(EditKeywordRequest $request): bool
+    {
+        $response = $this->connector->send($request);
+        $data = $response->json();
+
+        return ($data['error']['code'] ?? '') === 'SUCCESS';
+    }
+
+    /**
+     * Activate a keyword.
+     *
+     * @param  string  $keyword  The keyword
+     * @param  string  $number  The virtual number
+     *
+     * @throws TransmitSmsException
+     */
+    public function activate(string $keyword, string $number): bool
+    {
+        $request = (new EditKeywordRequest($keyword, $number))->status('active');
+
+        return $this->editRequest($request);
+    }
+
+    /**
+     * Deactivate a keyword.
+     *
+     * @param  string  $keyword  The keyword
+     * @param  string  $number  The virtual number
+     *
+     * @throws TransmitSmsException
+     */
+    public function deactivate(string $keyword, string $number): bool
+    {
+        $request = (new EditKeywordRequest($keyword, $number))->status('inactive');
+
+        return $this->editRequest($request);
+    }
+}

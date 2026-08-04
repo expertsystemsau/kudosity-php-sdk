@@ -1,5 +1,5 @@
 {
-    "name": "expertsystemsau/transmitsms-php-sdk",
+    "name": "expertsystemsau/kudosity-php-sdk",
     "description": "TransmitSMS PHP Client Monorepo - Contains both the core PHP client and Laravel integration",
     "keywords": [
         "ExpertSystems",
@@ -8,7 +8,7 @@
         "laravel",
         "api-client"
     ],
-    "homepage": "https://github.com/expertsystemsau/transmitsms-php-client",
+    "homepage": "https://github.com/expertsystemsau/kudosity-php-client",
     "license": "MIT",
     "authors": [
         {
@@ -39,14 +39,14 @@
     "repositories": [
         {
             "type": "path",
-            "url": "packages/transmitsms-client",
+            "url": "packages/kudosity-client",
             "options": {
                 "symlink": true
             }
         },
         {
             "type": "path",
-            "url": "packages/transmitsms-laravel",
+            "url": "packages/kudosity-laravel",
             "options": {
                 "symlink": true
             }
@@ -54,13 +54,13 @@
     ],
     "autoload": {
         "psr-4": {
-            "ExpertSystems\\TransmitSms\\": "packages/transmitsms-client/src/",
-            "ExpertSystems\\TransmitSms\\Laravel\\": "packages/transmitsms-laravel/src/"
+            "ExpertSystems\\Kudosity\\": "packages/kudosity-client/src/",
+            "ExpertSystems\\Kudosity\\Laravel\\": "packages/kudosity-laravel/src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "ExpertSystems\\TransmitSms\\Tests\\": "tests/",
+            "ExpertSystems\\Kudosity\\Tests\\": "tests/",
             "Workbench\\App\\": "workbench/app/"
         }
     },
@@ -82,10 +82,10 @@
     "extra": {
         "laravel": {
             "providers": [
-                "ExpertSystems\\TransmitSms\\Laravel\\TransmitSmsServiceProvider"
+                "ExpertSystems\\Kudosity\\Laravel\\TransmitSmsServiceProvider"
             ],
             "aliases": {
-                "TransmitSms": "ExpertSystems\\TransmitSms\\Laravel\\Facades\\TransmitSms"
+                "TransmitSms": "ExpertSystems\\Kudosity\\Laravel\\Facades\\TransmitSms"
             }
         }
     },

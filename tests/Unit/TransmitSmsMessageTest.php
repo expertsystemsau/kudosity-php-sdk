@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use ExpertSystems\TransmitSms\Laravel\Notifications\TransmitSmsMessage;
+use ExpertSystems\Kudosity\Laravel\Notifications\TransmitSmsMessage;
 
 describe('TransmitSmsMessage', function () {
     describe('construction', function () {

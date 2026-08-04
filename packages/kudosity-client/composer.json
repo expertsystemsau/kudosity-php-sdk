@@ -1,0 +1,43 @@
+{
+    "name": "expertsystemsau/kudosity-php-client",
+    "description": "Framework-agnostic PHP client for the TransmitSMS API",
+    "keywords": [
+        "ExpertSystems",
+        "transmitsms",
+        "sms",
+        "api-client"
+    ],
+    "homepage": "https://github.com/expertsystemsau/kudosity-php-client",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Mitchell Williams",
+            "email": "mitchell@expertsystems.com.au",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "saloonphp/pagination-plugin": "^2.3",
+        "saloonphp/saloon": "^4.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^11.0",
+        "mockery/mockery": "^1.6"
+    },
+    "autoload": {
+        "psr-4": {
+            "ExpertSystems\\Kudosity\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "ExpertSystems\\Kudosity\\Tests\\": "tests/"
+        }
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

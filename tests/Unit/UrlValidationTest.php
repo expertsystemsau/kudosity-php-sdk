@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use ExpertSystems\TransmitSms\Exceptions\ValidationException;
-use ExpertSystems\TransmitSms\Support\Url;
+use ExpertSystems\Kudosity\Exceptions\ValidationException;
+use ExpertSystems\Kudosity\Support\Url;
 
 describe('Url validation', function () {
     describe('validate()', function () {
