@@ -1,15 +1,15 @@
 # TransmitSMS PHP Client
 
-[![Latest Version on Packagist](https://img.shields.io/packagist/v/expertsystemsau/transmitsms-php-client.svg?style=flat-square)](https://packagist.org/packages/expertsystemsau/transmitsms-php-client)
-[![Total Downloads](https://img.shields.io/packagist/dt/expertsystemsau/transmitsms-php-client.svg?style=flat-square)](https://packagist.org/packages/expertsystemsau/transmitsms-php-client)
-[![License](https://img.shields.io/packagist/l/expertsystemsau/transmitsms-php-client.svg?style=flat-square)](https://packagist.org/packages/expertsystemsau/transmitsms-php-client)
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/expertsystemsau/kudosity-php-client.svg?style=flat-square)](https://packagist.org/packages/expertsystemsau/kudosity-php-client)
+[![Total Downloads](https://img.shields.io/packagist/dt/expertsystemsau/kudosity-php-client.svg?style=flat-square)](https://packagist.org/packages/expertsystemsau/kudosity-php-client)
+[![License](https://img.shields.io/packagist/l/expertsystemsau/kudosity-php-client.svg?style=flat-square)](https://packagist.org/packages/expertsystemsau/kudosity-php-client)
 
 A framework-agnostic PHP client for the [TransmitSMS API](https://transmitsms.com/).
 
 ## Installation
 
 ```bash
-composer require expertsystemsau/transmitsms-php-client
+composer require expertsystemsau/kudosity-php-client
 ```
 
 ## Usage
@@ -19,10 +19,10 @@ operations on `$client->account()`, reporting on `$client->reporting()`, and
 contact lists on `$client->lists()`.
 
 ```php
-use ExpertSystems\TransmitSms\TransmitSmsClient;
-use ExpertSystems\TransmitSms\Requests\SendSmsRequest;
+use ExpertSystems\Kudosity\KudosityClient;
+use ExpertSystems\Kudosity\Requests\SendSmsRequest;
 
-$client = new TransmitSmsClient('your-api-key', 'your-api-secret');
+$client = new KudosityClient('your-api-key', 'your-api-secret');
 
 // Send an SMS — send(string $message, string $to, ?string $from = null, ?callable $configure = null)
 $sms = $client->sms()->send('Hello from TransmitSMS!', '+61400000000');
@@ -98,7 +98,7 @@ sender ID recipients see. It can be:
 There is no `from` argument on the constructor. Set it one of two ways:
 
 ```php
-$client = new TransmitSmsClient('your-api-key', 'your-api-secret');
+$client = new KudosityClient('your-api-key', 'your-api-secret');
 
 // 1. Per message — the third argument to send() overrides any default.
 //    send(string $message, string $to, ?string $from = null, ?callable $configure = null)
@@ -137,18 +137,18 @@ The client provides utilities for handling DLR (Delivery Receipt) and Reply call
 ### Setting Up Callback URLs
 
 ```php
-use ExpertSystems\TransmitSms\TransmitSmsConnector;
-use ExpertSystems\TransmitSms\TransmitSmsClient;
-use ExpertSystems\TransmitSms\Requests\SendSmsRequest;
-use ExpertSystems\TransmitSms\Callbacks\CallbackUrlBuilder;
-use ExpertSystems\TransmitSms\Callbacks\CallbackType;
+use ExpertSystems\Kudosity\KudosityV1Connector;
+use ExpertSystems\Kudosity\KudosityClient;
+use ExpertSystems\Kudosity\Requests\SendSmsRequest;
+use ExpertSystems\Kudosity\Callbacks\CallbackUrlBuilder;
+use ExpertSystems\Kudosity\Callbacks\CallbackType;
 
 // Create connector and client
-$connector = new TransmitSmsConnector(
+$connector = new KudosityV1Connector(
     apiKey: 'your-api-key',
     apiSecret: 'your-api-secret'
 );
-$client = new TransmitSmsClient($connector);
+$client = new KudosityClient($connector);
 
 // Create URL builder with your webhook base URL and signing key
 $urlBuilder = new CallbackUrlBuilder(
@@ -183,10 +183,10 @@ $result = $client->sms()->sendRequest($request);
 In your webhook endpoint, parse and verify the callback:
 
 ```php
-use ExpertSystems\TransmitSms\Callbacks\CallbackUrlParser;
-use ExpertSystems\TransmitSms\Data\DlrCallbackData;
-use ExpertSystems\TransmitSms\Data\ReplyCallbackData;
-use ExpertSystems\TransmitSms\Exceptions\InvalidSignatureException;
+use ExpertSystems\Kudosity\Callbacks\CallbackUrlParser;
+use ExpertSystems\Kudosity\Data\DlrCallbackData;
+use ExpertSystems\Kudosity\Data\ReplyCallbackData;
+use ExpertSystems\Kudosity\Exceptions\InvalidSignatureException;
 
 $parser = new CallbackUrlParser('your-secret-signing-key');
 

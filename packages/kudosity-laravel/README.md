@@ -15,7 +15,7 @@ composer require expertsystemsau/transmitsms-laravel
 Publish the configuration file:
 
 ```bash
-php artisan vendor:publish --tag="transmitsms-config"
+php artisan vendor:publish --tag="kudosity-config"
 ```
 
 ## Configuration
@@ -58,13 +58,13 @@ The facade proxies to the resource-based client: SMS operations live on `sms()`,
 account operations on `account()`, reporting on `reporting()`, and so on.
 
 ```php
-use ExpertSystems\TransmitSms\Laravel\Facades\TransmitSms;
+use ExpertSystems\Kudosity\Laravel\Facades\Kudosity;
 
 // Send an SMS — send(string $message, string $to, ?string $from = null, ?callable $configure = null)
-TransmitSms::sms()->send('Hello from Laravel!', '+61400000000');
+Kudosity::sms()->send('Hello from Laravel!', '+61400000000');
 
 // Get account balance
-$balance = TransmitSms::account()->getBalance();
+$balance = Kudosity::account()->getBalance();
 ```
 
 ### Notifications
@@ -73,7 +73,7 @@ Create a notification that uses the TransmitSMS channel:
 
 ```php
 use Illuminate\Notifications\Notification;
-use ExpertSystems\TransmitSms\Laravel\Notifications\TransmitSmsMessage;
+use ExpertSystems\Kudosity\Laravel\Notifications\KudosityMessage;
 
 class OrderShipped extends Notification
 {
@@ -82,9 +82,9 @@ class OrderShipped extends Notification
         return ['kudosity'];
     }
 
-    public function toKudosity($notifiable): TransmitSmsMessage
+    public function toKudosity($notifiable): KudosityMessage
     {
-        return TransmitSmsMessage::create('Your order has been shipped!')
+        return KudosityMessage::create('Your order has been shipped!')
             ->from('MyStore');
     }
 }
@@ -112,10 +112,10 @@ $user->notify(new OrderShipped());
 
 ### Message options
 
-`TransmitSmsMessage` is a fluent builder covering every send option:
+`KudosityMessage` is a fluent builder covering every send option:
 
 ```php
-TransmitSmsMessage::create('Your order has shipped!')
+KudosityMessage::create('Your order has shipped!')
     ->from('MyStore')                         // sender ID (else config/default)
     ->countryCode('AU')                       // normalise local numbers
     ->formatNumbers()                         // format numbers to E.164 client-side
@@ -129,9 +129,9 @@ To send to a TransmitSMS contact list instead of the notifiable's number, use
 `toList()` — the resolved recipient is then ignored:
 
 ```php
-public function toKudosity($notifiable): TransmitSmsMessage
+public function toKudosity($notifiable): KudosityMessage
 {
-    return TransmitSmsMessage::create('Flash sale for members!')
+    return KudosityMessage::create('Flash sale for members!')
         ->toList(12345);
 }
 ```
@@ -145,7 +145,7 @@ The package provides automatic handling for DLR (Delivery Receipt), Reply, and L
 ```php
 use App\Jobs\UpdateOrderSmsStatusJob;
 use App\Jobs\ProcessCustomerReplyJob;
-use ExpertSystems\TransmitSms\Laravel\Notifications\TransmitSmsMessage;
+use ExpertSystems\Kudosity\Laravel\Notifications\KudosityMessage;
 
 class OrderShipped extends Notification
 {
@@ -156,9 +156,9 @@ class OrderShipped extends Notification
         return ['kudosity'];
     }
 
-    public function toKudosity($notifiable): TransmitSmsMessage
+    public function toKudosity($notifiable): KudosityMessage
     {
-        return TransmitSmsMessage::create("Your order #{$this->order->id} has shipped!")
+        return KudosityMessage::create("Your order #{$this->order->id} has shipped!")
             ->from('MYSTORE')
             ->onDlr(UpdateOrderSmsStatusJob::class, [
                 'order_id' => $this->order->id,
@@ -179,8 +179,8 @@ class OrderShipped extends Notification
 namespace App\Jobs;
 
 use App\Models\Order;
-use ExpertSystems\TransmitSms\Data\DlrCallbackData;
-use ExpertSystems\TransmitSms\Laravel\Contracts\HandlesDlrCallback;
+use ExpertSystems\Kudosity\Data\DlrCallbackData;
+use ExpertSystems\Kudosity\Laravel\Contracts\HandlesDlrCallback;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
@@ -222,8 +222,8 @@ class UpdateOrderSmsStatusJob implements HandlesDlrCallback, ShouldQueue
 namespace App\Jobs;
 
 use App\Models\SmsConversation;
-use ExpertSystems\TransmitSms\Data\ReplyCallbackData;
-use ExpertSystems\TransmitSms\Laravel\Contracts\HandlesReplyCallback;
+use ExpertSystems\Kudosity\Data\ReplyCallbackData;
+use ExpertSystems\Kudosity\Laravel\Contracts\HandlesReplyCallback;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 
@@ -255,8 +255,8 @@ class ProcessCustomerReplyJob implements HandlesReplyCallback, ShouldQueue
 ```php
 namespace App\Jobs;
 
-use ExpertSystems\TransmitSms\Data\LinkHitCallbackData;
-use ExpertSystems\TransmitSms\Laravel\Contracts\HandlesLinkHitCallback;
+use ExpertSystems\Kudosity\Data\LinkHitCallbackData;
+use ExpertSystems\Kudosity\Laravel\Contracts\HandlesLinkHitCallback;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 
@@ -287,9 +287,9 @@ In addition to per-message handlers, you can listen to events for all callbacks:
 
 ```php
 // App\Providers\EventServiceProvider.php
-use ExpertSystems\TransmitSms\Laravel\Events\DlrReceived;
-use ExpertSystems\TransmitSms\Laravel\Events\ReplyReceived;
-use ExpertSystems\TransmitSms\Laravel\Events\LinkHitReceived;
+use ExpertSystems\Kudosity\Laravel\Events\DlrReceived;
+use ExpertSystems\Kudosity\Laravel\Events\ReplyReceived;
+use ExpertSystems\Kudosity\Laravel\Events\LinkHitReceived;
 
 protected $listen = [
     DlrReceived::class => [
@@ -309,7 +309,7 @@ Example listener:
 ```php
 namespace App\Listeners;
 
-use ExpertSystems\TransmitSms\Laravel\Events\DlrReceived;
+use ExpertSystems\Kudosity\Laravel\Events\DlrReceived;
 use Illuminate\Support\Facades\Log;
 
 class LogDlrCallback
@@ -423,7 +423,7 @@ Helper methods: `isDelivered()`, `isFailed()`, `isPending()`
 ┌─────────────────────────────────────────────────────────────────────┐
 │  Your App                                                           │
 │  ────────                                                           │
-│  TransmitSmsMessage::create('Hello')                               │
+│  KudosityMessage::create('Hello')                               │
 │      ->onDlr(MyJob::class, ['id' => 1])                           │
 │                    │                                                │
 │                    ▼                                                │
