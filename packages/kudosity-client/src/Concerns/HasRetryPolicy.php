@@ -9,10 +9,21 @@ use Saloon\Exceptions\Request\RequestException;
 use Saloon\Http\Request;
 
 /**
- * Shared retry behaviour for the V1 and V2 connectors.
+ * Shared retry configuration for the V1 and V2 connectors.
  *
  * Both APIs fail the same transient ways — 429 rate limits, 5xx, dropped
- * connections — so the policy lives here rather than in either connector.
+ * connections — so the configuration lives here rather than in either
+ * connector.
+ *
+ * `handleRetry()` below is written to retry a 429 or 5xx as well as a
+ * dropped connection, but neither connector's HTTP failures currently reach
+ * it in practice: Saloon only calls it for `FatalRequestException` (a
+ * connection failure) or `RequestException` (Saloon's own HTTP-failure
+ * exception), and both connectors override `getRequestException()` to
+ * throw a `KudosityException` instead — outside that hierarchy — so an
+ * HTTP failure response escapes the retry loop on the first attempt. Only
+ * dropped connections retry today. This predates the V2 connector and is
+ * pre-existing behaviour, not something this trait introduced.
  *
  * @see https://docs.saloon.dev/digging-deeper/retrying-requests
  */
@@ -56,8 +67,11 @@ trait HasRetryPolicy
     /**
      * Decide whether a failed request should be retried.
      *
-     * Retries connection failures, 429s and 5xx. Never retries other 4xx —
-     * a validation error will fail identically however many times it is sent.
+     * Written to retry connection failures, 429s and 5xx, and never other
+     * 4xx — a validation error will fail identically however many times it
+     * is sent. In practice, only the connection-failure branch is ever
+     * reached today; see this trait's docblock for why the 429/5xx branches
+     * below are currently unreachable dead code.
      */
     public function handleRetry(FatalRequestException|RequestException $exception, Request $request): bool
     {
