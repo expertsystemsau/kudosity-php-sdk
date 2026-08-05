@@ -4,7 +4,9 @@ source: xsys-handoff
 mode: full
 generated_at: "2026-08-05T17:31+10:00"
 title: "Kudosity 2.0 migration — Phase 3 of 6 ready to execute"
-status: in-progress
+status: resumed
+resumed_at: "2026-08-05T17:55+10:00"
+resumed_from_sha: "a5794bfd4c6fb1791905451b7575824c528823c8"
 branch: "main"
 head_sha: "2aada949038b756d6a0c706260e09661831254b2"
 dirty_files: 0
