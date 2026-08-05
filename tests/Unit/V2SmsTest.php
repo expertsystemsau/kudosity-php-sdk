@@ -1,0 +1,170 @@
+<?php
+
+declare(strict_types=1);
+
+use ExpertSystems\Kudosity\Contracts\PaginatesV2Pages;
+use ExpertSystems\Kudosity\Data\V2\SmsMessageData;
+use ExpertSystems\Kudosity\Enums\MessageStatus;
+use ExpertSystems\Kudosity\Exceptions\NotFoundException;
+use ExpertSystems\Kudosity\Exceptions\ValidationException;
+use ExpertSystems\Kudosity\KudosityV2Connector;
+use ExpertSystems\Kudosity\Requests\V2\GetSmsV2Request;
+use ExpertSystems\Kudosity\Requests\V2\ListSmsV2Request;
+use ExpertSystems\Kudosity\Requests\V2\SendSmsV2Request;
+use ExpertSystems\Kudosity\Resources\SmsV2Resource;
+use Saloon\Http\Faking\MockClient;
+use Saloon\Http\Faking\MockResponse;
+
+/** Verbatim from .agents/skills/kudosity-sms/SKILL.md — note the FLAT envelope. */
+function smsSendBody(array $overrides = []): array
+{
+    return array_merge([
+        'id' => '2d2c8fb6-e514-4f5f-9706-0672b0259218',
+        'recipient' => '61478038915',
+        'recipient_country' => 'AU',
+        'sender' => '61481074185',
+        'sender_country' => 'AU',
+        'message_ref' => 'ncc1701d',
+        'message' => 'Report to the ready room!',
+        'status' => 'delivered',
+        'sms_count' => '1',
+        'is_gsm' => true,
+        'routed_via' => '',
+        'track_links' => true,
+        'direction' => 'OUT',
+        'created_at' => '2022-03-28T06:12:52.450674000Z',
+        'updated_at' => '2022-03-28T06:12:52.450674000Z',
+    ], $overrides);
+}
+
+function smsResource(array $responses): SmsV2Resource
+{
+    $connector = new KudosityV2Connector('key');
+    $connector->withMockClient(new MockClient($responses));
+
+    return new SmsV2Resource($connector);
+}
+
+it('sends a single-recipient SMS and returns a typed DTO', function () {
+    $mock = new MockClient([SendSmsV2Request::class => MockResponse::make(smsSendBody(), 200)]);
+    $connector = new KudosityV2Connector('key');
+    $connector->withMockClient($mock);
+
+    $sms = (new SmsV2Resource($connector))->send('Report to the ready room!', '61478038915', '61481074185');
+
+    expect($sms)->toBeInstanceOf(SmsMessageData::class)
+        ->and($sms->id)->toBe('2d2c8fb6-e514-4f5f-9706-0672b0259218')
+        ->and($sms->status)->toBe(MessageStatus::Delivered)
+        ->and($sms->recipientCountry)->toBe('AU');
+
+    $body = $mock->getLastPendingRequest()->body()->all();
+
+    expect($body)->toBe([
+        'message' => 'Report to the ready room!',
+        'sender' => '61481074185',
+        'recipient' => '61478038915',
+    ]);
+});
+
+it('casts the string sms_count to an int', function () {
+    // The API returns "1", not 1. Arithmetic on the raw value silently
+    // concatenates — "1" + 1 gives "11".
+    $sms = smsResource([SendSmsV2Request::class => MockResponse::make(smsSendBody(['sms_count' => '3']), 200)])
+        ->send('Hi', '61478038915', '61481074185');
+
+    expect($sms->smsCount)->toBe(3)->and($sms->smsCount)->toBeInt();
+});
+
+it('omits optional fields from the body rather than sending nulls', function () {
+    $mock = new MockClient([SendSmsV2Request::class => MockResponse::make(smsSendBody(), 200)]);
+    $connector = new KudosityV2Connector('key');
+    $connector->withMockClient($mock);
+
+    (new SmsV2Resource($connector))->send('Hi', '61478038915', '61481074185');
+
+    expect($mock->getLastPendingRequest()->body()->all())
+        ->not->toHaveKey('message_ref')
+        ->and($mock->getLastPendingRequest()->body()->all())->not->toHaveKey('track_links');
+});
+
+it('sends message_ref and track_links when given', function () {
+    $mock = new MockClient([SendSmsV2Request::class => MockResponse::make(smsSendBody(), 200)]);
+    $connector = new KudosityV2Connector('key');
+    $connector->withMockClient($mock);
+
+    (new SmsV2Resource($connector))->send('Hi', '61478038915', '61481074185', messageRef: 'order-1', trackLinks: true);
+
+    $body = $mock->getLastPendingRequest()->body()->all();
+
+    expect($body['message_ref'])->toBe('order-1')->and($body['track_links'])->toBeTrue();
+});
+
+it('rejects a message_ref longer than the documented 500 characters', function () {
+    new SendSmsV2Request('Hi', '61478038915', '61481074185', messageRef: str_repeat('a', 501));
+})->throws(ValidationException::class, '500');
+
+it('reads one SMS by id', function () {
+    $mock = new MockClient([GetSmsV2Request::class => MockResponse::make(smsSendBody(), 200)]);
+    $connector = new KudosityV2Connector('key');
+    $connector->withMockClient($mock);
+
+    $sms = (new SmsV2Resource($connector))->get('2d2c8fb6-e514-4f5f-9706-0672b0259218');
+
+    expect($sms->id)->toBe('2d2c8fb6-e514-4f5f-9706-0672b0259218')
+        ->and((string) $mock->getLastPendingRequest()->getUri())
+        ->toBe('https://api.transmitmessage.com/v2/sms/2d2c8fb6-e514-4f5f-9706-0672b0259218');
+});
+
+it('sends no body on the GET reader', function () {
+    // Phase 2 split the request bases precisely so readers do not ship a JSON
+    // body; a V2 GET carrying one is stripped or rejected by some gateways.
+    $mock = new MockClient([GetSmsV2Request::class => MockResponse::make(smsSendBody(), 200)]);
+    $connector = new KudosityV2Connector('key');
+    $connector->withMockClient($mock);
+
+    (new SmsV2Resource($connector))->get('abc');
+
+    $pending = $mock->getLastPendingRequest();
+
+    expect($pending->headers()->get('Content-Type'))->toBeNull()
+        ->and((string) $pending->body())->toBe('');
+});
+
+it('turns a 404 into a NotFoundException', function () {
+    smsResource([GetSmsV2Request::class => MockResponse::make(['error' => 'SMS not found'], 404)])->get('nope');
+})->throws(NotFoundException::class, 'SMS not found');
+
+it('pages the list endpoint and casts its string totals', function () {
+    $connector = new KudosityV2Connector('key');
+    $connector->withMockClient(new MockClient([
+        ListSmsV2Request::class => MockResponse::make([
+            'smses' => [smsSendBody(), smsSendBody(['id' => 'second'])],
+            'total_records' => '2',
+            'total_segments' => '2',
+        ], 200),
+    ]));
+
+    $items = iterator_to_array((new SmsV2Resource($connector))->list()->items());
+
+    expect($items)->toHaveCount(2)->and($items[0]['id'])->toBe('2d2c8fb6-e514-4f5f-9706-0672b0259218');
+});
+
+it('passes list filters through as query parameters', function () {
+    $mock = new MockClient([
+        ListSmsV2Request::class => MockResponse::make(['smses' => [smsSendBody()], 'total_records' => '1'], 200),
+    ]);
+    $connector = new KudosityV2Connector('key');
+    $connector->withMockClient($mock);
+
+    iterator_to_array((new SmsV2Resource($connector))->list(status: MessageStatus::Delivered, recipient: '61478038915')->items());
+
+    $query = $mock->getLastPendingRequest()->query();
+
+    expect($query->get('status'))->toBe('DELIVERED')
+        ->and($query->get('recipient'))->toBe('61478038915');
+});
+
+it('declares itself paged so the connector picks the right paginator', function () {
+    expect(new ListSmsV2Request)->toBeInstanceOf(PaginatesV2Pages::class)
+        ->and((new ListSmsV2Request)->paginationItemsKey())->toBe('smses');
+});

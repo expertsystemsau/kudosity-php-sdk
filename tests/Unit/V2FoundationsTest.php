@@ -42,6 +42,33 @@ it('accepts a lowercase status, since the send response returns lowercase', func
         ->and(MessageStatus::fromApi('pending'))->toBe(MessageStatus::Pending);
 });
 
+it('treats only Delivered and Read as isDelivered, deliberately excluding Accepted', function () {
+    // ACCEPTED means the carrier took the message, not that it arrived.
+    // Treating it as delivered is the documented cause of over-reported
+    // success rates — do not "fix" this to include it.
+    expect(MessageStatus::Delivered->isDelivered())->toBeTrue()
+        ->and(MessageStatus::Read->isDelivered())->toBeTrue()
+        ->and(MessageStatus::Accepted->isDelivered())->toBeFalse();
+});
+
+it('is isTerminal for exactly the documented final statuses, and no others', function () {
+    // An allow-list of the full membership, not spot checks either way — this
+    // project has a documented history of tests that only denied a couple of
+    // hardcoded values.
+    $terminal = [
+        MessageStatus::Delivered,
+        MessageStatus::Read,
+        MessageStatus::Failed,
+        MessageStatus::Rejected,
+        MessageStatus::Undeliverable,
+        MessageStatus::HardBounce,
+    ];
+
+    foreach (MessageStatus::cases() as $status) {
+        expect($status->isTerminal())->toBe(in_array($status, $terminal, true));
+    }
+});
+
 it('builds an sms_fallback body with the sender omitted when absent', function () {
     expect((new SmsFallback('Shorter plain text'))->toArray())
         ->toBe(['message' => 'Shorter plain text']);
