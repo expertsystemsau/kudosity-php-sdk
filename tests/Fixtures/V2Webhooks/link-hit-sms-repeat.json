@@ -1,0 +1,18 @@
+{
+    "event_type": "LINK_HIT",
+    "link_hit": {
+        "hits": 2,
+        "source_message": {
+            "id": "953b88be-5b6f-4b6d-8fcb-3436ec21c0be",
+            "message": "Kudosity SDK link-hit capture. Please tap: https://tapth.at/qK.LnvtM",
+            "message_ref": "linkhit-8842:cust-4471",
+            "recipient": "61400000000",
+            "sender": "61481074185",
+            "type": "SMS"
+        },
+        "url": "https://www.example.com/abc"
+    },
+    "timestamp": "2026-08-05T15:23:30Z",
+    "webhook_id": "8ab7060c-6c74-482b-baf6-8e7ef36cdf63",
+    "webhook_name": "SDK 2.0 link-hit capture"
+}

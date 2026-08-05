@@ -52,13 +52,16 @@
 |---|---|---|---|
 | Webhooks | `POST /v2/webhook` (**201**), `GET /v2/webhook`, `PUT /v2/webhook/{id}`, `DELETE /v2/webhook/{id}` | **flat** | Verified live. `PUT` is a replace, not a patch. |
 | Senders | `GET /v2/senders/registrations`, `POST /v2/senders/registrations`, `POST /v2/senders/registrations/{id}/verifications`, `POST /v2/senders/registrations/{id}/verifications/confirmation`, `DELETE /v2/senders/phone-numbers/{number}` | **wrapped in `data`** | Response shape unconfirmed — Task 5 captures it before modelling it. |
-| Inbound payloads | not an endpoint — ten event types across four payload shapes | n/a | Four real fixtures; `LINK_HIT`/`OPT_OUT` from documented examples until captured. |
+| Inbound payloads | not an endpoint — ten event types across four payload shapes | n/a | Six real fixtures covering five event types. Only `OPT_OUT` and the MMS link-hit variant come from documented examples. |
 
 ### What the live reconnaissance established, and the docs do not say
 
 Every item below was observed against the real API on 2026-08-05 and is a constraint on this phase, not a nicety.
 
-- **Deliveries are not signed.** Observed header set: `accept-encoding`, `content-length`, `content-type`, `host`, `sentry-trace`, `traceparent`, `user-agent: Go-http-client/2.0`. No HMAC, signature, or auth header. Source IP `35.197.178.201`. This is why Task 3 exists.
+- **Deliveries are not signed.** Observed header set: `accept-encoding`, `content-length`, `content-type`, `host`, `sentry-trace`, `traceparent`, `user-agent: Go-http-client/2.0`. No HMAC, signature, or auth header. Source IP `35.197.178.201`. Re-confirmed unchanged on 2026-08-05. This is why Task 3 exists.
+- **Deliveries are at-least-once, and a stale status arrives after a newer one.** Observed: `SENT` redelivered 60s later with its original timestamp, 57s *after* `DELIVERED`, byte-identical to the original. Task 2 exists because of this and replays the exact sequence.
+- **A `LINK_HIT` is not evidence a human clicked.** The first hit fired in the same second as `DELIVERED`, ~2s after the send — a machine prefetch. `hits` is cumulative for the tracked link and counts machine fetches, so it is not an engagement metric.
+- **`link_hit.url` is the original destination; `source_message.message` holds the shortened link.** Both in one fixture.
 - **Three undocumented payload fields:** `webhook_id` and `webhook_name` at top level, and `status.description` on `MMS_STATUS` carrying carrier detail. All three must be modelled.
 - **`GET /v2/webhook` returns `{"webhooks": [...]}`, and `{}` when there are none** — the key is omitted entirely, so the list read must tolerate a missing key rather than indexing into it.
 - **`MMS_STATUS` reached `DELIVERED`**, contradicting the skill's "internal statuses only — SENT, FAILED". Do not constrain MMS status to a subset.
@@ -251,9 +254,15 @@ it('resolves an event type Kudosity has not published yet to Unknown rather than
 });
 ```
 
-Then add, from the **documented** examples in `.agents/skills/kudosity-webhooks/SKILL.md` (no fixture exists yet — see Task 4 Step 8):
+Then add `LINK_HIT` against its **captured fixtures** — `link-hit-sms.json` (`hits: 1`) and `link-hit-sms-repeat.json` (`hits: 2`), both real deliveries from 2026-08-05:
 
-- `LINK_HIT` → `LinkHitEvent`, with `hits` cast to `int`, `url` the original destination and **not** the shortened link, and `messageRef()` reading `link_hit.source_message.message_ref`. Assert `hits` is cumulative-not-unique in a comment, not a test — it is a semantic, not a shape.
+- `hits` cast to `int`, and the two fixtures asserted together to pin that it is **cumulative for the tracked link, not a unique-recipient count**.
+- **`url` is the original destination; `source_message.message` carries the SHORTENED link.** The fixture holds `https://tapth.at/qK.LnvtM` in the message and `https://www.example.com/abc` in `url`. Assert both, from the same fixture — code that expects the original URL in the message text is a real and easy mistake.
+- `messageRef()` reads `link_hit.source_message.message_ref`, and the fixture's ref is composite (`linkhit-8842:cust-4471`).
+- **A docblock on `LinkHitEvent` stating that a link hit is not evidence a human clicked.** In the captured run, `hits: 1` fired in the same second as `DELIVERED`, ~2s after the send — a machine prefetch, not a tap; the human tap was `hits: 2`, sixteen seconds later. Treating `LINK_HIT` as engagement over-reports it in exactly the shape that treating `ACCEPTED` as `DELIVERED` does. This belongs in the type, not in a README nobody reads at 2am.
+
+Then, from the **documented** example in `.agents/skills/kudosity-webhooks/SKILL.md` (no fixture — an MMS link hit was not captured):
+
 - An MMS link hit whose `source_message` carries `subject` and `content_urls`, proving `SourceMessage` models both.
 - `OPT_OUT` → `OptOutEvent`, `opt_out.source` resolving to `OptOutSource::SmsInbound` for a STOP reply and `OptOutSource::LinkHit` for the link, plus an unrecognised source landing on `Unknown`.
 - A payload with an absent `timestamp`, and one with a malformed `timestamp`, both yielding `null` rather than throwing.
@@ -318,7 +327,12 @@ Keep `raw()` on the base. It is the escape hatch for exactly the undocumented-fi
 - Create: `src/Webhooks/StatusPrecedence.php`
 - Test: `tests/Unit/V2StatusPrecedenceTest.php`
 
-**Why the SDK ships this rather than documenting it:** multiple status events fire per message and are explicitly *not* order-guaranteed. Every consumer that records delivery state has to solve it, getting it wrong silently corrupts delivery reporting rather than erroring, and the captured fixtures prove it happens on a plain SMS — `SENT` and `DELIVERED` four seconds apart, sharing one `status.id`. This was a settled design decision before this plan.
+**Why the SDK ships this rather than documenting it:** multiple status events fire per message and are explicitly *not* order-guaranteed. Every consumer that records delivery state has to solve it, and getting it wrong silently corrupts delivery reporting rather than erroring. This was a settled design decision before this plan.
+
+**It is no longer hypothetical.** The 2026-08-05 link-hit run observed the failure directly: the `SENT` event was **redelivered 60 seconds later, carrying its original timestamp, arriving 57 seconds after `DELIVERED`** — see the timeline in `tests/Fixtures/V2Webhooks/README.md`. Two things follow, and both shape this class:
+
+- **Deliveries are at-least-once.** The duplicate was byte-identical to the original, so *nothing in the payload* distinguishes them. The guard can only work off recorded state.
+- **`status.id` is identical across every status event for a message**, confirmed across all three status deliveries in that run. It is the correct key.
 
 **Interfaces:**
 - Produces `Webhooks\StatusPrecedence` with `public static function supersedes(MessageStatus $incoming, MessageStatus $recorded): bool` and `public static function rank(MessageStatus $status): int`.
@@ -345,7 +359,10 @@ The cases that matter, each asserted in both directions so the rule cannot be ha
 | `Unknown` | anything recorded | `false` | never let an unresolved value overwrite a known one |
 | anything | `Unknown` | `true` | but a known value always beats an unresolved one |
 
-Add a test asserting the two captured fixtures in **reverse arrival order** still end at `DELIVERED` — that is the scenario, not a hypothetical.
+Then add two tests replaying the captured fixtures, because this is a recorded sequence rather than a hypothetical:
+
+1. `sms-status-sent.json` then `sms-status-delivered.json` then **`sms-status-sent.json` again** — the exact observed order — must end at `DELIVERED`. The third delivery is the real redelivery, not an invented case.
+2. The same three in any order end at `DELIVERED`, and a replay of `sms-status-delivered.json` on top of itself reports "no update" rather than an update, so a consumer counting state changes does not double-count an at-least-once delivery.
 
 Give each rule its own single-violation input, and assert on something only that rule produces. A test asserting merely that "some boolean came back" is the defect class Phase 3's review caught three times.
 
@@ -401,6 +418,7 @@ Document in the class docblock that this protects **correlation**, not the paylo
 **Interfaces:**
 - `WebhooksResource extends V2Resource` with `create(string $name, string $url, array $eventTypes = [], ?WebhookFilter $filter = null, ?int $rateLimit = null): WebhookData`, `all(): array<int, WebhookData>`, `update(string $id, string $name, string $url, WebhookFilter $filter, ?int $rateLimit = null): WebhookData`, `delete(string $id): bool`.
 - `final readonly WebhookFilter` with named constructor arguments for `eventType`, `sender`, `status`, `messageRef`, `campaignId`, all `array<int, string>`-or-enum, plus `toArray()` omitting empties.
+- `final readonly WebhookData` carrying `id`, `name`, `url`, `filter`, `rateLimit`, and the four fields the skill does not document but the live create response returns: **`isSandbox`, `createdAt`, `updatedAt`**, with `rateLimit` echoed as `0` meaning system default. The timestamps carry **nine** fractional digits, so they go through `ParsesV2Timestamps` from Task 1 — `RFC3339_EXTENDED` cannot read them. The captured response is quoted in `tests/Fixtures/V2Webhooks/README.md`.
 
 - [ ] **Step 1: Read the skill.** `.agents/skills/kudosity-webhooks/SKILL.md`, all of it. The filter semantics table and the "Important Notes" list are the parts this task encodes.
 
@@ -440,13 +458,9 @@ Either way, record the observed status code in your report. Tear the throwaway w
 
 - [ ] **Step 6: Verify and commit.**
 
-- [ ] **Step 7 (optional, sequencing): capture the `LINK_HIT` fixture**
+- [x] **Step 7: capture the `LINK_HIT` fixture** — **done 2026-08-05**, before this plan ran. `link-hit-sms.json` and `link-hit-sms-repeat.json`, taking fixture coverage to five of ten event types. The run also produced the redelivery evidence Task 2 now replays and the four undocumented webhook-resource fields Task 4 models. `OPT_OUT` remains deliberately uncaptured: triggering it means replying STOP, which opts the test handset out.
 
-Cheap, needs no provisioning, and takes fixture coverage to five of ten event types with real payloads. Send an SMS with `track_links: true` and a URL, tap the link on the handset, capture the delivery, redact the numbers the way `tests/Fixtures/V2Webhooks/README.md` documents, and add it to the fixture table. Then point Task 1's `LINK_HIT` tests at the fixture instead of the doc example.
-
-**Deliberately skip `OPT_OUT`** — triggering it means replying STOP, which opts the test handset out of receiving messages.
-
-- [ ] **Step 8: The rig, for Steps 5 and 7**
+- [ ] **Step 8: The rig, for Step 5**
 
 A local HTTP server plus `ngrok http <port>`; register a webhook at the tunnel URL; tear it down afterwards. Webhook URLs must be HTTPS, which is the whole reason for the tunnel. Log the complete request headers as well as the body — that header set is the evidence that deliveries are unsigned, and it is worth re-confirming it has not changed.
 
