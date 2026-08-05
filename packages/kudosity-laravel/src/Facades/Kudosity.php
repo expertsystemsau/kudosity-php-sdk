@@ -11,6 +11,8 @@ use Saloon\Http\Response;
 
 /**
  * @method static KudosityV1Connector connector()
+ * @method static \ExpertSystems\Kudosity\KudosityV1Connector v1()
+ * @method static \ExpertSystems\Kudosity\KudosityV2Connector v2()
  * @method static \ExpertSystems\Kudosity\Resources\AccountResource account()
  * @method static \ExpertSystems\Kudosity\Resources\BulkSmsResource bulk()
  * @method static \ExpertSystems\Kudosity\Resources\ReportingResource reporting()
@@ -21,6 +23,7 @@ use Saloon\Http\Response;
  * @method static Response send(\ExpertSystems\Kudosity\Requests\KudosityV1Request $request)
  * @method static array<string, mixed> sendAndGetJson(\ExpertSystems\Kudosity\Requests\KudosityV1Request $request)
  * @method static KudosityClient setBaseUrl(string $baseUrl)
+ * @method static KudosityClient setV1BaseUrl(string $baseUrl)
  *
  * @see KudosityClient
  */

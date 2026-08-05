@@ -17,7 +17,9 @@ use Saloon\Http\Response;
 
 class KudosityClient
 {
-    protected KudosityV1Connector $connector;
+    protected KudosityV1Connector $v1Connector;
+
+    protected KudosityV2Connector $v2Connector;
 
     /**
      * Cached resource instances.
@@ -42,68 +44,101 @@ class KudosityClient
     protected ?EmailSmsResource $emailSmsResource = null;
 
     /**
-     * Create a new Kudosity client instance.
+     * Create a new Kudosity client.
      *
-     * For most use cases, use the standard constructor with API credentials.
-     * To create a client from an existing connector, use fromConnector().
+     * Kudosity runs two APIs under one account. V2 (`api.transmitmessage.com`)
+     * authenticates with the key alone and covers single-recipient SMS, MMS,
+     * WhatsApp, RCS, webhooks and senders. V1 (`api.transmitsms.com`) needs the
+     * key and secret and covers contact lists, bulk and scheduled sends,
+     * reporting and balance. Omit the secret if you only need V2.
      *
-     * @param  string  $apiKey  Your Kudosity API key
-     * @param  string  $apiSecret  Your Kudosity API secret
-     * @param  string  $baseUrl  The base URL for the API
-     * @param  int  $timeout  Request timeout in seconds
+     * @param  string  $apiKey  Your Kudosity API key — used by both APIs
+     * @param  string  $apiSecret  Your Kudosity API secret — V1 only
+     * @param  string|null  $v1BaseUrl  Override the V1 host
+     * @param  string|null  $v2BaseUrl  Override the V2 host
+     * @param  int  $timeout  Request timeout in seconds, applied to both
      */
     public function __construct(
         string $apiKey,
-        string $apiSecret,
-        string $baseUrl = KudosityV1Connector::BASE_URL,
+        string $apiSecret = '',
+        ?string $v1BaseUrl = null,
+        ?string $v2BaseUrl = null,
         int $timeout = 30,
     ) {
-        $this->connector = new KudosityV1Connector(
+        $this->v1Connector = new KudosityV1Connector(
             apiKey: $apiKey,
             apiSecret: $apiSecret,
-            baseUrl: $baseUrl,
+            baseUrl: $v1BaseUrl ?? KudosityV1Connector::BASE_URL,
+            timeout: $timeout,
+        );
+
+        $this->v2Connector = new KudosityV2Connector(
+            apiKey: $apiKey,
+            baseUrl: $v2BaseUrl ?? KudosityV2Connector::BASE_URL,
             timeout: $timeout,
         );
     }
 
     /**
-     * Create client from an existing connector.
+     * Build from pre-configured connectors, for a container or a shared setup.
      *
-     * This is useful when you need to share a connector between multiple
-     * clients or when using a pre-configured connector from a service container.
-     *
-     * Note: The connector should be properly configured with valid credentials
-     * before being passed to this method. No validation is performed on the
-     * connector's configuration (API key, secret, etc.). Invalid or empty
-     * credentials will result in authentication failures when making requests.
-     *
-     * @param  KudosityV1Connector  $connector  A pre-configured connector instance
-     * @return self A new client using the provided connector
+     * A connector you do not supply is constructed from the other's API key,
+     * which both APIs share. The derived connector does NOT inherit the
+     * supplied one's base URL or timeout — they are different hosts, so
+     * there is nothing sensible to copy across.
      */
-    public static function fromConnector(KudosityV1Connector $connector): self
-    {
-        // Create a new instance using the connector's credentials
-        // The connector stores these values, so we extract them for proper initialization
-        $client = new self(
-            apiKey: $connector->getApiKey(),
-            apiSecret: $connector->getApiSecret(),
-            baseUrl: $connector->resolveBaseUrl(),
-            timeout: $connector->getTimeout(),
-        );
+    public static function fromConnectors(
+        ?KudosityV1Connector $v1 = null,
+        ?KudosityV2Connector $v2 = null,
+    ): self {
+        // Written this way rather than `$v1?->getApiKey() ?? $v2->getApiKey()`
+        // so PHPStan can see that $v2 is non-null on the branch that uses it.
+        if ($v1 !== null) {
+            $apiKey = $v1->getApiKey();
+        } elseif ($v2 !== null) {
+            $apiKey = $v2->getApiKey();
+        } else {
+            throw new KudosityException('Provide at least one connector.');
+        }
 
-        // Replace the newly created connector with the provided one
-        // to preserve any custom configuration or middleware
-        $client->connector = $connector;
+        $client = new self($apiKey);
+
+        $client->v1Connector = $v1 ?? $client->v1Connector;
+        $client->v2Connector = $v2 ?? $client->v2Connector;
 
         return $client;
     }
 
     /**
-     * Get the underlying connector.
+     * Build from a V1 connector alone. The V2 connector is derived from its key.
+     */
+    public static function fromConnector(KudosityV1Connector $connector): self
+    {
+        return self::fromConnectors(v1: $connector);
+    }
+
+    /**
+     * The V1 connector (`api.transmitsms.com`, key + secret).
+     */
+    public function v1(): KudosityV1Connector
+    {
+        return $this->v1Connector;
+    }
+
+    /**
+     * The V2 connector (`api.transmitmessage.com`, key only).
+     */
+    public function v2(): KudosityV2Connector
+    {
+        return $this->v2Connector;
+    }
+
+    /**
+     * The V1 connector. Kept for callers that predate the two-connector split.
      */
     public function connector(): KudosityV1Connector
     {
-        return $this->connector;
+        return $this->v1();
     }
 
     // =========================================================================
@@ -117,7 +152,7 @@ class KudosityClient
      */
     public function account(): AccountResource
     {
-        return $this->accountResource ??= new AccountResource($this->connector);
+        return $this->accountResource ??= new AccountResource($this->v1Connector);
     }
 
     /**
@@ -128,7 +163,7 @@ class KudosityClient
      */
     public function bulk(): BulkSmsResource
     {
-        return $this->bulkResource ??= new BulkSmsResource($this->connector);
+        return $this->bulkResource ??= new BulkSmsResource($this->v1Connector);
     }
 
     /**
@@ -138,7 +173,7 @@ class KudosityClient
      */
     public function reporting(): ReportingResource
     {
-        return $this->reportingResource ??= new ReportingResource($this->connector);
+        return $this->reportingResource ??= new ReportingResource($this->v1Connector);
     }
 
     /**
@@ -148,7 +183,7 @@ class KudosityClient
      */
     public function lists(): ListsResource
     {
-        return $this->listsResource ??= new ListsResource($this->connector);
+        return $this->listsResource ??= new ListsResource($this->v1Connector);
     }
 
     /**
@@ -158,7 +193,7 @@ class KudosityClient
      */
     public function numbers(): NumbersResource
     {
-        return $this->numbersResource ??= new NumbersResource($this->connector);
+        return $this->numbersResource ??= new NumbersResource($this->v1Connector);
     }
 
     /**
@@ -168,7 +203,7 @@ class KudosityClient
      */
     public function keywords(): KeywordsResource
     {
-        return $this->keywordsResource ??= new KeywordsResource($this->connector);
+        return $this->keywordsResource ??= new KeywordsResource($this->v1Connector);
     }
 
     /**
@@ -178,7 +213,7 @@ class KudosityClient
      */
     public function emailSms(): EmailSmsResource
     {
-        return $this->emailSmsResource ??= new EmailSmsResource($this->connector);
+        return $this->emailSmsResource ??= new EmailSmsResource($this->v1Connector);
     }
 
     // =========================================================================
@@ -188,14 +223,16 @@ class KudosityClient
     /**
      * Send a request and return the response.
      *
-     * Use this for advanced use cases where you need direct access to the response.
-     * For most cases, prefer using the resource methods (e.g., $client->account()->getBalance()).
+     * V1 only — takes a `KudosityV1Request` and validates the response using
+     * V1's `error.code` envelope. Use this for advanced use cases where you
+     * need direct access to the response. For most cases, prefer using the
+     * resource methods (e.g., $client->account()->getBalance()).
      *
      * @throws KudosityException
      */
     public function send(KudosityV1Request $request): Response
     {
-        $response = $this->connector->send($request);
+        $response = $this->v1Connector->send($request);
 
         $this->validateResponse($response);
 
@@ -205,8 +242,9 @@ class KudosityClient
     /**
      * Send a request and return the JSON data as an array.
      *
-     * Use this for advanced use cases where you need the raw JSON response.
-     * For most cases, prefer using the resource methods which return typed DTOs.
+     * V1 only — see send(). Use this for advanced use cases where you need
+     * the raw JSON response. For most cases, prefer using the resource
+     * methods which return typed DTOs.
      *
      * @return array<string, mixed>
      *
@@ -223,6 +261,10 @@ class KudosityClient
 
     /**
      * Validate the API response and throw exception if error.
+     *
+     * V1 only — uses V1's `error.code` envelope convention. V2 signals
+     * failure purely by HTTP status and is handled by
+     * `KudosityV2Connector::getRequestException()` instead.
      *
      * @throws KudosityException
      */
@@ -242,11 +284,23 @@ class KudosityClient
     }
 
     /**
-     * Set a custom base URL.
+     * Set a custom base URL for the V1 API (`api.transmitsms.com`).
+     *
+     * Kept as an alias of setV1BaseUrl() for callers written before the
+     * two-connector split. On a two-API client, an unqualified "base URL"
+     * is ambiguous — prefer setV1BaseUrl() or v2()->setBaseUrl() directly.
      */
     public function setBaseUrl(string $baseUrl): self
     {
-        $this->connector->setBaseUrl($baseUrl);
+        return $this->setV1BaseUrl($baseUrl);
+    }
+
+    /**
+     * Set a custom base URL for the V1 API (`api.transmitsms.com`).
+     */
+    public function setV1BaseUrl(string $baseUrl): self
+    {
+        $this->v1Connector->setBaseUrl($baseUrl);
 
         return $this;
     }

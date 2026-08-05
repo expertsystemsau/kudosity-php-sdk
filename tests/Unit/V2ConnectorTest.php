@@ -72,6 +72,21 @@ it('authenticates with the x-api-key header and never sends a secret', function 
         ->and($headers)->not->toHaveKey('Authorization');
 });
 
+it('has no constructor parameter that could carry an API secret', function () {
+    // The header/no-secret test above only proves nothing is sent on the
+    // wire today. The structural guarantee is that KudosityV2Connector has
+    // no secret parameter at all, so a future refactor (e.g. KudosityClient
+    // routing credentials to two connectors) can't quietly reintroduce one
+    // out of V1 habit without this failing.
+    $params = array_map(
+        fn (ReflectionParameter $p): string => $p->getName(),
+        (new ReflectionClass(KudosityV2Connector::class))->getConstructor()->getParameters()
+    );
+
+    expect($params)->not->toContain('apiSecret')
+        ->and($params)->not->toContain('secret');
+});
+
 it('sends a JSON body, not a form body', function () {
     $mock = new MockClient([StubV2SendRequest::class => MockResponse::make(['id' => 'x'], 200)]);
 

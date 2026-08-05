@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace ExpertSystems\Kudosity;
 
 use ExpertSystems\Kudosity\Concerns\HasRetryPolicy;
+use ExpertSystems\Kudosity\Exceptions\KudosityException;
 use ExpertSystems\Kudosity\Pagination\V1PagedPaginator;
 use Saloon\Http\Auth\BasicAuthenticator;
 use Saloon\Http\Connector;
@@ -71,9 +72,22 @@ class KudosityV1Connector extends Connector implements HasPagination
 
     /**
      * Define the default authentication.
+     *
+     * V1 needs both halves of the credential. A client built for V2 only has
+     * no secret, so say so plainly rather than letting the API answer 401.
+     *
+     * @throws KudosityException
      */
     protected function defaultAuth(): BasicAuthenticator
     {
+        if ($this->apiSecret === '') {
+            throw new KudosityException(
+                'The Kudosity V1 API requires both an API key and an API secret. '
+                .'Set KUDOSITY_API_SECRET (Developers → API Settings in the dashboard). '
+                .'The V2 API needs only the key.'
+            );
+        }
+
         return new BasicAuthenticator($this->apiKey, $this->apiSecret);
     }
 
@@ -249,6 +263,6 @@ class KudosityV1Connector extends Connector implements HasPagination
      */
     public function getRequestException(Response $response, ?\Throwable $senderException): ?\Throwable
     {
-        return Exceptions\KudosityException::fromV1Response($response);
+        return KudosityException::fromV1Response($response);
     }
 }

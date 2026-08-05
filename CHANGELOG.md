@@ -13,11 +13,19 @@ All notable changes to `kudosity-php-client` will be documented in this file.
 - Renamed the config file `config/transmitsms.php` to `config/kudosity.php`, its publish tag `transmitsms-config` to `kudosity-config`, and every `TRANSMITSMS_*` environment variable to `KUDOSITY_*`. The default webhook prefix moved from `webhooks/transmitsms` to `webhooks/kudosity`.
 - Renamed `KudosityException::fromResponse()` to `fromV1Response()`, making room for the V2 error format. The identically named factories on the `Data\*` DTOs are unchanged.
 - Removed `useSmsUrl()` and `useMmsUrl()` from the client and connector, and the `BASE_URL_MMS` constant. `BASE_URL_SMS` is now `BASE_URL`. Nothing in the SDK ever issued a request against the MMS host; V2 support arrives with a dedicated connector.
+- `KudosityClient` now holds two connectors. `v1()` and `v2()` return them; `connector()` still returns the V1 connector. `fromConnector()` takes a V1 connector as before, and `fromConnectors()` accepts either or both. The constructor's `$baseUrl` parameter is replaced by `$v1BaseUrl` and `$v2BaseUrl`, and `$apiSecret` is now optional — omit it for V2-only use. `setBaseUrl()` is now `setV1BaseUrl()`, with the old name delegating to it.
+- Removed `KudosityClient::sms()`. The V1 send surface is `bulk()`, the reply readers moved to `reporting()`, and the API-backed `formatNumber()` moved to `numbers()`. `sms()` returns in the next release as the V2 single-recipient API. See UPGRADING.md.
+- A V1 call with no API secret now throws `KudosityException` explaining that V1 needs both credentials, instead of failing with a 401 from the API.
 
 ### Added
 
 - `rename-map.json` and `bin/kudosity-codemod`, which rewrite a consuming project's class references, notification hook, channel string, config keys, environment variables and composer requirements. Dry-run by default.
 - `UPGRADING.md`.
+- `KudosityV2Connector` for the V2 API (`api.transmitmessage.com`, `x-api-key`), with `KudosityV2Request` as the JSON-body request base.
+- `KudosityException::fromV2Response()` maps V2's RFC 9457 Problem Details onto typed exceptions, adding `NotFoundException` and `ServerException`, and exposes every failed field via `getIssues()`.
+- `V2PagedPaginator` and `V2CursorPaginator` for V2's two pagination schemes, selected by the `PaginatesV2Pages` and `PaginatesV2Cursor` contracts.
+- `BulkSmsResource::schedule()` makes a scheduled V1 send explicit.
+- `Concerns\HasRetryPolicy`, `Concerns\UnwrapsData` and `Concerns\FormatsPhoneNumbers`.
 
 ## 1.9.0 - 2026-07-03
 

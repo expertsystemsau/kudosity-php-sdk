@@ -262,6 +262,9 @@ alongside the other number endpoints.
 | `$client->sms()->isValidNumber($n)` | `$client->bulk()->isValidNumber($n)` |
 | `$client->sms()->validateNumbers($n)` | `$client->bulk()->validateNumbers($n)` |
 | `$client->sms()->isValidSenderId($s)` | `$client->bulk()->isValidSenderId($s)` |
+| `new KudosityClient($key, $secret, $baseUrl, $timeout)` | `new KudosityClient($key, $secret, $v1BaseUrl, $v2BaseUrl, $timeout)` — `$apiSecret` is now optional |
+| `$client->setBaseUrl($url)` | `$client->setV1BaseUrl($url)` — `setBaseUrl()` still works, as an alias |
+| n/a | `$client->v1()`, `$client->v2()` — the two connectors, see [Two connectors](#two-connectors) below |
 
 The codemod cannot automate any of these: the method names themselves
 (`sendToList`, `getResponses`, `getAllResponses`, ...) are unchanged, only the
@@ -274,6 +277,28 @@ them.
 
 Scheduling is now explicit rather than something you reach through the
 `configure` closure: `$client->bulk()->schedule($msg, $to, $at)`.
+
+### Two connectors
+
+`KudosityClient` now holds a connector for each API: `v1()` returns the
+`KudosityV1Connector` (`api.transmitsms.com`, key + secret — everything
+above this section), and `v2()` returns the new `KudosityV2Connector`
+(`api.transmitmessage.com`, key only). `connector()` is unchanged and still
+returns the V1 connector, so existing code that calls it keeps working.
+
+The API secret is now optional on the constructor —
+`new KudosityClient($apiKey)` builds a client that can use `v2()` but throws
+`KudosityException` from any V1 call, with a message naming the missing
+secret rather than a bare 401 from the API. Pass both `$apiKey` and
+`$apiSecret` as before if you need V1.
+
+`setBaseUrl()` set the connector's only base URL; with two hosts that name
+is ambiguous, so it is renamed `setV1BaseUrl()`. `setBaseUrl()` still exists
+and delegates to it, so nothing breaks, but new code should call
+`setV1BaseUrl()` (or `$client->v2()->setBaseUrl()` for the V2 host)
+directly. `fromConnector()` is unchanged — it takes a V1 connector and
+derives a V2 connector from its API key. `fromConnectors()` is new and
+takes either or both connectors directly, for a container or a shared setup.
 
 ## For maintainers
 
