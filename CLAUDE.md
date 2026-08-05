@@ -48,10 +48,25 @@ Built on Saloon PHP v4:
 
 As of 2.0, the V2 transport, error mapping (`KudosityException::fromV2Response()`),
 envelope handling (`Concerns\UnwrapsData`) and both paginators
-(`V2PagedPaginator`, `V2CursorPaginator`) exist and are tested. No V2
-*endpoint* classes exist yet — no SMS, MMS, WhatsApp, RCS, webhook or sender
-requests — those arrive in Phases 3–4. See "Two APIs, two auth schemes"
-below for how the two APIs fit together.
+(`V2PagedPaginator`, `V2CursorPaginator`) exist and are tested. All four V2
+messaging channels are wired onto `KudosityClient` and exposed as resources:
+
+- **`sms()` → `Resources\SmsV2Resource`** — single-recipient SMS (`/v2/sms`).
+  Not a replacement for V1's old `sms()`: one recipient, no scheduling. Flat
+  response envelope; paginates by page.
+- **`mms()` → `Resources\MmsResource`** — single-recipient MMS (`/v2/mms`),
+  one media file. Flat response envelope.
+- **`whatsapp()` → `Resources\WhatsAppResource`** — templates, free-form text
+  and custom (media/buttons) content via `Contracts\WhatsAppContent`.
+  Response wrapped in `data`; paginates by cursor.
+- **`rcs()` → `Resources\RcsResource`** — RCS sends and capability checks;
+  `$agentId` is a registered agent ID, never a phone number. Response wrapped
+  in `data`; paginates by cursor.
+
+Webhook and sender request classes do not exist yet — those arrive in
+Phases 4–5. See "Two APIs, two auth schemes" below for how the two APIs fit
+together, and the client package README's "V2 channels" section for the
+per-endpoint envelope table.
 
 ### Laravel Integration (kudosity-laravel)
 

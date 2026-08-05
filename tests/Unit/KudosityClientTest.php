@@ -7,7 +7,15 @@ use ExpertSystems\Kudosity\KudosityClient;
 use ExpertSystems\Kudosity\KudosityV1Connector;
 use ExpertSystems\Kudosity\KudosityV2Connector;
 use ExpertSystems\Kudosity\Requests\GetBalanceRequest;
+use ExpertSystems\Kudosity\Requests\V2\SendMmsRequest;
+use ExpertSystems\Kudosity\Requests\V2\SendRcsRequest;
+use ExpertSystems\Kudosity\Requests\V2\SendSmsV2Request;
+use ExpertSystems\Kudosity\Requests\V2\SendWhatsAppRequest;
 use ExpertSystems\Kudosity\Resources\BulkSmsResource;
+use ExpertSystems\Kudosity\Resources\MmsResource;
+use ExpertSystems\Kudosity\Resources\RcsResource;
+use ExpertSystems\Kudosity\Resources\SmsV2Resource;
+use ExpertSystems\Kudosity\Resources\WhatsAppResource;
 use Saloon\Http\Faking\MockClient;
 use Saloon\Http\Faking\MockResponse;
 
@@ -70,8 +78,62 @@ it('exposes bulk() and caches the instance', function () {
         ->and($client->bulk())->toBe($client->bulk());
 });
 
-it('no longer exposes sms(), which V2 will claim', function () {
-    expect(method_exists(KudosityClient::class, 'sms'))->toBeFalse();
+it('exposes sms() against the V2 connector, not V1, and caches the instance', function () {
+    // The load-bearing assertion is the host, not the type: a resource wired
+    // to $this->v1Connector by mistake still passes a toBeInstanceOf() check.
+    $mock = new MockClient([SendSmsV2Request::class => MockResponse::make(['id' => 'x'], 200)]);
+    $client = new KudosityClient('key', 'secret');
+    $client->v2()->withMockClient($mock);
+
+    expect($client->sms())->toBeInstanceOf(SmsV2Resource::class)
+        ->and($client->sms())->toBe($client->sms());
+
+    $client->sms()->send('hi', '61400000000', '61400000001');
+
+    expect((string) $mock->getLastPendingRequest()->getUri())
+        ->toStartWith('https://api.transmitmessage.com');
+});
+
+it('exposes mms() against the V2 connector, not V1, and caches the instance', function () {
+    $mock = new MockClient([SendMmsRequest::class => MockResponse::make(['id' => 'x'], 200)]);
+    $client = new KudosityClient('key', 'secret');
+    $client->v2()->withMockClient($mock);
+
+    expect($client->mms())->toBeInstanceOf(MmsResource::class)
+        ->and($client->mms())->toBe($client->mms());
+
+    $client->mms()->send('61400000000', '61400000001', ['https://example.com/product.jpg']);
+
+    expect((string) $mock->getLastPendingRequest()->getUri())
+        ->toStartWith('https://api.transmitmessage.com');
+});
+
+it('exposes whatsapp() against the V2 connector, not V1, and caches the instance', function () {
+    $mock = new MockClient([SendWhatsAppRequest::class => MockResponse::make(['id' => 'x'], 200)]);
+    $client = new KudosityClient('key', 'secret');
+    $client->v2()->withMockClient($mock);
+
+    expect($client->whatsapp())->toBeInstanceOf(WhatsAppResource::class)
+        ->and($client->whatsapp())->toBe($client->whatsapp());
+
+    $client->whatsapp()->text('hi', '61411122211');
+
+    expect((string) $mock->getLastPendingRequest()->getUri())
+        ->toStartWith('https://api.transmitmessage.com');
+});
+
+it('exposes rcs() against the V2 connector, not V1, and caches the instance', function () {
+    $mock = new MockClient([SendRcsRequest::class => MockResponse::make(['id' => 'x'], 200)]);
+    $client = new KudosityClient('key', 'secret');
+    $client->v2()->withMockClient($mock);
+
+    expect($client->rcs())->toBeInstanceOf(RcsResource::class)
+        ->and($client->rcs())->toBe($client->rcs());
+
+    $client->rcs()->send('hi', '61411122211', 'DemoSender');
+
+    expect((string) $mock->getLastPendingRequest()->getUri())
+        ->toStartWith('https://api.transmitmessage.com');
 });
 
 it('builds from a pair of pre-configured connectors', function () {

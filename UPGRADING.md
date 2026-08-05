@@ -5,10 +5,10 @@
 TransmitSMS has rebranded to Kudosity. Phase 1 of the 2.0 line renames every
 package, namespace, class, config key and environment variable to match —
 mechanically, with no behaviour change. Every V1 request still hits the same
-URL with the same body and the same auth. Kudosity's V2 API arrives in a
-later phase; this file will grow a **V1 to V2 method equivalents**, **Changed
-DTO shapes**, **New exceptions** and **Webhook migration** section once it
-does.
+URL with the same body and the same auth. Kudosity's V2 API — single-recipient
+SMS, MMS, WhatsApp and RCS — has since landed; see [V2 channels](#v2-channels)
+below. API-managed webhooks and senders are still to come, in a later phase;
+this file will grow a **Webhook migration** section once they land.
 
 ### Renames
 
@@ -209,7 +209,42 @@ briefly disagree.
 | `BASE_URL_SMS` constant | Renamed to `BASE_URL`. Replace `TransmitSmsConnector::BASE_URL_SMS` with `KudosityV1Connector::BASE_URL`. |
 | `KudosityException::fromResponse()` | Renamed to `fromV1Response()` — see below. |
 | `Resources\SmsResource` class | Removed — split three ways. Sends, `cancel()` and the offline phone helpers (`formatNumberLocal()`, `isValidNumber()`, `validateNumbers()`, `isValidSenderId()`) moved to `Resources\BulkSmsResource`; the reply readers (`getResponses()`, `getResponsesByKeywordId()`, `getResponsesByKeyword()`, `getAllResponses()`) moved to `Resources\ReportingResource`; the API-backed `formatNumber()` moved to `Resources\NumbersResource`. The codemod rewrites `use ExpertSystems\TransmitSms\Resources\SmsResource;`, `SmsResource::class` and type hints to `Resources\BulkSmsResource` — update the call site to the accessor it actually needs (see [Resource surface changes](#resource-surface-changes) below) if that's not the one you meant. |
-| `$client->sms()` accessor | Removed with no rewrite (flagged for manual review). See [Resource surface changes](#resource-surface-changes) below — replaced by `bulk()`, `reporting()` or `numbers()` depending on which method you were calling. |
+| `$client->sms()` accessor | Removed in the rebrand release, with no rewrite (flagged for manual review) — replaced by `bulk()`, `reporting()` or `numbers()` depending on which method you were calling (see [Resource surface changes](#resource-surface-changes) below). **`sms()` has since returned, but it means something different — see below.** The codemod keeps flagging every `sms(` call site regardless, because a compiling call is not necessarily a correct one. |
+
+### `sms()` means something different now
+
+`$client->sms()` was removed in the rebrand release and has since returned —
+but it is not the method you remember. V1's `sms()` took up to 500
+comma-separated recipients and could schedule a future send; V2's `sms()`
+(`POST /v2/sms`, this release) takes **exactly one recipient** and cannot
+schedule at all.
+
+The dangerous case is multi-recipient code that still compiles unchanged:
+
+```php
+// 1.x: sent to two recipients.
+// 2.x: same line, but now sends to ONE recipient — the literal string
+// "61400000000,61400000001", comma and all. No exception, no warning.
+$client->sms()->send($msg, '61400000000,61400000001');
+```
+
+That is worse than the fatal error this call produced in the rebrand
+release: a loud break has become a silent wrong send. Nothing about a failed
+(or, worse, "successful") delivery here mentions multiple recipients — it is
+just the API doing its best with an unrecognisable single `recipient`.
+
+This is why the codemod keeps flagging `sms(` for manual review
+(`"sms": null` in `rename-map.json`, under `removed`) rather than treating
+the symbol's return as fixed. If your project calls `$client->sms()`, check
+every call site by hand:
+
+- Single recipient, no scheduling → safe to keep; it now hits V2's
+  `POST /v2/sms` and returns a typed `SmsMessageData` instead of the old
+  array/DTO shape.
+- Multiple recipients, a contact list, or a scheduled send → move it to
+  `$client->bulk()`, which is what `sms()` mapped to for the duration this
+  method was gone (see [Resource surface changes](#resource-surface-changes)
+  below).
 
 ### `fromResponse()` → `fromV1Response()`
 
@@ -242,15 +277,15 @@ from plain text.
 ## Resource surface changes
 
 Kudosity's V2 API adds `POST /v2/sms` — a single-recipient send with no
-`send_at` — in the next release, and `sms()` is reserved for it. The V1 send
-surface that `sms()` used to expose moves to `bulk()` in this release: it is
-everything V2 cannot do — multiple recipients, contact lists, and scheduled
-sends. The reply readers move to `reporting()`, where every other read
-already lives, and the API-backed number formatter moves to `numbers()`,
-alongside the other number endpoints.
+`send_at` — and `sms()` now returns it. The V1 send surface that `sms()` used
+to expose lives on `bulk()`: it is everything V2 cannot do — multiple
+recipients, contact lists, and scheduled sends. The reply readers moved to
+`reporting()`, where every other read already lives, and the API-backed
+number formatter moved to `numbers()`, alongside the other number endpoints.
 
 | 1.x | 2.x |
 |---|---|
+| n/a — new in this release | `$client->sms()->send($msg, $to, $from)` — V2's single-recipient send (`POST /v2/sms`); exactly one recipient, no scheduling. **Not** a drop-in replacement for 1.x `sms()` — see [`sms()` means something different now](#sms-means-something-different-now) above before repointing multi-recipient code at it. |
 | `$client->sms()->send($msg, $to)` — multiple recipients | `$client->bulk()->send($msg, $to)` |
 | `$client->sms()->sendToList($msg, $listId)` | `$client->bulk()->sendToList($msg, $listId)` |
 | `$client->sms()->sendRequest($request)` | `$client->bulk()->sendRequest($request)` |
@@ -302,6 +337,33 @@ and delegates to it, so nothing breaks, but new code should call
 directly. `fromConnector()` is unchanged — it takes a V1 connector and
 derives a V2 connector from its API key. `fromConnectors()` is new and
 takes either or both connectors directly, for a container or a shared setup.
+
+## V2 channels
+
+Four V2 channels are wired onto `KudosityClient`, each lazily built against
+`v2()` and returning typed DTOs. None of these existed under 1.x, so there is
+nothing to migrate — this is new surface, not a rename.
+
+```php
+// SMS — single recipient only. See "sms() means something different now"
+// above before pointing multi-recipient 1.x code at this.
+$client->sms()->send('Hello from Kudosity!', '61400000000', '61481074185');
+
+// MMS — one recipient, one media file.
+$client->mms()->send('61400000000', '61481074185', ['https://example.com/product.jpg']);
+
+// WhatsApp — free-form text only delivers inside the 24-hour service window;
+// use template() instead to initiate a conversation.
+$client->whatsapp()->text('Your order has shipped!', '61411122211');
+
+// RCS — $agentId is a registered agent ID (e.g. "DemoSender"), never a phone
+// number; a phone-number-shaped value is rejected before the request is sent.
+$client->rcs()->send('Your order has shipped!', '61411122211', 'DemoSender');
+```
+
+See the client package README's "V2 channels" section for the full method
+list, the per-endpoint response envelope, and the `sms_count`/`total_records`/
+`total_segments` string-vs-int gotcha.
 
 ## For maintainers
 

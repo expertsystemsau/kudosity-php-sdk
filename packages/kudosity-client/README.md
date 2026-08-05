@@ -6,8 +6,9 @@
 
 A framework-agnostic PHP client for the [Kudosity API](https://kudosity.com/).
 This is the 2.x line — see [UPGRADING.md](../../UPGRADING.md) if you're
-migrating from 1.x. Everything below is V1. Kudosity's V2 API (single-recipient
-SMS, MMS, WhatsApp, RCS) arrives in a later release of this line.
+migrating from 1.x. V1 (contact lists, bulk/list sends, scheduling, reporting)
+is covered first below; V2 (single-recipient SMS, MMS, WhatsApp, RCS) has its
+own [V2 channels](#v2-channels) section further down.
 
 ## Installation
 
@@ -17,11 +18,12 @@ composer require expertsystemsau/kudosity-php-client
 
 ## Usage
 
-The client is resource-based. V1's single-recipient `sms()` name is reserved
-for Kudosity's upcoming V2 endpoint (`POST /v2/sms`), which has no support for
-multiple recipients, contact lists, or scheduling — so those sends live on
-`$client->bulk()` instead. Account operations live on `$client->account()`,
-reporting on `$client->reporting()`, and contact lists on `$client->lists()`.
+The client is resource-based. `$client->sms()` is Kudosity's V2 endpoint
+(`POST /v2/sms`), which has no support for multiple recipients, contact
+lists, or scheduling — those sends live on `$client->bulk()` (V1) instead;
+see [V2 channels](#v2-channels) below for `sms()` and the other three V2
+channels. Account operations live on `$client->account()`, reporting on
+`$client->reporting()`, and contact lists on `$client->lists()`.
 
 ```php
 use ExpertSystems\Kudosity\KudosityClient;
@@ -263,6 +265,84 @@ $linkHit->clickedAt;    // string - Click timestamp
 $linkHit->userAgent;    // ?string - Browser user agent
 $linkHit->ipAddress;    // ?string - IP address
 ```
+
+## V2 channels
+
+Kudosity's V2 API (`api.transmitmessage.com`, `x-api-key` header) is
+single-recipient by design — no contact lists, no scheduling. Four channels
+are wired onto the client, each lazily built against `$client->v2()` and
+returning typed DTOs rather than raw arrays.
+
+```php
+// SMS — single recipient, no scheduling.
+$sms = $client->sms()->send('Hello from Kudosity!', '61400000000', '61481074185');
+$sms = $client->sms()->get($sms->id);
+
+// MMS — one recipient, one media file.
+$mms = $client->mms()->send('61400000000', '61481074185', ['https://example.com/product.jpg']);
+
+// WhatsApp — text only delivers inside the 24-hour service window; use
+// template() to initiate a conversation, or custom() for media/buttons.
+$wa = $client->whatsapp()->text('Your order has shipped!', '61411122211');
+
+// RCS — $agentId is a registered agent ID (e.g. "DemoSender"), never a phone
+// number; a phone-number-shaped value is rejected before the request is sent.
+$rcs = $client->rcs()->send('Your order has shipped!', '61411122211', 'DemoSender');
+$reachable = $client->rcs()->capabilities(['61411122211'], 'DemoSender');
+```
+
+SMS lists page by page (`$client->sms()->list()`); WhatsApp and RCS lists
+page by cursor (`$client->whatsapp()->list()`, `$client->rcs()->list()`) —
+both through the same `items()`/`collect()` paginator interface as V1.
+
+Recipient handling is not uniform across the four channels: WhatsApp and RCS
+normalise the recipient to strict E.164 before sending, while SMS and MMS
+send it exactly as given — both skills document `recipient` as "local or
+E.164 international format" for those two. This is deliberate, not an
+oversight, so do not "fix" one to match the other.
+
+### Response envelopes
+
+The four endpoints do not all shape their response body the same way, and
+code written against one shape reads `null` on the other — the most common
+way to misread this API. Every DTO factory resolves this for you through one
+seam (`Concerns\UnwrapsData::payload()`), so you never need to branch on it
+yourself, but it matters the moment you read a response's `json()` directly:
+
+| Endpoint | Envelope |
+|---|---|
+| SMS — `POST /v2/sms`, `GET /v2/sms/{id}` (single message) | Flat: `{"id": ..., "recipient": ...}` |
+| SMS — `GET /v2/sms` (list) | Flat: `{"smses": [...], "total_records": ...}` |
+| MMS — `POST/GET /v2/mms` | Flat: `{"id": ..., "recipient": ...}` |
+| WhatsApp — `POST/GET /v2/whatsapp/messages` | Wrapped: `{"data": {"id": ..., "recipient": ...}}` |
+| RCS — `POST/GET /v2/rcs/messages`, `POST /v2/rcs/capabilities` | Wrapped: `{"data": {...}}` |
+
+> ⚠️ **`sms_count`, `total_records` and `total_segments` arrive from the API
+> as JSON strings** — `"sms_count": "1"`, not `1`. `SmsMessageData::$smsCount`
+> and `SmsListData::$totalRecords`/`$totalSegments` cast them to `int` for
+> you. If you ever read a raw response body yourself (`$response->json()`
+> rather than the DTO), treat these fields as strings: with
+> `declare(strict_types=1)` in your own code, passing one straight into a
+> parameter typed `int` throws a `TypeError`, and `$data['sms_count'] === 1`
+> is always `false`.
+
+### Message status subsets
+
+`MessageStatus` is one enum shared across all four channels, but it is
+deliberately the *union* of three separate API vocabularies — not every
+value is valid, or even possible, everywhere it appears:
+
+| Subset | Values |
+|---|---|
+| `GET /v2/sms` `status` filter (13) | `PENDING`, `SENT`, `FAILED`, `DELIVERED`, `ACCEPTED`, `SOFT_BOUNCE`, `HARD_BOUNCE`, `OTHER`, `REJECTED`, `PENDING_APPROVAL`, `SUBMITTED`, `UNDELIVERABLE`, `READ` |
+| Webhook status events (8) | `SENT`, `ACCEPTED`, `DELIVERED`, `FAILED`, `SOFT_BOUNCE`, `HARD_BOUNCE`, `READ`, `OTHER` |
+| WhatsApp and RCS list responses (5) | Includes `QUEUED`, which appears in neither of the other two subsets. The remaining 4 are not itemised separately by Kudosity's docs beyond that they overlap the SMS filter's 13 |
+| `UNKNOWN` | Never sent by the API. This SDK's own sentinel, returned by `MessageStatus::fromApi()` for any value the docs have not published, so reading a message never throws just because Kudosity added a status |
+
+`ListSmsV2Request` enforces the first row: passing `MessageStatus::Queued` or
+`MessageStatus::Unknown` as the `status` filter to `$client->sms()->list()`
+throws rather than silently sending an unsupported query parameter the API
+would ignore.
 
 ## Laravel Integration
 
