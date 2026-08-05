@@ -235,6 +235,8 @@ class KudosityClient
      * multiple recipients, a contact list, or a scheduled send, use
      * `$client->bulk()` instead — that is V1's send surface, and it is the
      * one a 1.x consumer's `sms()` call actually meant.
+     *
+     * @see https://developers.kudosity.com
      */
     public function sms(): SmsV2Resource
     {

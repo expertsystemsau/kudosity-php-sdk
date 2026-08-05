@@ -10,7 +10,8 @@ namespace ExpertSystems\Kudosity\Enums;
  * `GET /v2/sms`'s filter accepts 13 values; webhook status events document 8;
  * the WhatsApp and RCS list endpoints document 5, one of which — QUEUED —
  * appears nowhere else. Rather than three enums that disagree, this is their
- * union, and each endpoint's README section records which subset it emits.
+ * union. See the "Message status subsets" table in the kudosity-client
+ * README's "V2 channels" section for which subset each endpoint emits.
  *
  * The upstream docs say these lists will grow, so resolution goes through
  * {@see self::fromApi()} and lands on {@see self::Unknown} rather than

@@ -179,12 +179,64 @@ it('passes list filters through as query parameters', function () {
     $connector = new KudosityV2Connector('key');
     $connector->withMockClient($mock);
 
-    iterator_to_array((new SmsV2Resource($connector))->list(status: MessageStatus::Delivered, recipient: '61478038915')->items());
+    iterator_to_array((new SmsV2Resource($connector))->list(
+        status: MessageStatus::Delivered,
+        recipient: '61478038915',
+        sender: '61481074185',
+        messageRef: 'order-1',
+        direction: 'OUT',
+    )->items());
 
     $query = $mock->getLastPendingRequest()->query();
 
     expect($query->get('status'))->toBe('DELIVERED')
-        ->and($query->get('recipient'))->toBe('61478038915');
+        ->and($query->get('recipient'))->toBe('61478038915')
+        ->and($query->get('sender'))->toBe('61481074185')
+        ->and($query->get('message_ref'))->toBe('order-1')
+        ->and($query->get('direction'))->toBe('OUT');
+});
+
+it('sends no filter query parameters when none are given', function () {
+    $mock = new MockClient([
+        ListSmsV2Request::class => MockResponse::make(['smses' => [smsSendBody()], 'total_records' => '1'], 200),
+    ]);
+    $connector = new KudosityV2Connector('key');
+    $connector->withMockClient($mock);
+
+    iterator_to_array((new SmsV2Resource($connector))->list()->items());
+
+    $query = $mock->getLastPendingRequest()->query();
+
+    expect($query->get('status'))->toBeNull()
+        ->and($query->get('recipient'))->toBeNull()
+        ->and($query->get('sender'))->toBeNull()
+        ->and($query->get('message_ref'))->toBeNull()
+        ->and($query->get('direction'))->toBeNull();
+});
+
+it('rejects QUEUED as a status filter, because GET /v2/sms does not document it', function () {
+    // MessageStatus is deliberately the union of three vocabularies (SMS,
+    // WhatsApp/RCS, and the SDK's own UNKNOWN sentinel). QUEUED belongs to
+    // WhatsApp/RCS only — a caller who reads it off a WhatsApp message and
+    // feeds it back into sms()->list() would otherwise have it silently
+    // ignored by the API rather than rejected.
+    expect(fn () => new ListSmsV2Request(status: MessageStatus::Queued))
+        ->toThrow(function (ValidationException $e) {
+            expect($e->getErrorCode())->toBe('FIELD_INVALID')
+                ->and($e->getMessage())->toContain('status must be one of');
+        });
+});
+
+it('rejects UNKNOWN as a status filter, because it is a sentinel, not an API value', function () {
+    expect(fn () => new ListSmsV2Request(status: MessageStatus::Unknown))
+        ->toThrow(function (ValidationException $e) {
+            expect($e->getErrorCode())->toBe('FIELD_INVALID')
+                ->and($e->getMessage())->toContain('status must be one of');
+        });
+});
+
+it('accepts a documented status value', function () {
+    expect(new ListSmsV2Request(status: MessageStatus::Delivered))->toBeInstanceOf(ListSmsV2Request::class);
 });
 
 it('declares itself paged so the connector picks the right paginator', function () {
@@ -207,4 +259,16 @@ it('returns null for a malformed created_at rather than throwing', function () {
     $sms = SmsMessageData::fromArray(smsSendBody(['created_at' => 'not-a-date']));
 
     expect($sms->createdAt)->toBeNull();
+});
+
+it('normalises an empty routed_via to null, because the API sends "" for no shared number', function () {
+    $sms = SmsMessageData::fromArray(smsSendBody(['routed_via' => '']));
+
+    expect($sms->routedVia)->toBeNull();
+});
+
+it('keeps a real routed_via value', function () {
+    $sms = SmsMessageData::fromArray(smsSendBody(['routed_via' => '61481074185']));
+
+    expect($sms->routedVia)->toBe('61481074185');
 });
