@@ -66,6 +66,22 @@ class ListWhatsAppRequest extends KudosityV2Request implements PaginatesV2Cursor
                 errorCode: 'FIELD_EMPTY',
             );
         }
+
+        // And the reverse. The docs couple the two dates to custom_date, so
+        // dates without it are meaningless — and the API ignores an unsupported
+        // query parameter silently, leaving the caller believing their results
+        // are date-filtered when they are not. Silent wrong results are worse
+        // than a rejected call, which is the same reasoning that removed the
+        // speculative date filters from ListSmsV2Request.
+        if ($dateRange !== self::CUSTOM_DATE_RANGE && ($startDate !== null || $endDate !== null)) {
+            throw new ValidationException(
+                message: sprintf(
+                    'start_date and end_date are only meaningful alongside date_range "%s".',
+                    self::CUSTOM_DATE_RANGE,
+                ),
+                errorCode: 'FIELD_INVALID',
+            );
+        }
     }
 
     public function resolveEndpoint(): string

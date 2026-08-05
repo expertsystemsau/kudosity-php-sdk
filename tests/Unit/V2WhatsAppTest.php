@@ -222,9 +222,32 @@ it('rejects a template name containing a space', function () {
     new TemplateContent('order update');
 })->throws(ValidationException::class, 'lowercase');
 
-it('rejects an empty template name', function () {
-    new TemplateContent('');
-})->throws(ValidationException::class);
+it('rejects a template name with a trailing newline', function () {
+    // The rule's `D` modifier is what catches this. Without it PCRE's `$` also
+    // matches immediately before a final newline, so a name read from a file or
+    // a CSV cell validates and ships the newline. Its own test because that hole
+    // survived every other name case.
+    new TemplateContent("order_update\n");
+})->throws(ValidationException::class, 'lowercase');
+
+it('rejects a template name with a leading newline', function () {
+    new TemplateContent("\norder_update");
+})->throws(ValidationException::class, 'lowercase');
+
+it('rejects a template name with a trailing space', function () {
+    new TemplateContent('order_update ');
+})->throws(ValidationException::class, 'lowercase');
+
+it('rejects an empty template name through the empty-specific guard', function () {
+    // Asserts the FIELD_EMPTY code, not just the exception type: the name
+    // pattern would reject '' on its own, so a type-only assertion stays green
+    // if the dedicated guard — and its more useful message — is deleted.
+    expect(fn () => new TemplateContent(''))
+        ->toThrow(function (ValidationException $e) {
+            expect($e->getErrorCode())->toBe('FIELD_EMPTY')
+                ->and($e->getMessage())->toContain('is required');
+        });
+});
 
 it('accepts a lowercase alphanumeric name with underscores', function () {
     expect((new TemplateContent('order_update_2'))->toArray())
@@ -462,18 +485,42 @@ it('rejects a date_range outside the documented set', function () {
 })->throws(ValidationException::class, 'date_range must be one of');
 
 it('rejects custom_date with neither date, because the API answers a generic 400', function () {
-    // date_range itself is valid here, so the pairing rule is the only one
-    // that can fire.
+    // date_range itself is valid here, so the pairing rule is the only one that
+    // can fire. The asserted fragment is unique to that rule's message —
+    // 'custom_date' alone would also match the allow-list message, which lists
+    // every accepted value.
     new ListWhatsAppRequest(dateRange: 'custom_date');
-})->throws(ValidationException::class, 'custom_date');
+})->throws(ValidationException::class, 'both required');
 
 it('rejects custom_date with only start_date', function () {
     new ListWhatsAppRequest(dateRange: 'custom_date', startDate: '2026-07-01');
-})->throws(ValidationException::class, 'custom_date');
+})->throws(ValidationException::class, 'both required');
 
 it('rejects custom_date with only end_date', function () {
     new ListWhatsAppRequest(dateRange: 'custom_date', endDate: '2026-07-31');
-})->throws(ValidationException::class, 'custom_date');
+})->throws(ValidationException::class, 'both required');
+
+it('rejects start_date with no date_range, because the API would ignore it silently', function () {
+    // The reverse direction. An unsupported query parameter is dropped without
+    // complaint, so the caller believes their results are date-filtered when
+    // they are not — the same silent-wrong hazard that removed the speculative
+    // date filters from ListSmsV2Request.
+    new ListWhatsAppRequest(startDate: '2026-07-01');
+})->throws(ValidationException::class, 'only meaningful');
+
+it('rejects end_date with no date_range', function () {
+    new ListWhatsAppRequest(endDate: '2026-07-31');
+})->throws(ValidationException::class, 'only meaningful');
+
+it('rejects both dates with no date_range', function () {
+    new ListWhatsAppRequest(startDate: '2026-07-01', endDate: '2026-07-31');
+})->throws(ValidationException::class, 'only meaningful');
+
+it('rejects dates alongside a date_range other than custom_date', function () {
+    // date_range is valid and the dates are paired, so neither of the other two
+    // rules can fire — only the coupling one.
+    new ListWhatsAppRequest(dateRange: 'last_week', startDate: '2026-07-01', endDate: '2026-07-31');
+})->throws(ValidationException::class, 'only meaningful');
 
 // ---------------------------------------------------------------------------
 // WhatsAppMessageData

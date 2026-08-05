@@ -25,8 +25,13 @@ final readonly class TemplateContent implements WhatsAppContent
      * The documented template-name rule: lowercase alphanumeric and
      * underscores. `order_confirmation`, not `Order Confirmation` and not
      * `order-confirmation`.
+     *
+     * The `D` modifier is load-bearing. Without it PCRE's `$` also matches
+     * immediately before a final newline, so `"order_confirmation\n"` — a name
+     * read from a file, a CSV cell or a copied line — passes the rule and the
+     * newline goes on the wire.
      */
-    public const NAME_PATTERN = '/^[a-z0-9_]+$/';
+    public const NAME_PATTERN = '/^[a-z0-9_]+$/D';
 
     /**
      * @param  array<int, mixed>  $parameters  Positional values filling `{1}`, `{2}`, … in

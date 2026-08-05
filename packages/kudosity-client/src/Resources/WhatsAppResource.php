@@ -61,7 +61,13 @@ class WhatsAppResource extends V2Resource
     /**
      * Send a pre-approved template — the shape that delivers at any time.
      *
-     * @param  array<int, mixed>  $parameters  Positional strings filling `{1}`, `{2}`, …
+     * Narrower than {@see TemplateContent}'s own `array<int, mixed>` on purpose:
+     * that annotation has to stay wide so its runtime `is_string()` guard is not
+     * unreachable to the analyser, but this helper holds no guard, so declaring
+     * the real element type here gives callers static feedback at the call site
+     * while the runtime check still covers JSON-sourced values.
+     *
+     * @param  array<int, string>  $parameters  Positional strings filling `{1}`, `{2}`, …
      * @param  string  $to  Recipient in international form, e.g. `61411122211`. Punctuation
      *                      and a leading `+` are stripped; no country is assumed, so a local
      *                      number keeps its leading zero and the API rejects it.
