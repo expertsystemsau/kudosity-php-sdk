@@ -109,8 +109,11 @@ ID recipients see. It can be:
 
 ### Core Client (Plain PHP)
 
-The client is resource-based: SMS operations live on `$client->sms()`, account
-operations on `$client->account()`, reporting on `$client->reporting()`, and so on.
+The client is resource-based. V1's single-recipient `sms()` name is reserved
+for Kudosity's upcoming V2 endpoint (`POST /v2/sms`), which cannot do multiple
+recipients, contact lists, or scheduling — so those sends live on
+`$client->bulk()` instead. Account operations live on `$client->account()`,
+reporting on `$client->reporting()`, and so on.
 
 ```php
 use ExpertSystems\Kudosity\KudosityClient;
@@ -119,15 +122,15 @@ use ExpertSystems\Kudosity\Requests\SendSmsRequest;
 $client = new KudosityClient('api-key', 'api-secret');
 
 // Send an SMS — send(string $message, string $to, ?string $from = null, ?callable $configure = null)
-$sms = $client->sms()->send('Hello from Kudosity!', '+61400000000');
+$sms = $client->bulk()->send('Hello from Kudosity!', '+61400000000');
 $messageId = $sms->messageId;
 
 // Send to multiple recipients (comma-separated, up to 500)
-$client->sms()->send('Bulk message', '+61400000000,+61400000001');
+$client->bulk()->send('Bulk message', '+61400000000,+61400000001');
 
 // Extra options (replies-to-email, callbacks, scheduling, validity) — pass a
 // configure closure. Connector defaults still apply, unlike sendRequest().
-$client->sms()->send('Hello!', '+61400000000', configure: fn (SendSmsRequest $r) =>
+$client->bulk()->send('Hello!', '+61400000000', configure: fn (SendSmsRequest $r) =>
     $r->repliesToEmail('inbox@example.com')->validity(60)
 );
 
@@ -136,7 +139,7 @@ $request = (new SendSmsRequest('Scheduled message'))
     ->to('+61400000000')
     ->from('MySenderID')
     ->scheduledAt('2026-12-25 09:00:00');
-$client->sms()->sendRequest($request);
+$client->bulk()->sendRequest($request);
 
 // Check a message's status / delivery stats
 $message = $client->reporting()->getMessage($messageId);
@@ -146,7 +149,7 @@ $stats = $client->reporting()->getStats($messageId);
 $balance = $client->account()->getBalance();
 
 // Get SMS replies (responses)
-$replies = $client->sms()->getAllResponses();
+$replies = $client->reporting()->getAllResponses();
 ```
 
 ### Pagination

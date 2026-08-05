@@ -56,14 +56,17 @@ recipients see. It can be:
 
 ### Facade
 
-The facade proxies to the resource-based client: SMS operations live on `sms()`,
-account operations on `account()`, reporting on `reporting()`, and so on.
+The facade proxies to the resource-based client. V1's single-recipient `sms()`
+name is reserved for Kudosity's upcoming V2 endpoint, which can't do multiple
+recipients, contact lists, or scheduling — so those sends live on `bulk()`
+instead. Account operations live on `account()`, reporting on `reporting()`,
+and so on.
 
 ```php
 use ExpertSystems\Kudosity\Laravel\Facades\Kudosity;
 
 // Send an SMS — send(string $message, string $to, ?string $from = null, ?callable $configure = null)
-Kudosity::sms()->send('Hello from Laravel!', '+61400000000');
+Kudosity::bulk()->send('Hello from Laravel!', '+61400000000');
 
 // Get account balance
 $balance = Kudosity::account()->getBalance();

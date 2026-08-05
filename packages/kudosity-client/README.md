@@ -6,7 +6,8 @@
 
 A framework-agnostic PHP client for the [Kudosity API](https://kudosity.com/).
 This is the 2.x line — see [UPGRADING.md](../../UPGRADING.md) if you're
-migrating from 1.x.
+migrating from 1.x. Everything below is V1. Kudosity's V2 API (single-recipient
+SMS, MMS, WhatsApp, RCS) arrives in a later release of this line.
 
 ## Installation
 
@@ -16,9 +17,11 @@ composer require expertsystemsau/kudosity-php-client
 
 ## Usage
 
-The client is resource-based. SMS operations live on `$client->sms()`, account
-operations on `$client->account()`, reporting on `$client->reporting()`, and
-contact lists on `$client->lists()`.
+The client is resource-based. V1's single-recipient `sms()` name is reserved
+for Kudosity's upcoming V2 endpoint (`POST /v2/sms`), which has no support for
+multiple recipients, contact lists, or scheduling — so those sends live on
+`$client->bulk()` instead. Account operations live on `$client->account()`,
+reporting on `$client->reporting()`, and contact lists on `$client->lists()`.
 
 ```php
 use ExpertSystems\Kudosity\KudosityClient;
@@ -27,15 +30,15 @@ use ExpertSystems\Kudosity\Requests\SendSmsRequest;
 $client = new KudosityClient('your-api-key', 'your-api-secret');
 
 // Send an SMS — send(string $message, string $to, ?string $from = null, ?callable $configure = null)
-$sms = $client->sms()->send('Hello from Kudosity!', '+61400000000');
+$sms = $client->bulk()->send('Hello from Kudosity!', '+61400000000');
 $messageId = $sms->messageId;
 
 // Send to multiple recipients (comma-separated, up to 500)
-$client->sms()->send('Bulk message', '+61400000000,+61400000001');
+$client->bulk()->send('Bulk message', '+61400000000,+61400000001');
 
 // Extra options (replies-to-email, callbacks, scheduling, validity) — pass a
 // configure closure. Connector defaults still apply, unlike sendRequest().
-$client->sms()->send('Hello!', '+61400000000', configure: fn (SendSmsRequest $r) =>
+$client->bulk()->send('Hello!', '+61400000000', configure: fn (SendSmsRequest $r) =>
     $r->repliesToEmail('inbox@example.com')->validity(60)
 );
 
@@ -44,7 +47,7 @@ $request = (new SendSmsRequest('Scheduled message'))
     ->to('+61400000000')
     ->from('MySenderID')
     ->scheduledAt('2026-12-25 09:00:00');
-$client->sms()->sendRequest($request);
+$client->bulk()->sendRequest($request);
 
 // Check a message's status / delivery stats
 $message = $client->reporting()->getMessage($messageId);
@@ -54,7 +57,7 @@ $stats = $client->reporting()->getStats($messageId);
 $balance = $client->account()->getBalance();
 
 // Get SMS replies (responses)
-$replies = $client->sms()->getAllResponses();
+$replies = $client->reporting()->getAllResponses();
 
 // Manage contact lists
 $lists = $client->lists()->all();
@@ -65,7 +68,7 @@ $client->lists()->addContact(123, '+61400000000', firstName: 'John');
 
 List endpoints (`numbers()->all()`, `lists()->all()`, `keywords()->all()`,
 `reporting()->getSent()`, `reporting()->getUserSent()`, `lists()->getContacts()`,
-`sms()->getResponses()`/`getAllResponses()`) return a paginator that lazily walks
+`reporting()->getResponses()`/`getAllResponses()`) return a paginator that lazily walks
 every page. Use `items()` to iterate individual records:
 
 ```php
@@ -93,7 +96,7 @@ sender ID recipients see. It can be:
 - A **dedicated virtual number (VMN)** in international format, e.g. `61412345678` —
   supports two-way messaging (recipients can reply).
 - An **alphanumeric sender ID** ("alpha tag") such as `MyBrand` — max 11 characters,
-  letters and digits only, no spaces (validate with `$client->sms()->isValidSenderId()`).
+  letters and digits only, no spaces (validate with `$client->bulk()->isValidSenderId()`).
   One-way only; recipients cannot reply.
 - **Omitted** — Kudosity falls back to a shared number for the destination country.
 
@@ -104,7 +107,7 @@ $client = new KudosityClient('your-api-key', 'your-api-secret');
 
 // 1. Per message — the third argument to send() overrides any default.
 //    send(string $message, string $to, ?string $from = null, ?callable $configure = null)
-$client->sms()->send('Hello!', '+61400000000', 'MyBrand');
+$client->bulk()->send('Hello!', '+61400000000', 'MyBrand');
 
 // 2. A default sender ID applied to every send()/sendToList() call, set on
 //    the connector. Optionally set a default country code used to normalise
@@ -112,15 +115,15 @@ $client->sms()->send('Hello!', '+61400000000', 'MyBrand');
 $client->connector()->setDefaultFrom('MyBrand');
 $client->connector()->setDefaultCountryCode('AU');
 
-$client->sms()->send('Hello!', '+61400000000'); // uses "MyBrand"
+$client->bulk()->send('Hello!', '+61400000000'); // uses "MyBrand"
 
 // Validate a value before you rely on it
-if (! $client->sms()->isValidSenderId('MyBrand')) {
+if (! $client->bulk()->isValidSenderId('MyBrand')) {
     // reject / fall back to a shared number
 }
 ```
 
-> Note: `$client->sms()->sendRequest(SendSmsRequest $request)` does **not** apply
+> Note: `$client->bulk()->sendRequest(SendSmsRequest $request)` does **not** apply
 > these connector defaults — set `from` on the request yourself when using it.
 
 > ⚠️ **Alpha tags must be registered and approved before you can send with them.**
@@ -177,7 +180,7 @@ $request = (new SendSmsRequest('Your order has shipped!'))
         )
     );
 
-$result = $client->sms()->sendRequest($request);
+$result = $client->bulk()->sendRequest($request);
 ```
 
 ### Handling Incoming Callbacks
