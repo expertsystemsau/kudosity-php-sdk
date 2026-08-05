@@ -13,11 +13,12 @@ Both are split from this monorepo's `packages/` directory on every push to
 
 > This is the 2.x line of the SDK. Kudosity runs two APIs: **V1**
 > (`api.transmitsms.com`, HTTP Basic auth with an API key *and* secret) and
-> **V2** (`api.transmitmessage.com`, header auth with the key alone). This
-> phase renames every package, class, config key and environment variable to
-> Kudosity and ships V1 support under the new names; V2 support (MMS,
-> WhatsApp, RCS, API-managed webhooks) arrives before this line reaches
-> `2.0.0`. Upgrading from 1.x? See [UPGRADING.md](UPGRADING.md).
+> **V2** (`api.transmitmessage.com`, header auth with the key alone). Every
+> package, class, config key and environment variable is renamed to Kudosity;
+> V1 support ships under the new names, and V2's four messaging channels —
+> single-recipient SMS, MMS, WhatsApp, RCS — are wired onto the client
+> alongside it. API-managed webhooks and senders arrive before this line
+> reaches `2.0.0`. Upgrading from 1.x? See [UPGRADING.md](UPGRADING.md).
 
 ### expertsystemsau/kudosity-php-client
 
@@ -109,11 +110,14 @@ ID recipients see. It can be:
 
 ### Core Client (Plain PHP)
 
-The client is resource-based. V1's single-recipient `sms()` name is reserved
-for Kudosity's upcoming V2 endpoint (`POST /v2/sms`), which cannot do multiple
-recipients, contact lists, or scheduling — so those sends live on
-`$client->bulk()` instead. Account operations live on `$client->account()`,
-reporting on `$client->reporting()`, and so on.
+The client is resource-based. `$client->sms()` is Kudosity's V2 endpoint
+(`POST /v2/sms`), which cannot do multiple recipients, contact lists, or
+scheduling — those sends stay on `$client->bulk()` (V1) instead.
+`$client->mms()`, `$client->whatsapp()` and `$client->rcs()` cover the other
+three V2 channels — see [V2 channels](packages/kudosity-client/README.md#v2-channels)
+in the client package README for the full method list and response
+envelopes. Account operations live on `$client->account()`, reporting on
+`$client->reporting()`, and so on.
 
 ```php
 use ExpertSystems\Kudosity\KudosityClient;
@@ -150,6 +154,13 @@ $balance = $client->account()->getBalance();
 
 // Get SMS replies (responses)
 $replies = $client->reporting()->getAllResponses();
+
+// V2 channels — single recipient, no scheduling. See the client package
+// README's "V2 channels" section for the response envelope table.
+$client->sms()->send('Hi from V2!', '61400000000', '61481074185');
+$client->mms()->send('61400000000', '61481074185', ['https://example.com/product.jpg']);
+$client->whatsapp()->text('Hi from WhatsApp!', '61411122211');
+$client->rcs()->send('Hi from RCS!', '61411122211', 'DemoSender');
 ```
 
 ### Pagination
@@ -189,9 +200,12 @@ The facade proxies to the same resources as the core client.
 ```php
 use ExpertSystems\Kudosity\Laravel\Facades\Kudosity;
 
-// Send an SMS — bulk(), because sms() is reserved for Kudosity's upcoming
-// single-recipient V2 endpoint (see "Core Client" above)
+// Send an SMS via V1 bulk() — multiple recipients, contact lists and
+// scheduling all live here, not on sms() (see "Core Client" above)
 Kudosity::bulk()->send('Hello from Laravel!', '+61400000000');
+
+// V2 single-recipient SMS
+Kudosity::sms()->send('Hi from V2!', '61400000000', '61481074185');
 
 // Get account balance
 $balance = Kudosity::account()->getBalance();

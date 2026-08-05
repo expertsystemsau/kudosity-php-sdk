@@ -26,6 +26,11 @@ All notable changes to `kudosity-php-client` will be documented in this file.
 - `V2PagedPaginator` and `V2CursorPaginator` for V2's two pagination schemes, selected by the `PaginatesV2Pages` and `PaginatesV2Cursor` contracts.
 - `BulkSmsResource::schedule()` makes a scheduled V1 send explicit.
 - `Concerns\HasRetryPolicy`, `Concerns\UnwrapsData` and `Concerns\FormatsPhoneNumbers`.
+- `KudosityClient::sms()`, `mms()`, `whatsapp()` and `rcs()` — the four V2 channels, each lazily built against `v2()` and returning typed DTOs. `sms()` returns with different semantics than the method 1.x removed: it now wraps `POST /v2/sms`, a single-recipient send with no scheduling — see UPGRADING.md before repointing multi-recipient 1.x `sms()` call sites at it.
+- `Resources\SmsV2Resource`, `MmsResource`, `WhatsAppResource` and `RcsResource`, with their request classes under `Requests\V2\`. SMS lists page by page; WhatsApp and RCS lists page by cursor; both go through Phase 2's paginators.
+- `Enums\MessageStatus` and `Enums\RcsCapabilityCode` — tolerant enums whose `fromApi()` resolves an undocumented value to `Unknown` rather than throwing, so a client reading its own message history doesn't break when Kudosity adds a status.
+- `Contracts\WhatsAppContent` and its three variants, `Data\V2\Content\TextContent`, `TemplateContent` and `CustomContent`, plus `Data\V2\SmsFallback` for the `sms_fallback` object shared by the WhatsApp and RCS send endpoints.
+- `Data\V2\SmsMessageData`, `MmsMessageData`, `WhatsAppMessageData`, `RcsMessageData`, `RcsCapabilityData` and `SmsListData` DTOs. SMS and MMS responses are flat; WhatsApp and RCS are wrapped in `data` — both resolved through the same `Concerns\UnwrapsData::payload()` seam.
 
 ## 1.9.0 - 2026-07-03
 

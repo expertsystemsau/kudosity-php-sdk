@@ -11,8 +11,12 @@ use ExpertSystems\Kudosity\Resources\BulkSmsResource;
 use ExpertSystems\Kudosity\Resources\EmailSmsResource;
 use ExpertSystems\Kudosity\Resources\KeywordsResource;
 use ExpertSystems\Kudosity\Resources\ListsResource;
+use ExpertSystems\Kudosity\Resources\MmsResource;
 use ExpertSystems\Kudosity\Resources\NumbersResource;
+use ExpertSystems\Kudosity\Resources\RcsResource;
 use ExpertSystems\Kudosity\Resources\ReportingResource;
+use ExpertSystems\Kudosity\Resources\SmsV2Resource;
+use ExpertSystems\Kudosity\Resources\WhatsAppResource;
 use Saloon\Http\Response;
 
 class KudosityClient
@@ -42,6 +46,14 @@ class KudosityClient
     protected ?KeywordsResource $keywordsResource = null;
 
     protected ?EmailSmsResource $emailSmsResource = null;
+
+    protected ?SmsV2Resource $smsResource = null;
+
+    protected ?MmsResource $mmsResource = null;
+
+    protected ?WhatsAppResource $whatsAppResource = null;
+
+    protected ?RcsResource $rcsResource = null;
 
     /**
      * Create a new Kudosity client.
@@ -158,8 +170,8 @@ class KudosityClient
     /**
      * V1 bulk SMS: multiple recipients, contact lists, scheduled sends, cancel.
      *
-     * V2's `sms()` — arriving in the next release — takes exactly one recipient
-     * and cannot schedule, so these sends stay on V1.
+     * V2's `sms()` takes exactly one recipient and cannot schedule, so these
+     * sends stay on V1.
      */
     public function bulk(): BulkSmsResource
     {
@@ -214,6 +226,49 @@ class KudosityClient
     public function emailSms(): EmailSmsResource
     {
         return $this->emailSmsResource ??= new EmailSmsResource($this->v1Connector);
+    }
+
+    /**
+     * V2 single-recipient SMS: `POST /v2/sms`.
+     *
+     * Takes exactly one recipient and cannot schedule a future send. For
+     * multiple recipients, a contact list, or a scheduled send, use
+     * `$client->bulk()` instead — that is V1's send surface, and it is the
+     * one a 1.x consumer's `sms()` call actually meant.
+     */
+    public function sms(): SmsV2Resource
+    {
+        return $this->smsResource ??= new SmsV2Resource($this->v2Connector);
+    }
+
+    /**
+     * V2 single-recipient MMS: `POST /v2/mms`.
+     *
+     * @see https://developers.kudosity.com
+     */
+    public function mms(): MmsResource
+    {
+        return $this->mmsResource ??= new MmsResource($this->v2Connector);
+    }
+
+    /**
+     * V2 WhatsApp messaging: templates, free-form text and custom content.
+     *
+     * @see https://developers.kudosity.com
+     */
+    public function whatsapp(): WhatsAppResource
+    {
+        return $this->whatsAppResource ??= new WhatsAppResource($this->v2Connector);
+    }
+
+    /**
+     * V2 RCS messaging, with capability checks and SMS fallback.
+     *
+     * @see https://developers.kudosity.com
+     */
+    public function rcs(): RcsResource
+    {
+        return $this->rcsResource ??= new RcsResource($this->v2Connector);
     }
 
     // =========================================================================

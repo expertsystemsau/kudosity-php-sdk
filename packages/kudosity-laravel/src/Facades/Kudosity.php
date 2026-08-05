@@ -7,6 +7,10 @@ namespace ExpertSystems\Kudosity\Laravel\Facades;
 use ExpertSystems\Kudosity\KudosityClient;
 use ExpertSystems\Kudosity\KudosityV1Connector;
 use ExpertSystems\Kudosity\KudosityV2Connector;
+use ExpertSystems\Kudosity\Resources\MmsResource;
+use ExpertSystems\Kudosity\Resources\RcsResource;
+use ExpertSystems\Kudosity\Resources\SmsV2Resource;
+use ExpertSystems\Kudosity\Resources\WhatsAppResource;
 use Illuminate\Support\Facades\Facade;
 use Saloon\Http\Response;
 
@@ -21,6 +25,10 @@ use Saloon\Http\Response;
  * @method static \ExpertSystems\Kudosity\Resources\NumbersResource numbers()
  * @method static \ExpertSystems\Kudosity\Resources\KeywordsResource keywords()
  * @method static \ExpertSystems\Kudosity\Resources\EmailSmsResource emailSms()
+ * @method static SmsV2Resource sms()
+ * @method static MmsResource mms()
+ * @method static WhatsAppResource whatsapp()
+ * @method static RcsResource rcs()
  * @method static Response send(\ExpertSystems\Kudosity\Requests\KudosityV1Request $request)
  * @method static array<string, mixed> sendAndGetJson(\ExpertSystems\Kudosity\Requests\KudosityV1Request $request)
  * @method static KudosityClient setBaseUrl(string $baseUrl)
