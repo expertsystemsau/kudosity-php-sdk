@@ -5,9 +5,15 @@ declare(strict_types=1);
 namespace ExpertSystems\Kudosity;
 
 use ExpertSystems\Kudosity\Concerns\HasRetryPolicy;
+use ExpertSystems\Kudosity\Contracts\PaginatesV2Cursor;
+use ExpertSystems\Kudosity\Contracts\PaginatesV2Pages;
 use ExpertSystems\Kudosity\Exceptions\KudosityException;
+use ExpertSystems\Kudosity\Pagination\V2CursorPaginator;
+use ExpertSystems\Kudosity\Pagination\V2PagedPaginator;
 use Saloon\Http\Connector;
+use Saloon\Http\Request;
 use Saloon\Http\Response;
+use Saloon\PaginationPlugin\Contracts\HasPagination;
 use Saloon\Traits\Plugins\AcceptsJson;
 use Throwable;
 
@@ -21,7 +27,7 @@ use Throwable;
  *
  * @see https://developers.kudosity.com/reference/authentication
  */
-class KudosityV2Connector extends Connector
+class KudosityV2Connector extends Connector implements HasPagination
 {
     use AcceptsJson;
     use HasRetryPolicy;
@@ -107,5 +113,30 @@ class KudosityV2Connector extends Connector
     public function getRequestException(Response $response, ?Throwable $senderException): ?Throwable
     {
         return KudosityException::fromV2Response($response);
+    }
+
+    /**
+     * Build the paginator the request declares.
+     *
+     * V2 uses two incompatible schemes — page numbers on `GET /v2/sms`, cursors
+     * on the WhatsApp and RCS lists — so the request names which one it speaks
+     * and this picks the matching paginator.
+     *
+     * @throws KudosityException If the request declares no pagination scheme
+     */
+    public function paginate(Request $request): V2PagedPaginator|V2CursorPaginator
+    {
+        if ($request instanceof PaginatesV2Cursor) {
+            return new V2CursorPaginator($this, $request);
+        }
+
+        if ($request instanceof PaginatesV2Pages) {
+            return new V2PagedPaginator($this, $request);
+        }
+
+        throw new KudosityException(sprintf(
+            '%s is not paginatable. Implement PaginatesV2Pages or PaginatesV2Cursor to page through it.',
+            $request::class
+        ));
     }
 }
