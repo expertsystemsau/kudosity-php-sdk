@@ -63,10 +63,41 @@ messaging channels are wired onto `KudosityClient` and exposed as resources:
   `$agentId` is a registered agent ID, never a phone number. Response wrapped
   in `data`; paginates by cursor.
 
-Webhook and sender request classes do not exist yet — those arrive in
-Phases 4–5. See "Two APIs, two auth schemes" below for how the two APIs fit
-together, and the client package README's "V2 channels" section for the
-per-endpoint envelope table.
+Phase 4 added the remaining two V2 surfaces, plus the protocol safety the
+webhook transport needs:
+
+- **`webhooks()` → `Resources\WebhooksResource`** — account-level webhook CRUD
+  (`POST/GET/PUT/DELETE /v2/webhook`). Flat response envelope, not paginated.
+  `PUT` is a **replace**, so `update()` takes the whole shape. Rejects an
+  `http://` URL even though the API accepts one.
+- **`senders()` → `Resources\SendersResource`** — sender registrations and the
+  SMS verification flow. Response wrapped in `data`, items at
+  `data.registrations`, page-based but reporting `meta.pagination.total_count`.
+  Registers a **personal mobile number** only; alphanumeric sender IDs, WhatsApp
+  senders and RCS agents are not self-service, and a leased virtual number is
+  not a registration at all.
+- **`Webhooks\WebhookEvent::fromArray()`** — ten event types into four payload
+  classes (`StatusEvent`, `InboundEvent`, `LinkHitEvent`, `OptOutEvent`) plus
+  `UnknownEvent`, which is returned rather than thrown. `messageRef()` is one
+  accessor for a key the API hides at a different path per event type.
+- **`Webhooks\StatusPrecedence`** — status events are unordered and
+  at-least-once, so a late `SENT` must not overwrite a recorded `DELIVERED`. A
+  rank, not a terminal check: `MessageStatus::isTerminal()` is true for both
+  `DELIVERED` and `READ`, and an RCS read receipt follows delivery.
+- **`Webhooks\SignedMessageRef`** — deliveries are **unsigned**, so this signs
+  our own correlation key. Protects correlation, not the payload. Parse from the
+  **last** colon; real refs are composite.
+
+**When writing anything that reads a webhook payload, read
+`tests/Fixtures/V2Webhooks/README.md` first.** The fixtures are real captured
+deliveries and they record several behaviours the upstream docs contradict or
+omit. Likewise `tests/Fixtures/V2Senders/README.md` for what is and is not
+verified about the sender item shape.
+
+Phase 5 (Laravel channels, the webhook receiver route, `kudosity:webhook:*`
+commands) and Phase 6 (standalone suite, docs, release) remain. See "Two APIs,
+two auth schemes" below for how the two APIs fit together, and the client
+package README's "V2 channels" section for the per-endpoint envelope table.
 
 ### Laravel Integration (kudosity-laravel)
 

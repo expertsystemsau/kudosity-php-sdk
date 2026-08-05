@@ -344,6 +344,180 @@ value is valid, or even possible, everywhere it appears:
 throws rather than silently sending an unsupported query parameter the API
 would ignore.
 
+## V2 webhooks
+
+V2 webhooks are **account-level resources managed over the API**, not per-send
+callback URLs. `POST /v2/sms` and friends have no `dlr_callback` equivalent, so a
+send migrated from V1 to V2 stops receiving delivery receipts and replies unless a
+webhook is registered. One registration can serve every channel.
+
+```php
+use ExpertSystems\Kudosity\Enums\WebhookEventType;
+
+$hook = $client->webhooks()->create(
+    name: 'Production events',
+    url: 'https://your-app.example.com/webhooks/kudosity',   // HTTPS required
+    eventTypes: [WebhookEventType::SmsStatus, WebhookEventType::SmsInbound],
+    rateLimit: 100,                                          // 0 or omitted = system default
+);
+
+$client->webhooks()->all();                    // [] when there are none
+$client->webhooks()->get($hook->id);
+$client->webhooks()->delete($hook->id);
+
+// PUT replaces rather than patches — read, then write the whole shape back.
+$current = $client->webhooks()->get($hook->id);
+$client->webhooks()->update(
+    $current->id,
+    $current->name,
+    'https://your-app.example.com/webhooks/kudosity/v2',
+    filter: $current->filter,
+    rateLimit: $current->rateLimit,
+);
+```
+
+### Handling a delivery
+
+```php
+use ExpertSystems\Kudosity\Webhooks\WebhookEvent;
+
+$event = WebhookEvent::fromArray($request->json()->all());
+
+// One accessor, whatever the event type — see the table below.
+$ref = $event->messageRef();
+
+match (true) {
+    $event instanceof StatusEvent  => $this->recordStatus($event),
+    $event instanceof InboundEvent => $this->routeReply($event),
+    default                        => $this->log($event->raw),
+};
+```
+
+### Where the correlation key hides
+
+`message_ref` is how a delivery ties back to your order, booking or conversation.
+The API keeps it somewhere different on every event type, which is why
+`messageRef()` exists rather than leaving callers to look:
+
+| Event | Path |
+|---|---|
+| `SMS_STATUS`, `MMS_STATUS`, `WHATSAPP_STATUS`, `RCS_STATUS` | `status.message_ref` |
+| `SMS_INBOUND`, `MMS_INBOUND`, `WHATSAPP_INBOUND`, `RCS_INBOUND` | `mo.last_message.message_ref` |
+| `LINK_HIT` | `link_hit.source_message.message_ref` |
+| `OPT_OUT` | `opt_out.source_message.message_ref` |
+
+**Route replies on `message_ref`, never on the phone number.** Number matching
+breaks the first time one contact is in two flows at once, and again when
+`routed_via` shows a shared number delivered the message. Note also that on an
+inbound event `mo.sender` is the *customer* and `mo.recipient` is *your* number —
+and that the webhook filter's `sender` key matches `mo.recipient` for inbound
+events, so filtering inbound by sender filters by your own number.
+
+`last_message` is best-effort: it is absent when Kudosity finds no recent
+outbound, so an unsolicited inbound has no ref and cannot be correlated *or*
+authenticated. `InboundEvent::isCorrelated()` is the check.
+
+### Deliveries are not signed
+
+There is no HMAC, signature or auth header of any kind. The complete observed
+header set is `accept-encoding`, `content-length`, `content-type`, `host`,
+`sentry-trace`, `traceparent` and `user-agent: Go-http-client/2.0`. **A receiver
+cannot verify a delivery came from Kudosity.**
+
+What you *can* verify is that a delivery refers to one of your own entities:
+
+```php
+use ExpertSystems\Kudosity\Webhooks\SignedMessageRef;
+
+// On the way out
+$ref = SignedMessageRef::sign("order-9931:cust-4471", $secret);
+$client->sms()->send($body, to: $to, from: $from, messageRef: $ref);
+
+// On the way in
+$entity = SignedMessageRef::verify($event->messageRef(), $secret);
+
+if ($entity === null) {
+    // Unsigned, forged, or for another system. Do not correlate it.
+}
+```
+
+This protects **correlation, not the payload**. A forger can still POST a valid
+webhook; they cannot make it point at a real entity of yours. Parsing splits on
+the *last* colon, so composite refs survive.
+
+### Status events are unordered and at-least-once
+
+Several status events fire per message, they are not order-guaranteed, and the
+same event can be delivered twice. A redelivered `SENT` arriving 57 seconds
+*after* `DELIVERED` — carrying its original timestamp, byte-identical to the
+first — has been observed on a live account.
+
+```php
+use ExpertSystems\Kudosity\Webhooks\StatusPrecedence;
+
+if (StatusPrecedence::supersedes($event->status, $recorded)) {
+    $this->update($event->id, $event->status);   // keyed on status.id
+}
+```
+
+`MessageStatus::isTerminal()` is **not** enough for this: it is true for both
+`DELIVERED` and `READ`, and an RCS read receipt legitimately follows delivery.
+`StatusPrecedence` is a rank for that reason.
+
+### Things the documentation does not say
+
+- Every delivery carries `webhook_id` and `webhook_name` at the top level, and
+  `MMS_STATUS` carries a carrier `status.description`. All three are modelled.
+- `GET /v2/webhook` returns `{}` — not `{"webhooks": []}` — when there are none.
+- `MMS_STATUS` does reach `DELIVERED`, despite the docs saying it carries
+  internal statuses only.
+- Webhook responses are **flat**, not `data`-wrapped, and carry `is_sandbox`,
+  `created_at` and `updated_at`.
+- Validation errors here return a plain `{"error": "..."}` string rather than the
+  RFC 9457 body the messaging endpoints use. Both map to `ValidationException`.
+- **A `LINK_HIT` is not evidence a human clicked.** The first hit on a tracked
+  link routinely arrives in the same second as `DELIVERED` — a messaging app
+  generating a preview. `hits` is cumulative for the link and counts machine
+  fetches, so it is not an engagement metric.
+- `link_hit.url` is the original destination; the *shortened* link is in
+  `source_message.message`.
+- **This SDK rejects an `http://` webhook URL even though the API accepts one.**
+  The docs require HTTPS, deliveries carry message content, and they are
+  unsigned. `WebhookData::isSecure()` reports on registrations that already exist.
+
+## Senders
+
+```php
+$client->senders()->allRegistrations();   // typed, all pages
+$client->senders()->readyToUse();         // only those that can actually send
+
+$reg = $client->senders()->register('61400000000', 'AU');
+$client->senders()->requestVerification($reg->id, originatingSender: '61481074185');
+$client->senders()->confirmVerification($reg->id, '012345');   // string: codes have leading zeros
+
+$client->senders()->deleteByPhoneNumber('61400000000');
+```
+
+**`VERIFIED` does not mean you can send.** It means *provisioning*. The registry
+lifecycle is `NEW` → `SUBMITTED_TO_REGISTRY` → `PENDING_CUSTOMER` →
+`PENDING_APPROVAL` → `VERIFIED` → `READY_TO_USE`, and only the last can send —
+sending on `VERIFIED` fails in a way that looks like anything but a sender
+problem. Use `SenderStatus::isReadyToUse()`, which is false for an unrecognised
+state too. `PENDING_CUSTOMER` is waiting on *you*: read `statusReason`.
+
+Two scope limits worth knowing before reaching for `register()`:
+
+- It registers a **personal mobile number** — the only `type` the API accepts is
+  `PERSONAL_MOBILE_NUMBER`. Alphanumeric sender IDs, WhatsApp Business senders
+  and RCS agents need Kudosity approval and are not self-service.
+- A **leased virtual number is not a registration**, so an account can send
+  perfectly well and report zero registrations. Use `$client->numbers()` (V1) for
+  leased numbers.
+
+`GET /v2/senders/registrations` is page-based but reports its total as
+`meta.pagination.total_count` and defaults to 25 per page, where `GET /v2/sms`
+reports `total_records` and defaults to 100. `V2PagedPaginator` handles both.
+
 ## Laravel Integration
 
 For Laravel projects, use [expertsystemsau/kudosity-laravel-client](https://packagist.org/packages/expertsystemsau/kudosity-laravel-client) which provides:

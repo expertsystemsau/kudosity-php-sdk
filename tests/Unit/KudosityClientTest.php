@@ -7,6 +7,8 @@ use ExpertSystems\Kudosity\KudosityClient;
 use ExpertSystems\Kudosity\KudosityV1Connector;
 use ExpertSystems\Kudosity\KudosityV2Connector;
 use ExpertSystems\Kudosity\Requests\GetBalanceRequest;
+use ExpertSystems\Kudosity\Requests\V2\ListSenderRegistrationsRequest;
+use ExpertSystems\Kudosity\Requests\V2\ListWebhooksRequest;
 use ExpertSystems\Kudosity\Requests\V2\SendMmsRequest;
 use ExpertSystems\Kudosity\Requests\V2\SendRcsRequest;
 use ExpertSystems\Kudosity\Requests\V2\SendSmsV2Request;
@@ -14,7 +16,9 @@ use ExpertSystems\Kudosity\Requests\V2\SendWhatsAppRequest;
 use ExpertSystems\Kudosity\Resources\BulkSmsResource;
 use ExpertSystems\Kudosity\Resources\MmsResource;
 use ExpertSystems\Kudosity\Resources\RcsResource;
+use ExpertSystems\Kudosity\Resources\SendersResource;
 use ExpertSystems\Kudosity\Resources\SmsV2Resource;
+use ExpertSystems\Kudosity\Resources\WebhooksResource;
 use ExpertSystems\Kudosity\Resources\WhatsAppResource;
 use Saloon\Http\Faking\MockClient;
 use Saloon\Http\Faking\MockResponse;
@@ -131,6 +135,39 @@ it('exposes rcs() against the V2 connector, not V1, and caches the instance', fu
         ->and($client->rcs())->toBe($client->rcs());
 
     $client->rcs()->send('hi', '61411122211', 'DemoSender');
+
+    expect((string) $mock->getLastPendingRequest()->getUri())
+        ->toStartWith('https://api.transmitmessage.com');
+});
+
+it('exposes webhooks() against the V2 connector, not V1, and caches the instance', function () {
+    $mock = new MockClient([ListWebhooksRequest::class => MockResponse::make([], 200)]);
+    $client = new KudosityClient('key', 'secret');
+    $client->v2()->withMockClient($mock);
+
+    expect($client->webhooks())->toBeInstanceOf(WebhooksResource::class)
+        ->and($client->webhooks())->toBe($client->webhooks());
+
+    $client->webhooks()->all();
+
+    expect((string) $mock->getLastPendingRequest()->getUri())
+        ->toStartWith('https://api.transmitmessage.com');
+});
+
+it('exposes senders() against the V2 connector, not V1, and caches the instance', function () {
+    $mock = new MockClient([
+        ListSenderRegistrationsRequest::class => MockResponse::make(
+            ['data' => ['registrations' => []], 'meta' => ['pagination' => ['limit' => 25, 'total_count' => 0]]],
+            200,
+        ),
+    ]);
+    $client = new KudosityClient('key', 'secret');
+    $client->v2()->withMockClient($mock);
+
+    expect($client->senders())->toBeInstanceOf(SendersResource::class)
+        ->and($client->senders())->toBe($client->senders());
+
+    $client->senders()->allRegistrations();
 
     expect((string) $mock->getLastPendingRequest()->getUri())
         ->toStartWith('https://api.transmitmessage.com');
