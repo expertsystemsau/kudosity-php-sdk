@@ -465,62 +465,9 @@ it('sends no filter query parameters when none are given', function () {
         ->and($query->get('campaign_id'))->toBeNull();
 });
 
-it('accepts every documented date_range value that needs no window', function (string $dateRange) {
-    // An allow-list assertion, not a deny-list: all five documented values must
-    // be accepted — the fifth, custom_date, immediately below because it also
-    // needs its dates — and the unlisted value must not be.
-    expect(new ListWhatsAppRequest(dateRange: $dateRange))->toBeInstanceOf(ListWhatsAppRequest::class);
-})->with(['last_week', 'last_thirty', 'last_month', 'all']);
-
-it('accepts custom_date when both dates are supplied', function () {
-    expect(new ListWhatsAppRequest(dateRange: 'custom_date', startDate: '2026-07-01', endDate: '2026-07-31'))
-        ->toBeInstanceOf(ListWhatsAppRequest::class);
-});
-
-it('rejects a date_range outside the documented set', function () {
-    // The asserted fragment belongs to the allow-list rule alone — the pairing
-    // rule below phrases itself differently — and 'yesterday' cannot trigger
-    // the pairing rule anyway.
-    new ListWhatsAppRequest(dateRange: 'yesterday');
-})->throws(ValidationException::class, 'date_range must be one of');
-
-it('rejects custom_date with neither date, because the API answers a generic 400', function () {
-    // date_range itself is valid here, so the pairing rule is the only one that
-    // can fire. The asserted fragment is unique to that rule's message —
-    // 'custom_date' alone would also match the allow-list message, which lists
-    // every accepted value.
-    new ListWhatsAppRequest(dateRange: 'custom_date');
-})->throws(ValidationException::class, 'both required');
-
-it('rejects custom_date with only start_date', function () {
-    new ListWhatsAppRequest(dateRange: 'custom_date', startDate: '2026-07-01');
-})->throws(ValidationException::class, 'both required');
-
-it('rejects custom_date with only end_date', function () {
-    new ListWhatsAppRequest(dateRange: 'custom_date', endDate: '2026-07-31');
-})->throws(ValidationException::class, 'both required');
-
-it('rejects start_date with no date_range, because the API would ignore it silently', function () {
-    // The reverse direction. An unsupported query parameter is dropped without
-    // complaint, so the caller believes their results are date-filtered when
-    // they are not — the same silent-wrong hazard that removed the speculative
-    // date filters from ListSmsV2Request.
-    new ListWhatsAppRequest(startDate: '2026-07-01');
-})->throws(ValidationException::class, 'only meaningful');
-
-it('rejects end_date with no date_range', function () {
-    new ListWhatsAppRequest(endDate: '2026-07-31');
-})->throws(ValidationException::class, 'only meaningful');
-
-it('rejects both dates with no date_range', function () {
-    new ListWhatsAppRequest(startDate: '2026-07-01', endDate: '2026-07-31');
-})->throws(ValidationException::class, 'only meaningful');
-
-it('rejects dates alongside a date_range other than custom_date', function () {
-    // date_range is valid and the dates are paired, so neither of the other two
-    // rules can fire — only the coupling one.
-    new ListWhatsAppRequest(dateRange: 'last_week', startDate: '2026-07-01', endDate: '2026-07-31');
-})->throws(ValidationException::class, 'only meaningful');
+// The date_range allow-list and the custom_date pairing rule live in
+// Concerns\FiltersByDateRange and are asserted against this request, alongside
+// ListRcsRequest, in tests/Unit/V2DateRangeFilterTest.php.
 
 // ---------------------------------------------------------------------------
 // WhatsAppMessageData

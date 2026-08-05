@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace ExpertSystems\Kudosity\Requests\V2;
 
+use ExpertSystems\Kudosity\Concerns\FiltersByDateRange;
 use ExpertSystems\Kudosity\Contracts\PaginatesV2Cursor;
 use ExpertSystems\Kudosity\Exceptions\ValidationException;
 use ExpertSystems\Kudosity\Pagination\V2CursorPaginator;
@@ -23,17 +24,7 @@ use Saloon\Enums\Method;
  */
 class ListWhatsAppRequest extends KudosityV2Request implements PaginatesV2Cursor
 {
-    /**
-     * The documented `date_range` values.
-     *
-     * @var array<int, string>
-     */
-    public const DATE_RANGES = ['last_week', 'last_thirty', 'last_month', 'all', 'custom_date'];
-
-    /**
-     * The one `date_range` value that requires an explicit window.
-     */
-    public const CUSTOM_DATE_RANGE = 'custom_date';
+    use FiltersByDateRange;
 
     protected Method $method = Method::GET;
 
@@ -47,41 +38,7 @@ class ListWhatsAppRequest extends KudosityV2Request implements PaginatesV2Cursor
         protected ?string $endDate = null,
         protected ?string $campaignId = null,
     ) {
-        if ($dateRange !== null && ! in_array($dateRange, self::DATE_RANGES, true)) {
-            throw new ValidationException(
-                message: sprintf(
-                    'date_range must be one of %s; "%s" given.',
-                    implode(', ', self::DATE_RANGES),
-                    $dateRange,
-                ),
-                errorCode: 'FIELD_INVALID',
-            );
-        }
-
-        // Checked client-side because the API's answer to a half-specified
-        // window is a generic 400 that does not say which field is missing.
-        if ($dateRange === self::CUSTOM_DATE_RANGE && ($startDate === null || $endDate === null)) {
-            throw new ValidationException(
-                message: 'start_date and end_date are both required when date_range is custom_date.',
-                errorCode: 'FIELD_EMPTY',
-            );
-        }
-
-        // And the reverse. The docs couple the two dates to custom_date, so
-        // dates without it are meaningless — and the API ignores an unsupported
-        // query parameter silently, leaving the caller believing their results
-        // are date-filtered when they are not. Silent wrong results are worse
-        // than a rejected call, which is the same reasoning that removed the
-        // speculative date filters from ListSmsV2Request.
-        if ($dateRange !== self::CUSTOM_DATE_RANGE && ($startDate !== null || $endDate !== null)) {
-            throw new ValidationException(
-                message: sprintf(
-                    'start_date and end_date are only meaningful alongside date_range "%s".',
-                    self::CUSTOM_DATE_RANGE,
-                ),
-                errorCode: 'FIELD_INVALID',
-            );
-        }
+        $this->validateDateRange($dateRange, $startDate, $endDate);
     }
 
     public function resolveEndpoint(): string
@@ -104,19 +61,7 @@ class ListWhatsAppRequest extends KudosityV2Request implements PaginatesV2Cursor
      */
     protected function defaultQuery(): array
     {
-        $query = [];
-
-        if ($this->dateRange !== null) {
-            $query['date_range'] = $this->dateRange;
-        }
-
-        if ($this->startDate !== null) {
-            $query['start_date'] = $this->startDate;
-        }
-
-        if ($this->endDate !== null) {
-            $query['end_date'] = $this->endDate;
-        }
+        $query = $this->dateRangeQuery($this->dateRange, $this->startDate, $this->endDate);
 
         if ($this->campaignId !== null) {
             $query['campaign_id'] = $this->campaignId;
