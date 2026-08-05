@@ -137,6 +137,23 @@ describe('PhoneNumber', function () {
         it('rejects empty sender IDs', function () {
             expect(PhoneNumber::isValidSenderId(''))->toBeFalse();
         });
+
+        it('rejects a sender ID with a trailing newline, which PCRE $ alone would allow', function () {
+            // Without /D, PCRE's $ also matches immediately before a final
+            // newline, so "MyBrand\n" satisfied the alphanumeric-only rule —
+            // the only rule guarding a sender ID's character set. Asserted on
+            // both entry points because isValidSenderId() delegates, and on a
+            // digit-shaped value because ctype_digit() rejects the newline and
+            // drops that branch through to the same regex.
+            expect(PhoneNumber::isValidSenderId("MyBrand\n"))->toBeFalse()
+                ->and(PhoneNumber::isValidAlphanumericSenderId("MyBrand\n"))->toBeFalse()
+                ->and(PhoneNumber::isValidSenderId("61400000000\n"))->toBeFalse();
+        });
+
+        it('rejects a sender ID with a leading newline', function () {
+            // Guards the other direction: ^ must not become line-anchored.
+            expect(PhoneNumber::isValidSenderId("\nMyBrand"))->toBeFalse();
+        });
     });
 
     describe('countRecipients', function () {

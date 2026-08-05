@@ -346,46 +346,9 @@ it('sends no filter query parameters when none are given', function () {
         ->and($query->get('end_date'))->toBeNull();
 });
 
-it('accepts every documented date_range value that needs no window', function (string $dateRange) {
-    expect(new ListRcsRequest(dateRange: $dateRange))->toBeInstanceOf(ListRcsRequest::class);
-})->with(['last_week', 'last_thirty', 'last_month', 'all']);
-
-it('accepts custom_date when both dates are supplied', function () {
-    expect(new ListRcsRequest(dateRange: 'custom_date', startDate: '2026-07-01', endDate: '2026-07-31'))
-        ->toBeInstanceOf(ListRcsRequest::class);
-});
-
-it('rejects a date_range outside the documented set', function () {
-    new ListRcsRequest(dateRange: 'yesterday');
-})->throws(ValidationException::class, 'date_range must be one of');
-
-it('rejects custom_date with neither date, because the API answers a generic 400', function () {
-    new ListRcsRequest(dateRange: 'custom_date');
-})->throws(ValidationException::class, 'both required');
-
-it('rejects custom_date with only start_date', function () {
-    new ListRcsRequest(dateRange: 'custom_date', startDate: '2026-07-01');
-})->throws(ValidationException::class, 'both required');
-
-it('rejects custom_date with only end_date', function () {
-    new ListRcsRequest(dateRange: 'custom_date', endDate: '2026-07-31');
-})->throws(ValidationException::class, 'both required');
-
-it('rejects start_date with no date_range, because the API would ignore it silently', function () {
-    new ListRcsRequest(startDate: '2026-07-01');
-})->throws(ValidationException::class, 'only meaningful');
-
-it('rejects end_date with no date_range', function () {
-    new ListRcsRequest(endDate: '2026-07-31');
-})->throws(ValidationException::class, 'only meaningful');
-
-it('rejects both dates with no date_range', function () {
-    new ListRcsRequest(startDate: '2026-07-01', endDate: '2026-07-31');
-})->throws(ValidationException::class, 'only meaningful');
-
-it('rejects dates alongside a date_range other than custom_date', function () {
-    new ListRcsRequest(dateRange: 'last_week', startDate: '2026-07-01', endDate: '2026-07-31');
-})->throws(ValidationException::class, 'only meaningful');
+// The date_range allow-list and the custom_date pairing rule live in
+// Concerns\FiltersByDateRange and are asserted against this request, alongside
+// ListWhatsAppRequest, in tests/Unit/V2DateRangeFilterTest.php.
 
 // ---------------------------------------------------------------------------
 // RcsMessageData

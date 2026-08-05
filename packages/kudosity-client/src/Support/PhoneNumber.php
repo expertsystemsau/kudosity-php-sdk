@@ -230,8 +230,10 @@ final class PhoneNumber
             return false;
         }
 
-        // Alphanumeric only (but must contain at least one letter to be alphanumeric)
-        if (! preg_match('/^[a-zA-Z0-9]+$/', $senderId)) {
+        // Alphanumeric only. /D is load-bearing: without it PCRE's $ also
+        // matches immediately before a final newline, so "MyBrand\n" would pass
+        // the only rule guarding the character set.
+        if (! preg_match('/^[a-zA-Z0-9]+$/D', $senderId)) {
             return false;
         }
 
