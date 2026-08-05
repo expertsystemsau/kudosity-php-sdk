@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use ExpertSystems\Kudosity\Contracts\PaginatesV2Pages;
+use ExpertSystems\Kudosity\Data\V2\SmsListData;
 use ExpertSystems\Kudosity\Data\V2\SmsMessageData;
 use ExpertSystems\Kudosity\Enums\MessageStatus;
 use ExpertSystems\Kudosity\Exceptions\NotFoundException;
@@ -134,7 +135,12 @@ it('turns a 404 into a NotFoundException', function () {
     smsResource([GetSmsV2Request::class => MockResponse::make(['error' => 'SMS not found'], 404)])->get('nope');
 })->throws(NotFoundException::class, 'SMS not found');
 
-it('pages the list endpoint and casts its string totals', function () {
+it('pages the list endpoint and hydrates each item', function () {
+    // The paginator reads items straight off the response JSON (Phase 2's
+    // design — createDtoFromResponse() is never invoked through list()), so
+    // this covers paging and item hydration only. The total_records/
+    // total_segments string->int cast is proven separately, directly against
+    // SmsListData::fromArray(), below.
     $connector = new KudosityV2Connector('key');
     $connector->withMockClient(new MockClient([
         ListSmsV2Request::class => MockResponse::make([
@@ -147,6 +153,23 @@ it('pages the list endpoint and casts its string totals', function () {
     $items = iterator_to_array((new SmsV2Resource($connector))->list()->items());
 
     expect($items)->toHaveCount(2)->and($items[0]['id'])->toBe('2d2c8fb6-e514-4f5f-9706-0672b0259218');
+});
+
+it('casts SmsListData total_records and total_segments strings to int and hydrates messages', function () {
+    // GET /v2/sms answers "total_records": "2", not 2 — same trap as
+    // sms_count. Proven here directly against the DTO, decoupled from the
+    // paginator, since list() never reaches createDtoFromResponse().
+    $list = SmsListData::fromArray([
+        'smses' => [smsSendBody(), smsSendBody(['id' => 'second'])],
+        'total_records' => '2',
+        'total_segments' => '3',
+    ]);
+
+    expect($list->totalRecords)->toBe(2)->and($list->totalRecords)->toBeInt()
+        ->and($list->totalSegments)->toBe(3)->and($list->totalSegments)->toBeInt()
+        ->and($list->messages)->toHaveCount(2)
+        ->and($list->messages[0])->toBeInstanceOf(SmsMessageData::class)
+        ->and($list->messages[1])->toBeInstanceOf(SmsMessageData::class);
 });
 
 it('passes list filters through as query parameters', function () {
@@ -167,4 +190,21 @@ it('passes list filters through as query parameters', function () {
 it('declares itself paged so the connector picks the right paginator', function () {
     expect(new ListSmsV2Request)->toBeInstanceOf(PaginatesV2Pages::class)
         ->and((new ListSmsV2Request)->paginationItemsKey())->toBe('smses');
+});
+
+it('parses the nine-fractional-digit created_at timestamp that RFC3339_EXTENDED rejects', function () {
+    // DateTimeImmutable::createFromFormat(DateTimeInterface::RFC3339_EXTENDED, ...)
+    // expects exactly six fractional digits; the API sends nine
+    // ("...450674000Z"). The permissive `new DateTimeImmutable($value)`
+    // parse this DTO uses tolerates it instead of silently dropping the field.
+    $sms = SmsMessageData::fromArray(smsSendBody(['created_at' => '2022-03-28T06:12:52.450674000Z']));
+
+    expect($sms->createdAt)->toBeInstanceOf(DateTimeImmutable::class)
+        ->and($sms->createdAt)->not->toBeNull();
+});
+
+it('returns null for a malformed created_at rather than throwing', function () {
+    $sms = SmsMessageData::fromArray(smsSendBody(['created_at' => 'not-a-date']));
+
+    expect($sms->createdAt)->toBeNull();
 });
