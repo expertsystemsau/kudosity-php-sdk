@@ -103,6 +103,19 @@ it('sends a JSON body, not a form body', function () {
         ->and((string) $pending->body())->toBe('{"message":"hello world"}');
 });
 
+it('sends a V2 GET with no body and no Content-Type', function () {
+    $mock = new MockClient([StubV2GetRequest::class => MockResponse::make(['id' => 'x'], 200)]);
+
+    $connector = new KudosityV2Connector('my-key');
+    $connector->withMockClient($mock);
+    $connector->send(new StubV2GetRequest);
+
+    $pending = $mock->getLastPendingRequest();
+
+    expect($pending->headers()->get('Content-Type'))->toBeNull()
+        ->and((string) $pending->body())->toBe('');
+});
+
 it('does not append .json to V2 endpoints', function () {
     $mock = new MockClient([StubV2GetRequest::class => MockResponse::make(['id' => 'x'], 200)]);
 

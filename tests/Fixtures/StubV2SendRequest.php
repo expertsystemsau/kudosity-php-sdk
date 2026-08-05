@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use ExpertSystems\Kudosity\Requests\KudosityV2Request;
+use ExpertSystems\Kudosity\Requests\KudosityV2BodyRequest;
 
 /**
  * A stand-in for the real V2 requests that arrive in Phase 3.
@@ -12,8 +12,11 @@ use ExpertSystems\Kudosity\Requests\KudosityV2Request;
  * the others, which is a pattern that only gets worse as Phase 3 adds SMS,
  * MMS, WhatsApp and RCS specs wanting the same stub — this file is loaded
  * once, up front, by tests/Pest.php.
+ *
+ * Extends {@see KudosityV2BodyRequest}, not the plain base, because it's a
+ * POST that sends a body — the shape every real V2 write request will use.
  */
-class StubV2SendRequest extends KudosityV2Request
+class StubV2SendRequest extends KudosityV2BodyRequest
 {
     public function __construct(protected string $message) {}
 
