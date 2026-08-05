@@ -99,6 +99,31 @@ it('produces a useful message when the body carries no error at all', function (
         ->and($e->getMessage())->toContain('503');
 });
 
+it('maps a non-JSON (HTML) error body to ServerException instead of crashing on JsonException', function () {
+    // What a proxy or load balancer actually returns for a 502 — never JSON.
+    // Response::json() decodes with JSON_THROW_ON_ERROR, so without a guard
+    // this throws JsonException instead of building the typed exception.
+    $mock = new MockClient([StubV2SendRequest::class => MockResponse::make('<html>502 Bad Gateway</html>', 502)]);
+    $connector = new KudosityV2Connector('key');
+    $connector->withMockClient($mock);
+
+    $response = $connector->send(new StubV2SendRequest('hi'));
+
+    expect(KudosityException::fromV2Response($response))->toBeInstanceOf(ServerException::class);
+});
+
+it('produces a useful message when a body decodes to a literal null', function () {
+    // Saloon assigns json()'s result into a non-nullable array property, so a
+    // literal `null` body throws TypeError rather than JsonException.
+    $mock = new MockClient([StubV2SendRequest::class => MockResponse::make('null', 500)]);
+    $connector = new KudosityV2Connector('key');
+    $connector->withMockClient($mock);
+
+    $response = $connector->send(new StubV2SendRequest('hi'));
+
+    expect(KudosityException::fromV2Response($response)->getMessage())->toContain('500');
+});
+
 it('reports no issues for a V1 exception', function () {
     $mock = new MockClient([
         StubV2SendRequest::class => MockResponse::make(

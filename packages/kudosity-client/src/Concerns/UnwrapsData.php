@@ -19,6 +19,8 @@ use Saloon\Http\Response;
  */
 trait UnwrapsData
 {
+    use DecodesResponses;
+
     /**
      * Resolve the payload of a response, whichever envelope it used.
      *
@@ -26,13 +28,7 @@ trait UnwrapsData
      */
     protected static function payload(Response $response): array
     {
-        $json = $response->json();
-
-        // Guard against a non-array decoded body (e.g. a literal `null` body).
-        // Saloon's PHPDoc says json() always returns an array here, but that's
-        // only true when the body actually decodes to one.
-        /** @phpstan-ignore function.alreadyNarrowedType */
-        return is_array($json) ? static::payloadFrom($json) : [];
+        return static::payloadFrom(self::decode($response));
     }
 
     /**

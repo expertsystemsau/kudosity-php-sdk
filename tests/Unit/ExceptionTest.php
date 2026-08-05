@@ -216,4 +216,33 @@ describe('KudosityException', function () {
             expect($exception->getMessage())->toContain('UNKNOWN_ERROR');
         });
     });
+
+    describe('fromV1Response against a non-JSON body', function () {
+        it('produces a useful message instead of crashing on JsonException', function () {
+            // What a proxy or load balancer returns for a 503 — never JSON.
+            // Response::json() decodes with JSON_THROW_ON_ERROR, so without a
+            // guard this throws JsonException instead of a KudosityException.
+            $response = Mockery::mock(Response::class);
+            $response->shouldReceive('json')->andThrow(new JsonException('Syntax error'));
+            $response->shouldReceive('status')->andReturn(503);
+
+            $exception = KudosityException::fromV1Response($response);
+
+            expect($exception)->toBeInstanceOf(KudosityException::class)
+                ->and($exception->getMessage())->toBe('API request failed with HTTP 503');
+        });
+
+        it('produces a useful message when the body decodes to a literal null', function () {
+            // Saloon assigns json()'s result into a non-nullable array
+            // property, so a literal `null` body throws TypeError.
+            $response = Mockery::mock(Response::class);
+            $response->shouldReceive('json')->andThrow(new TypeError('Cannot assign null to property'));
+            $response->shouldReceive('status')->andReturn(500);
+
+            $exception = KudosityException::fromV1Response($response);
+
+            expect($exception)->toBeInstanceOf(KudosityException::class)
+                ->and($exception->getMessage())->toBe('API request failed with HTTP 500');
+        });
+    });
 });

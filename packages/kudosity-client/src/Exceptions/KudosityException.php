@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace ExpertSystems\Kudosity\Exceptions;
 
 use Exception;
+use ExpertSystems\Kudosity\Concerns\DecodesResponses;
 use Saloon\Http\Response;
 use Throwable;
 
 class KudosityException extends Exception
 {
+    use DecodesResponses;
+
     /**
      * Error code to exception class mapping.
      *
@@ -79,7 +82,7 @@ class KudosityException extends Exception
      */
     public static function fromV1Response(Response $response): self
     {
-        $data = $response->json();
+        $data = self::decode($response);
         $error = $data['error'] ?? [];
         $errorCode = $error['code'] ?? null;
         $httpStatus = $response->status();
@@ -129,7 +132,7 @@ class KudosityException extends Exception
     public static function fromV2Response(Response $response): self
     {
         $status = $response->status();
-        $json = $response->json();
+        $json = self::decode($response);
         $error = $json['error'] ?? null;
 
         $issues = [];
