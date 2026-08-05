@@ -378,13 +378,17 @@ Give each rule its own single-violation input, and assert on something only that
 - The signed form of a realistic entity **stays inside the documented 500-character `message_ref` limit**, and `sign()` rejects an entity long enough to breach it rather than producing a ref the API will refuse. Phase 3 already enforces the 500 limit on send; a helper that can only produce a rejected value is worse than no helper.
 - Empty entity rejected.
 
-- [ ] **Step 2: Implement.** Two non-negotiables:
+- [ ] **Step 2: Give the 500-character limit one home while you are here**
+
+`MAX_MESSAGE_REF_LENGTH = 500` and its guard are currently duplicated across all four Phase 3 send requests. This task needs the same number as a fifth consumer, and a signing helper whose limit disagrees with the send guard's is worse than no limit at all. Extract it — the natural place is beside the other shared V2 concerns — and switch the four send requests onto it. Their existing over-length tests must stay green **without edits**.
+
+- [ ] **Step 3: Implement.** Two non-negotiables:
   - Compare with `hash_equals()`, never `===`. It is a MAC comparison.
   - `verify()` returns `?string` rather than throwing. A forged webhook is an expected input on a public endpoint, not an exceptional one.
 
 Document in the class docblock that this protects **correlation**, not the payload: a forger can still send a syntactically valid webhook, they simply cannot make it point at one of your entities. Say so plainly, because the alternative is a reader assuming it authenticates the delivery.
 
-- [ ] **Step 3: Verify and commit.**
+- [ ] **Step 4: Verify and commit.**
 
 ---
 
