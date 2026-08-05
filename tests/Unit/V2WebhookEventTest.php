@@ -12,36 +12,6 @@ use ExpertSystems\Kudosity\Webhooks\StatusEvent;
 use ExpertSystems\Kudosity\Webhooks\UnknownEvent;
 use ExpertSystems\Kudosity\Webhooks\WebhookEvent;
 
-/**
- * A real delivery, captured against the live API.
- *
- * Loaded from disk rather than inlined: the fixture is the evidence, and a
- * pasted copy stops tracking it the moment either drifts. See
- * tests/Fixtures/V2Webhooks/README.md for what each one pins.
- */
-function webhookFixture(string $name): array
-{
-    $path = dirname(__DIR__).'/Fixtures/V2Webhooks/'.$name.'.json';
-
-    return json_decode((string) file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
-}
-
-/**
- * A documented payload shape with no fixture yet — the skill's own example.
- *
- * @param  array<string, mixed>  $overrides
- * @return array<string, mixed>
- */
-function documentedWebhook(string $eventType, array $payload): array
-{
-    return array_merge([
-        'event_type' => $eventType,
-        'timestamp' => '2026-08-05T12:00:00Z',
-        'webhook_id' => '8aa2842d-8931-4f6f-b55a-826a6698699a',
-        'webhook_name' => 'documented example',
-    ], $payload);
-}
-
 // ---------------------------------------------------------------------------
 // Dispatch
 // ---------------------------------------------------------------------------

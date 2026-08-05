@@ -8,3 +8,4 @@ uses(TestCase::class)->in(__DIR__);
 // see tests/Fixtures/ for why these aren't declared in one spec and
 // require_once'd by the others.
 require_once __DIR__.'/Fixtures/StubV2SendRequest.php';
+require_once __DIR__.'/Fixtures/WebhookPayloads.php';
