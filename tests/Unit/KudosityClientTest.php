@@ -11,12 +11,8 @@ use ExpertSystems\Kudosity\Resources\BulkSmsResource;
 use Saloon\Http\Faking\MockClient;
 use Saloon\Http\Faking\MockResponse;
 
-// StubV2SendRequest lives in V2ConnectorTest.php (Task 2). Pest loads every
-// test file in the suite so it normally resolves without help, but running
-// this file in isolation needs it pulled in explicitly.
-if (! class_exists(StubV2SendRequest::class)) {
-    require_once __DIR__.'/V2ConnectorTest.php';
-}
+// StubV2SendRequest is a shared fixture, loaded once by tests/Pest.php —
+// see tests/Fixtures/StubV2SendRequest.php.
 
 it('exposes both connectors, each on its own host', function () {
     $client = new KudosityClient('key', 'secret');
@@ -97,3 +93,22 @@ it('builds from a V1 connector alone and still provides a V2 connector', functio
         ->and($client->v2())->toBeInstanceOf(KudosityV2Connector::class)
         ->and($client->v2()->getApiKey())->toBe('k');
 });
+
+it('derives a V2 connector with its own defaults, not the V1 connector\'s host or timeout', function () {
+    // Distinctive V1 base URL and timeout so the derived V2 connector can't
+    // accidentally pass this test by coincidence. fromConnectors() must not
+    // "helpfully" copy $v1's base URL or timeout onto the derived V2
+    // connector — they are different hosts, and this is the exact
+    // regression a future contributor might introduce while "fixing" it.
+    $v1 = new KudosityV1Connector('k', 's', 'https://v1.test', 99);
+
+    $client = KudosityClient::fromConnector($v1);
+
+    expect($client->v2()->getApiKey())->toBe('k')
+        ->and($client->v2()->resolveBaseUrl())->toBe(KudosityV2Connector::BASE_URL)
+        ->and($client->v2()->getTimeout())->toBe(30);
+});
+
+it('throws when fromConnectors() is given neither connector', function () {
+    KudosityClient::fromConnectors();
+})->throws(KudosityException::class, 'Provide at least one connector.');

@@ -10,21 +10,7 @@ use Saloon\Http\Faking\MockClient;
 use Saloon\Http\Faking\MockResponse;
 use Saloon\Http\Response;
 
-/** A stand-in for the real V2 requests that arrive in Phase 3. */
-class StubV2SendRequest extends KudosityV2Request
-{
-    public function __construct(protected string $message) {}
-
-    public function resolveEndpoint(): string
-    {
-        return '/v2/sms';
-    }
-
-    protected function defaultBody(): array
-    {
-        return ['message' => $this->message];
-    }
-}
+// StubV2SendRequest is a shared fixture — see tests/Fixtures/StubV2SendRequest.php.
 
 class StubV2GetRequest extends KudosityV2Request
 {
@@ -72,19 +58,36 @@ it('authenticates with the x-api-key header and never sends a secret', function 
         ->and($headers)->not->toHaveKey('Authorization');
 });
 
-it('has no constructor parameter that could carry an API secret', function () {
+it('exposes no credential surface beyond the API key', function () {
     // The header/no-secret test above only proves nothing is sent on the
     // wire today. The structural guarantee is that KudosityV2Connector has
-    // no secret parameter at all, so a future refactor (e.g. KudosityClient
-    // routing credentials to two connectors) can't quietly reintroduce one
-    // out of V1 habit without this failing.
-    $params = array_map(
+    // no secret parameter or property at all, so a future refactor (e.g.
+    // KudosityClient routing credentials to two connectors) can't quietly
+    // reintroduce one — under any name — without this failing.
+    //
+    // These are allow-lists, not deny-lists: a denied name like 'apiSecret'
+    // would sail straight past '$apiToken', '$credentials', or a setter
+    // added later. Asserting the *exact* expected set catches all of those.
+    $reflection = new ReflectionClass(KudosityV2Connector::class);
+
+    $constructorParams = array_map(
         fn (ReflectionParameter $p): string => $p->getName(),
-        (new ReflectionClass(KudosityV2Connector::class))->getConstructor()->getParameters()
+        $reflection->getConstructor()->getParameters()
     );
 
-    expect($params)->not->toContain('apiSecret')
-        ->and($params)->not->toContain('secret');
+    // Only properties KudosityV2Connector itself declares — Saloon's base
+    // Connector class contributes plenty more (headers, auth, retry
+    // config, ...) that aren't this class's concern to assert about.
+    $ownProperties = array_map(
+        fn (ReflectionProperty $p): string => $p->getName(),
+        array_filter(
+            $reflection->getProperties(),
+            fn (ReflectionProperty $p): bool => $p->getDeclaringClass()->getName() === KudosityV2Connector::class
+        )
+    );
+
+    expect($constructorParams)->toBe(['apiKey', 'baseUrl', 'timeout'])
+        ->and(array_values($ownProperties))->toBe(['apiKey', 'baseUrl', 'timeout']);
 });
 
 it('sends a JSON body, not a form body', function () {

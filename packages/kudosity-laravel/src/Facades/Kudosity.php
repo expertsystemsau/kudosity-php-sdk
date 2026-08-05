@@ -6,13 +6,14 @@ namespace ExpertSystems\Kudosity\Laravel\Facades;
 
 use ExpertSystems\Kudosity\KudosityClient;
 use ExpertSystems\Kudosity\KudosityV1Connector;
+use ExpertSystems\Kudosity\KudosityV2Connector;
 use Illuminate\Support\Facades\Facade;
 use Saloon\Http\Response;
 
 /**
  * @method static KudosityV1Connector connector()
- * @method static \ExpertSystems\Kudosity\KudosityV1Connector v1()
- * @method static \ExpertSystems\Kudosity\KudosityV2Connector v2()
+ * @method static KudosityV1Connector v1()
+ * @method static KudosityV2Connector v2()
  * @method static \ExpertSystems\Kudosity\Resources\AccountResource account()
  * @method static \ExpertSystems\Kudosity\Resources\BulkSmsResource bulk()
  * @method static \ExpertSystems\Kudosity\Resources\ReportingResource reporting()

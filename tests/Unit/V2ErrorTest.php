@@ -13,12 +13,8 @@ use ExpertSystems\Kudosity\KudosityV2Connector;
 use Saloon\Http\Faking\MockClient;
 use Saloon\Http\Faking\MockResponse;
 
-// StubV2SendRequest lives in V2ConnectorTest.php (Task 2). Pest loads every
-// test file in the suite so it normally resolves without help, but running
-// this file in isolation needs it pulled in explicitly.
-if (! class_exists(StubV2SendRequest::class)) {
-    require_once __DIR__.'/V2ConnectorTest.php';
-}
+// StubV2SendRequest is a shared fixture, loaded once by tests/Pest.php —
+// see tests/Fixtures/StubV2SendRequest.php.
 
 /**
  * The RFC 9457 shape the V2 messaging endpoints return, as documented in
