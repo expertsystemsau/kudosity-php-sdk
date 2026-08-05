@@ -12,7 +12,7 @@ diff_digest: "clean"
 ticket_key: "none"
 repo: "transmitsms-php-sdk"
 submodules: []
-next_step: "Write and execute the Phase 5 plan (Laravel integration), starting from docs/superpowers/specs/2026-08-04-kudosity-v2-migration-design.md section 5"
+next_step: "Execute the Phase 5 plan at docs/superpowers/plans/2026-08-06-kudosity-phase-5-laravel.md, starting with Task 1 (config split + the V2 connector singleton)"
 ---
 
 # Handoff: Kudosity 2.0, Phases 1–4 merged and pushed, Phase 5 next
@@ -49,7 +49,7 @@ Six phases, specced in `docs/superpowers/specs/2026-08-04-kudosity-v2-migration-
 
 ## Not Yet Done
 
-- [ ] **Phase 5 — Laravel integration.** Four notification channels, the V2 webhook receiver route, `kudosity:webhook:*` commands, config `base_url` split into `v1`/`v2`. Spec section 5. **Receiver-auth design is settled**: authenticate by unguessable URL, because deliveries are unsigned. `Callbacks\CallbackUrlBuilder` / `CallbackUrlParser` already exist and are reused. Two things Phase 4 hands it: the typed event objects, and `StatusPrecedence` for idempotent status handling.
+- [ ] **Phase 5 — Laravel integration. Plan written at `docs/superpowers/plans/2026-08-06-kudosity-phase-5-laravel.md`; execution not started.** Four notification channels, the V2 webhook receiver route, `kudosity:webhook:*` commands, config `base_url` split into `v1`/`v2`. Spec section 5. **Receiver-auth design is settled**: authenticate by unguessable URL, because deliveries are unsigned. `Callbacks\CallbackUrlBuilder` / `CallbackUrlParser` already exist and are reused. Two things Phase 4 hands it: the typed event objects, and `StatusPrecedence` for idempotent status handling.
 - [ ] **Phase 6 — tests, CI, docs, release.** Standalone PHPUnit 11 suite for the client package on PHP 8.2/8.3/8.4, doc finalisation, release.
 - [ ] **`register()` and the SMS verification flow are NOT live-verified.** Deliberate: completing one registers a personal mobile number as a sender and sends a real code to it. Wants a human present. Everything else in senders is verified.
 - [ ] **WhatsApp and RCS are still not verified end to end**, and **Phase 4 did not unblock this** — see Warnings. The account needs Kudosity to provision a WhatsApp Business sender and an RCS agent.
@@ -228,9 +228,9 @@ Then post a deliberately **invalid** enum value to get the permitted set: `type 
 1. Confirm the baseline: `vendor/bin/pest --compact && vendor/bin/phpstan analyse --no-progress`
    - Expected: `724 passed (1386 assertions)` and `[OK] No errors`.
    - If different: `git log --oneline -5` — something moved since this handoff.
-2. Write the Phase 5 plan at `docs/superpowers/plans/<date>-kudosity-phase-5-laravel.md`, modelled on Phase 4's. Read spec section 5 first, and `tests/Fixtures/V2Webhooks/README.md` before designing the receiver.
-   - Carry in: the settled unguessable-URL receiver auth, `StatusPrecedence` for idempotent handling, the four typed event classes, and the `KudosityV2Connector::class` singleton / `v2_base_url` config gap noted under Files to Know.
-   - Keep the removed-symbol audit step. Do not predict exact test counts.
+2. **The Phase 5 plan is already written** — `docs/superpowers/plans/2026-08-06-kudosity-phase-5-laravel.md`, six tasks. Start at Task 1 (config split and the `KudosityV2Connector` singleton, which currently cannot autowire).
+   - Read `tests/Fixtures/V2Webhooks/README.md` before Task 4, the receiver. Every Phase 4 finding lands there.
+   - Note the plan expects the removed-symbol audit to be **non-empty** this time: `base_url` → `base_url.v1`/`.v2` is the first consumer-visible API change since Phase 2.
 3. Execute it on a branch in the primary checkout — **not** a git worktree.
 4. When a human is available: complete one real `register()` + verification flow, and capture a populated sender registration as a fixture, then widen `SenderRegistrationData` from its `raw`.
 
