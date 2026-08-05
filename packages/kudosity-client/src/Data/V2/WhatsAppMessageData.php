@@ -52,6 +52,9 @@ final readonly class WhatsAppMessageData
 
         $status = $data['status'] ?? null;
 
+        /** @var array<string, mixed>|null $fallback */
+        $fallback = is_array($data['sms_fallback'] ?? null) ? $data['sms_fallback'] : null;
+
         return new self(
             id: (string) ($data['id'] ?? ''),
             messageRef: is_string($data['message_ref'] ?? null) ? $data['message_ref'] : null,
@@ -64,35 +67,11 @@ final readonly class WhatsAppMessageData
             // Unknown, which reads as "the API sent a status we do not
             // recognise" rather than "the API sent no status".
             status: is_string($status) && $status !== '' ? MessageStatus::fromApi($status) : null,
-            smsFallback: self::parseFallback($data['sms_fallback'] ?? null),
+            // fromResponse(), not fromArray(): the read path returns null rather
+            // than throwing on a fallback with no message. See SmsFallback for
+            // why the invariant stays and what that trade-off costs.
+            smsFallback: $fallback !== null ? SmsFallback::fromResponse($fallback) : null,
             createdAt: self::parseDate($data['created_at'] ?? null),
-        );
-    }
-
-    /**
-     * Build a fallback only when the response really carries one.
-     *
-     * {@see SmsFallback} rejects an empty message, which is right for the
-     * request-shaped object it primarily is — a fallback with no body is not a
-     * fallback. A response is not ours to police, though, so rather than
-     * loosening that invariant this returns null when the message is missing or
-     * empty, instead of throwing part-way through reading a message back.
-     */
-    private static function parseFallback(mixed $value): ?SmsFallback
-    {
-        if (! is_array($value)) {
-            return null;
-        }
-
-        $message = $value['message'] ?? null;
-
-        if (! is_string($message) || $message === '') {
-            return null;
-        }
-
-        return new SmsFallback(
-            message: $message,
-            sender: is_string($value['sender'] ?? null) ? $value['sender'] : null,
         );
     }
 

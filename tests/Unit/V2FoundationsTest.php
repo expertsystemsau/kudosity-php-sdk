@@ -88,3 +88,44 @@ it('round-trips from an API payload', function () {
 
     expect($f->message)->toBe('Body')->and($f->sender)->toBe('614810');
 });
+
+it('builds from a response payload that carries a message', function () {
+    // fromResponse() is the read path shared by WhatsApp and RCS, both of which
+    // echo sms_fallback back. It exists so that reading a message back never
+    // throws on this field — see the null cases below.
+    $f = SmsFallback::fromResponse(['message' => 'Body', 'sender' => '614810']);
+
+    expect($f)->toBeInstanceOf(SmsFallback::class)
+        ->and($f?->message)->toBe('Body')
+        ->and($f?->sender)->toBe('614810');
+});
+
+it('builds from a response payload with no sender', function () {
+    expect(SmsFallback::fromResponse(['message' => 'Body'])?->sender)->toBeNull();
+});
+
+it('returns null rather than throwing when a response fallback has an empty message', function () {
+    // The constructor rejects this, correctly, for a request-shaped object. The
+    // read path returns null instead: a null is inspectable, an exception thrown
+    // part-way through hydrating a message is not.
+    expect(SmsFallback::fromResponse(['message' => '', 'sender' => '614810']))->toBeNull();
+});
+
+it('returns null rather than throwing when a response fallback has no message key', function () {
+    expect(SmsFallback::fromResponse(['sender' => '614810']))->toBeNull();
+});
+
+it('returns null rather than throwing on an empty response fallback', function () {
+    expect(SmsFallback::fromResponse([]))->toBeNull();
+});
+
+it('returns null rather than throwing when a response fallback message is not a string', function () {
+    expect(SmsFallback::fromResponse(['message' => 12345]))->toBeNull();
+});
+
+it('keeps the constructor invariant intact — fromResponse is a separate path, not a weakened rule', function () {
+    // The point of the split: adding a permissive read path must not make the
+    // request-shaped object constructible without a message.
+    expect(fn () => new SmsFallback(''))->toThrow(ValidationException::class)
+        ->and(fn () => SmsFallback::fromArray(['sender' => '614810']))->toThrow(ValidationException::class);
+});
