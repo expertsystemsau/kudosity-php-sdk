@@ -129,7 +129,7 @@ describe('V1PagedPaginator item keys', function () {
             ])),
         ]);
 
-        $items = iterator_to_array($client->sms()->getResponses(49484)->items(), false);
+        $items = iterator_to_array($client->reporting()->getResponses(49484)->items(), false);
 
         expect($items)->toHaveCount(1)->and($items[0]['response'])->toBe('YES');
     });
@@ -142,7 +142,7 @@ describe('V1PagedPaginator item keys', function () {
             ])),
         ]);
 
-        $items = iterator_to_array($client->sms()->getAllResponses()->items(), false);
+        $items = iterator_to_array($client->reporting()->getAllResponses()->items(), false);
 
         expect($items)->toHaveCount(2)->and($items[0]['response'])->toBe('STOP');
     });

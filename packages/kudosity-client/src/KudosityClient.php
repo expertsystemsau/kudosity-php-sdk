@@ -7,12 +7,12 @@ namespace ExpertSystems\Kudosity;
 use ExpertSystems\Kudosity\Exceptions\KudosityException;
 use ExpertSystems\Kudosity\Requests\KudosityV1Request;
 use ExpertSystems\Kudosity\Resources\AccountResource;
+use ExpertSystems\Kudosity\Resources\BulkSmsResource;
 use ExpertSystems\Kudosity\Resources\EmailSmsResource;
 use ExpertSystems\Kudosity\Resources\KeywordsResource;
 use ExpertSystems\Kudosity\Resources\ListsResource;
 use ExpertSystems\Kudosity\Resources\NumbersResource;
 use ExpertSystems\Kudosity\Resources\ReportingResource;
-use ExpertSystems\Kudosity\Resources\SmsResource;
 use Saloon\Http\Response;
 
 class KudosityClient
@@ -29,7 +29,7 @@ class KudosityClient
      */
     protected ?AccountResource $accountResource = null;
 
-    protected ?SmsResource $smsResource = null;
+    protected ?BulkSmsResource $bulkResource = null;
 
     protected ?ReportingResource $reportingResource = null;
 
@@ -121,13 +121,14 @@ class KudosityClient
     }
 
     /**
-     * Access SMS-related API operations.
+     * V1 bulk SMS: multiple recipients, contact lists, scheduled sends, cancel.
      *
-     * @see https://developers.kudosity.com
+     * V2's `sms()` — arriving in the next release — takes exactly one recipient
+     * and cannot schedule, so these sends stay on V1.
      */
-    public function sms(): SmsResource
+    public function bulk(): BulkSmsResource
     {
-        return $this->smsResource ??= new SmsResource($this->connector);
+        return $this->bulkResource ??= new BulkSmsResource($this->connector);
     }
 
     /**

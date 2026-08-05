@@ -8,18 +8,18 @@ use ExpertSystems\Kudosity\KudosityClient;
 use ExpertSystems\Kudosity\Laravel\Notifications\KudosityChannel;
 use ExpertSystems\Kudosity\Laravel\Notifications\KudosityMessage;
 use ExpertSystems\Kudosity\Requests\SendSmsRequest;
-use ExpertSystems\Kudosity\Resources\SmsResource;
+use ExpertSystems\Kudosity\Resources\BulkSmsResource;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\Config;
 
 describe('KudosityChannel', function () {
     beforeEach(function () {
         $this->client = Mockery::mock(KudosityClient::class);
-        $this->smsResource = Mockery::mock(SmsResource::class);
+        $this->bulkResource = Mockery::mock(BulkSmsResource::class);
         $this->channel = new KudosityChannel($this->client);
 
-        $this->client->shouldReceive('sms')
-            ->andReturn($this->smsResource);
+        $this->client->shouldReceive('bulk')
+            ->andReturn($this->bulkResource);
     });
 
     describe('send', function () {
@@ -49,7 +49,7 @@ describe('KudosityChannel', function () {
                 sms: 1
             );
 
-            $this->smsResource->shouldReceive('sendRequest')
+            $this->bulkResource->shouldReceive('sendRequest')
                 ->once()
                 ->withArgs(function ($request) {
                     return $request instanceof SendSmsRequest;
@@ -86,7 +86,7 @@ describe('KudosityChannel', function () {
                 sms: 1
             );
 
-            $this->smsResource->shouldReceive('sendRequest')
+            $this->bulkResource->shouldReceive('sendRequest')
                 ->once()
                 ->andReturn($smsData);
 
@@ -121,7 +121,7 @@ describe('KudosityChannel', function () {
                 sms: 1
             );
 
-            $this->smsResource->shouldReceive('sendRequest')
+            $this->bulkResource->shouldReceive('sendRequest')
                 ->once()
                 ->andReturn($smsData);
 
@@ -156,7 +156,7 @@ describe('KudosityChannel', function () {
                 sms: 10
             );
 
-            $this->smsResource->shouldReceive('sendRequest')
+            $this->bulkResource->shouldReceive('sendRequest')
                 ->once()
                 ->withArgs(function ($request) {
                     $body = $request->body()->all();
@@ -199,7 +199,7 @@ describe('KudosityChannel', function () {
                 sms: 1
             );
 
-            $this->smsResource->shouldReceive('sendRequest')
+            $this->bulkResource->shouldReceive('sendRequest')
                 ->once()
                 ->withArgs(function ($request) {
                     $body = $request->body()->all();
@@ -265,7 +265,7 @@ describe('KudosityChannel', function () {
                 sms: 1
             );
 
-            $this->smsResource->shouldReceive('sendRequest')
+            $this->bulkResource->shouldReceive('sendRequest')
                 ->once()
                 ->andReturn($smsData);
 
@@ -300,7 +300,7 @@ describe('KudosityChannel', function () {
                 sms: 1
             );
 
-            $this->smsResource->shouldReceive('sendRequest')
+            $this->bulkResource->shouldReceive('sendRequest')
                 ->once()
                 ->andReturn($smsData);
 
@@ -337,7 +337,7 @@ describe('KudosityChannel', function () {
                 sms: 1
             );
 
-            $this->smsResource->shouldReceive('sendRequest')
+            $this->bulkResource->shouldReceive('sendRequest')
                 ->once()
                 ->andReturn($smsData);
 
@@ -388,7 +388,7 @@ describe('KudosityChannel', function () {
                 }
             };
 
-            $this->smsResource->shouldReceive('sendRequest')
+            $this->bulkResource->shouldReceive('sendRequest')
                 ->once()
                 ->andThrow(new KudosityException('API Error', 400, null, 'INVALID_RECIPIENT'));
 

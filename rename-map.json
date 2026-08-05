@@ -26,7 +26,10 @@
   "removed": {
     "useSmsUrl": null,
     "useMmsUrl": null,
-    "BASE_URL_MMS": null
+    "BASE_URL_MMS": null,
+    "sendToList": null,
+    "getResponses": null,
+    "getAllResponses": null
   },
   "strings": {
     "'transmitsms'": "'kudosity'",

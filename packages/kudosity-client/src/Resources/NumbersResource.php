@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace ExpertSystems\Kudosity\Resources;
 
+use ExpertSystems\Kudosity\Data\FormattedNumberData;
 use ExpertSystems\Kudosity\Data\LeaseResultData;
 use ExpertSystems\Kudosity\Data\NumberData;
 use ExpertSystems\Kudosity\Exceptions\KudosityException;
 use ExpertSystems\Kudosity\Pagination\V1PagedPaginator;
 use ExpertSystems\Kudosity\Requests\EditNumberOptionsRequest;
+use ExpertSystems\Kudosity\Requests\FormatNumberRequest;
 use ExpertSystems\Kudosity\Requests\GetNumberRequest;
 use ExpertSystems\Kudosity\Requests\GetNumbersRequest;
 use ExpertSystems\Kudosity\Requests\LeaseNumberRequest;
@@ -134,5 +136,32 @@ class NumbersResource extends Resource
         $request = (new EditNumberOptionsRequest($number))->listId($listId);
 
         return $this->editRequest($request);
+    }
+
+    /**
+     * Format a phone number for SMS delivery using the API.
+     *
+     * Converts local format numbers to international E.164 format.
+     * If no country code is provided, uses the connector's default.
+     *
+     * @param  string  $number  The phone number to format
+     * @param  string|null  $countryCode  2-letter ISO country code (e.g., 'AU', 'NZ', 'US')
+     *
+     * @throws KudosityException
+     */
+    public function formatNumber(string $number, ?string $countryCode = null): FormattedNumberData
+    {
+        $countryCode ??= $this->connector->getDefaultCountryCode();
+
+        if ($countryCode === null) {
+            throw new KudosityException(
+                'Country code is required. Set it on the connector or pass it as a parameter.'
+            );
+        }
+
+        $request = new FormatNumberRequest($number, $countryCode);
+
+        /** @var FormattedNumberData */
+        return $this->sendAndDto($request);
     }
 }

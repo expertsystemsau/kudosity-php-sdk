@@ -102,7 +102,7 @@ class KudosityChannel
         }
 
         // Send the request and return the DTO
-        return $this->client->sms()->sendRequest($request);
+        return $this->client->bulk()->sendRequest($request);
     }
 
     /**

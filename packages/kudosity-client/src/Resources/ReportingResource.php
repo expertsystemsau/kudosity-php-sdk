@@ -17,13 +17,18 @@ use ExpertSystems\Kudosity\Requests\GetContactSmsStatsRequest;
 use ExpertSystems\Kudosity\Requests\GetMessageReportRequest;
 use ExpertSystems\Kudosity\Requests\GetSmsDeliveryStatusRequest;
 use ExpertSystems\Kudosity\Requests\GetSmsRequest;
+use ExpertSystems\Kudosity\Requests\GetSmsResponsesRequest;
 use ExpertSystems\Kudosity\Requests\GetSmsSentCountRequest;
 use ExpertSystems\Kudosity\Requests\GetSmsSentRequest;
 use ExpertSystems\Kudosity\Requests\GetSmsStatsRequest;
+use ExpertSystems\Kudosity\Requests\GetUserSmsResponsesRequest;
 use ExpertSystems\Kudosity\Requests\GetUserSmsSentRequest;
 
 /**
  * Reporting resource for retrieving SMS delivery and statistics.
+ *
+ * Replies are reads too, so the SMS response/reply readers live here
+ * alongside every other read — sends and list management stay elsewhere.
  *
  * @see https://developers.kudosity.com
  */
@@ -209,5 +214,79 @@ class ReportingResource extends Resource
     {
         /** @var ContactSmsStatsData */
         return $this->connector->send($request)->dtoOrFail();
+    }
+
+    /**
+     * Get SMS responses/replies for a specific message.
+     *
+     * Returns a paginator that can be iterated to get all responses.
+     *
+     * @param  int  $messageId  The message ID to get responses for
+     */
+    public function getResponses(int $messageId): V1PagedPaginator
+    {
+        $request = GetSmsResponsesRequest::forMessage($messageId);
+
+        return $this->connector->paginate($request);
+    }
+
+    /**
+     * Get SMS responses/replies for a keyword.
+     *
+     * Returns a paginator that can be iterated to get all responses.
+     *
+     * @param  int  $keywordId  The keyword ID
+     */
+    public function getResponsesByKeywordId(int $keywordId): V1PagedPaginator
+    {
+        $request = GetSmsResponsesRequest::forKeywordId($keywordId);
+
+        return $this->connector->paginate($request);
+    }
+
+    /**
+     * Get SMS responses/replies for a keyword by name.
+     *
+     * Returns a paginator that can be iterated to get all responses.
+     *
+     * @param  string  $keyword  The keyword name
+     * @param  string  $number  The VMN number
+     */
+    public function getResponsesByKeyword(string $keyword, string $number): V1PagedPaginator
+    {
+        $request = GetSmsResponsesRequest::forKeyword($keyword, $number);
+
+        return $this->connector->paginate($request);
+    }
+
+    /**
+     * Get all SMS responses/replies using a custom request.
+     *
+     * Use this for advanced filtering options.
+     */
+    public function getResponsesRequest(GetSmsResponsesRequest $request): V1PagedPaginator
+    {
+        return $this->connector->paginate($request);
+    }
+
+    /**
+     * Get all SMS responses/replies for the account.
+     *
+     * Returns a paginator that can be iterated to get all responses.
+     * By default returns responses from the last 30 days.
+     */
+    public function getAllResponses(): V1PagedPaginator
+    {
+        return $this->connector->paginate(new GetUserSmsResponsesRequest);
+    }
+
+    /**
+     * Get all SMS responses/replies using a custom request.
+     *
+     * Use this for advanced filtering options.
+     */
+    public function getAllResponsesRequest(GetUserSmsResponsesRequest $request): V1PagedPaginator
+    {
+        return $this->connector->paginate($request);
     }
 }

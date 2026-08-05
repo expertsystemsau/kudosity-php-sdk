@@ -237,6 +237,44 @@ If a flagged file's `fromResponse(` call is on a DTO rather than
 regardless of which class it's called on, because it can't resolve types
 from plain text.
 
+## Resource surface changes
+
+Kudosity's V2 API adds `POST /v2/sms` — a single-recipient send with no
+`send_at` — in the next release, and `sms()` is reserved for it. The V1 send
+surface that `sms()` used to expose moves to `bulk()` in this release: it is
+everything V2 cannot do — multiple recipients, contact lists, and scheduled
+sends. The reply readers move to `reporting()`, where every other read
+already lives, and the API-backed number formatter moves to `numbers()`,
+alongside the other number endpoints.
+
+| 1.x | 2.x |
+|---|---|
+| `$client->sms()->send($msg, $to)` — multiple recipients | `$client->bulk()->send($msg, $to)` |
+| `$client->sms()->sendToList($msg, $listId)` | `$client->bulk()->sendToList($msg, $listId)` |
+| `$client->sms()->sendRequest($request)` | `$client->bulk()->sendRequest($request)` |
+| `$client->sms()->cancel($id)` | `$client->bulk()->cancel($id)` |
+| `$client->sms()->getResponses($id)` | `$client->reporting()->getResponses($id)` |
+| `$client->sms()->getResponsesByKeywordId($id)` | `$client->reporting()->getResponsesByKeywordId($id)` |
+| `$client->sms()->getResponsesByKeyword($kw, $n)` | `$client->reporting()->getResponsesByKeyword($kw, $n)` |
+| `$client->sms()->getAllResponses()` | `$client->reporting()->getAllResponses()` |
+| `$client->sms()->formatNumber($n)` | `$client->numbers()->formatNumber($n)` |
+| `$client->sms()->formatNumberLocal($n)` | `$client->bulk()->formatNumberLocal($n)` |
+| `$client->sms()->isValidNumber($n)` | `$client->bulk()->isValidNumber($n)` |
+| `$client->sms()->validateNumbers($n)` | `$client->bulk()->validateNumbers($n)` |
+| `$client->sms()->isValidSenderId($s)` | `$client->bulk()->isValidSenderId($s)` |
+
+The codemod cannot automate any of these: the method names themselves
+(`sendToList`, `getResponses`, `getAllResponses`, ...) are unchanged, only the
+accessor before them changed, and a text-level tool can't tell your own
+`sms()`-returning method from ours. It flags `sendToList(`, `getResponses(`
+and `getAllResponses(` call sites for manual review the same way it flags
+`fromResponse(` above; the other renamed accessors in the table have no
+matching method name elsewhere in the SDK, so nothing (yet) needs a flag for
+them.
+
+Scheduling is now explicit rather than something you reach through the
+`configure` closure: `$client->bulk()->schedule($msg, $to, $at)`.
+
 ## For maintainers
 
 Release checklist:

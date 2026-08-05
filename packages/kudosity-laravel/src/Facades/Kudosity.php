@@ -12,7 +12,7 @@ use Saloon\Http\Response;
 /**
  * @method static KudosityV1Connector connector()
  * @method static \ExpertSystems\Kudosity\Resources\AccountResource account()
- * @method static \ExpertSystems\Kudosity\Resources\SmsResource sms()
+ * @method static \ExpertSystems\Kudosity\Resources\BulkSmsResource bulk()
  * @method static \ExpertSystems\Kudosity\Resources\ReportingResource reporting()
  * @method static \ExpertSystems\Kudosity\Resources\ListsResource lists()
  * @method static \ExpertSystems\Kudosity\Resources\NumbersResource numbers()
