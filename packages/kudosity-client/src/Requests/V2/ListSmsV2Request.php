@@ -19,6 +19,15 @@ use Saloon\Http\Response;
  * — the filters below are the only query parameters this class contributes
  * itself.
  *
+ * The documented filter set for this endpoint is exactly `status`,
+ * `recipient`, `sender`, `message_ref` and `direction`. Neither the vendored
+ * skill nor the migration design spec documents a date-range filter for SMS —
+ * `date_range`/`custom_date` belong to the WhatsApp and RCS list endpoints
+ * instead. Do not add `start_date`/`end_date` here speculatively: an
+ * unsupported query param is silently ignored by the API, which is worse
+ * than not offering the filter — the caller believes their results are
+ * date-filtered when they are not.
+ *
  * @see https://developers.kudosity.com/reference/get_v2-sms
  */
 class ListSmsV2Request extends KudosityV2Request implements PaginatesV2Pages
@@ -31,8 +40,6 @@ class ListSmsV2Request extends KudosityV2Request implements PaginatesV2Pages
         protected ?string $sender = null,
         protected ?string $messageRef = null,
         protected ?string $direction = null,
-        protected ?string $startDate = null,
-        protected ?string $endDate = null,
     ) {}
 
     public function resolveEndpoint(): string
@@ -70,14 +77,6 @@ class ListSmsV2Request extends KudosityV2Request implements PaginatesV2Pages
 
         if ($this->direction !== null) {
             $query['direction'] = $this->direction;
-        }
-
-        if ($this->startDate !== null) {
-            $query['start_date'] = $this->startDate;
-        }
-
-        if ($this->endDate !== null) {
-            $query['end_date'] = $this->endDate;
         }
 
         return $query;
