@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace ExpertSystems\Kudosity\Data\V2;
 
 use DateTimeImmutable;
+use ExpertSystems\Kudosity\Concerns\ParsesV2Timestamps;
 use ExpertSystems\Kudosity\Contracts\WhatsAppContent;
 use ExpertSystems\Kudosity\Enums\MessageStatus;
-use Throwable;
 
 /**
  * A single WhatsApp message, as returned by `POST /v2/whatsapp/messages`,
@@ -23,6 +23,8 @@ use Throwable;
  */
 final readonly class WhatsAppMessageData
 {
+    use ParsesV2Timestamps;
+
     /**
      * @param  array<string, mixed>  $content  The `content` object exactly as returned.
      *                                         The response echoes whichever variant was
@@ -71,28 +73,7 @@ final readonly class WhatsAppMessageData
             // than throwing on a fallback with no message. See SmsFallback for
             // why the invariant stays and what that trade-off costs.
             smsFallback: $fallback !== null ? SmsFallback::fromResponse($fallback) : null,
-            createdAt: self::parseDate($data['created_at'] ?? null),
+            createdAt: self::parseTimestamp($data['created_at'] ?? null),
         );
-    }
-
-    /**
-     * Parse a timestamp permissively.
-     *
-     * The API sends nine fractional digits, which
-     * `DateTimeImmutable::createFromFormat(RFC3339_EXTENDED, ...)` cannot parse
-     * — it expects exactly six. `new DateTimeImmutable()` accepts it because
-     * PHP's own parser truncates fractional seconds.
-     */
-    private static function parseDate(mixed $value): ?DateTimeImmutable
-    {
-        if (! is_string($value) || $value === '') {
-            return null;
-        }
-
-        try {
-            return new DateTimeImmutable($value);
-        } catch (Throwable) {
-            return null;
-        }
     }
 }
