@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace ExpertSystems\Kudosity;
 
 use ExpertSystems\Kudosity\Concerns\HasRetryPolicy;
+use ExpertSystems\Kudosity\Exceptions\KudosityException;
 use Saloon\Http\Connector;
+use Saloon\Http\Response;
 use Saloon\Traits\Plugins\AcceptsJson;
+use Throwable;
 
 /**
  * Connector for the Kudosity V2 API (`api.transmitmessage.com`).
@@ -83,5 +86,26 @@ class KudosityV2Connector extends Connector
         $this->timeout = $timeout;
 
         return $this;
+    }
+
+    /**
+     * Determine whether the request failed.
+     *
+     * Unlike V1, which returns an `error` object even on success, V2 signals
+     * failure purely by HTTP status — so Saloon's default 4xx/5xx handling is
+     * exactly right and this returns null to defer to it. Notably `POST
+     * /v2/webhook` answers 201, which is a success.
+     */
+    public function hasRequestFailed(Response $response): ?bool
+    {
+        return null;
+    }
+
+    /**
+     * Map a failed V2 response onto a typed exception.
+     */
+    public function getRequestException(Response $response, ?Throwable $senderException): ?Throwable
+    {
+        return KudosityException::fromV2Response($response);
     }
 }

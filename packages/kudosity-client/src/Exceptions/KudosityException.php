@@ -29,9 +29,35 @@ class KudosityException extends Exception
         'BAD_CALLER_ID' => InvalidSenderException::class,
     ];
 
+    /**
+     * V2 HTTP status to exception class.
+     *
+     * 400 and 422 both map to ValidationException on purpose: the error
+     * registry documents InputValidationProblem as 422, while the RCS and
+     * WhatsApp endpoint references show 400 for the same condition. Handling
+     * both means we do not depend on which is true today.
+     *
+     * @var array<int, class-string<KudosityException>>
+     */
+    protected static array $v2StatusMap = [
+        400 => ValidationException::class,
+        401 => AuthenticationException::class,
+        403 => AccessDeniedException::class,
+        404 => NotFoundException::class,
+        422 => ValidationException::class,
+        429 => RateLimitException::class,
+    ];
+
     protected ?string $errorCode = null;
 
     protected ?Response $response = null;
+
+    /**
+     * @var array<int, ProblemIssue>
+     */
+    protected array $issues = [];
+
+    protected ?string $problemType = null;
 
     public function __construct(
         string $message = '',
@@ -89,6 +115,122 @@ class KudosityException extends Exception
             errorCode: $errorCode,
             response: $response
         );
+    }
+
+    /**
+     * Create an exception from a V2 API response.
+     *
+     * Handles all three shapes V2 returns: RFC 9457 Problem Details under
+     * `error` (the messaging endpoints), a plain string under `error` (the
+     * webhook endpoints and `GET /v2/sms/{id}`'s 404), and no error key at all.
+     *
+     * @see https://developers.kudosity.com/reference/errors
+     */
+    public static function fromV2Response(Response $response): self
+    {
+        $status = $response->status();
+        $json = $response->json();
+        $error = $json['error'] ?? null;
+
+        $issues = [];
+        $problemType = null;
+
+        if (is_string($error) && $error !== '') {
+            $message = $error;
+        } elseif (is_array($error)) {
+            $problemType = is_string($error['type'] ?? null) ? $error['type'] : null;
+
+            foreach (is_array($error['issues'] ?? null) ? $error['issues'] : [] as $issue) {
+                if (is_array($issue)) {
+                    $issues[] = ProblemIssue::fromArray($issue);
+                }
+            }
+
+            $message = self::messageFromProblem($error, $issues, $status);
+        } else {
+            $message = sprintf('API request failed with HTTP %d', $status);
+        }
+
+        $exceptionClass = static::$v2StatusMap[$status]
+            ?? ($status >= 500 ? ServerException::class : self::class);
+
+        if ($exceptionClass === RateLimitException::class) {
+            $exception = RateLimitException::fromResponseWithMetadata($response, $message, null);
+        } else {
+            $exception = new $exceptionClass(
+                message: $message,
+                code: $status,
+                response: $response,
+            );
+        }
+
+        self::attachProblemDetails($exception, $issues, $problemType);
+
+        return $exception;
+    }
+
+    /**
+     * Build a message from a Problem Details object.
+     *
+     * Prefers the per-field issues, because they name what the caller has to
+     * change. Falls back to `detail`, then `title`, then the bare status.
+     *
+     * @param  array<string, mixed>  $error
+     * @param  array<int, ProblemIssue>  $issues
+     */
+    protected static function messageFromProblem(array $error, array $issues, int $status): string
+    {
+        if ($issues !== []) {
+            return implode('; ', array_map(
+                static fn (ProblemIssue $issue): string => $issue->name !== ''
+                    ? sprintf('%s: %s', $issue->name, $issue->message)
+                    : $issue->message,
+                $issues
+            ));
+        }
+
+        foreach (['detail', 'title'] as $key) {
+            if (is_string($error[$key] ?? null) && $error[$key] !== '') {
+                return $error[$key];
+            }
+        }
+
+        return sprintf('API request failed with HTTP %d', $status);
+    }
+
+    /**
+     * Assign issues and problem type onto a freshly built exception.
+     *
+     * A private helper (rather than inline assignment in `fromV2Response()`)
+     * keeps `issues`/`problemType` declared `protected` instead of `public`:
+     * PHPStan sees `$exception` there as the mapped subclass, and assigning
+     * a protected property from outside its declaring scope would fail
+     * analysis even though it is legal PHP within the same class hierarchy.
+     *
+     * @param  array<int, ProblemIssue>  $issues
+     */
+    private static function attachProblemDetails(self $exception, array $issues, ?string $problemType): void
+    {
+        $exception->issues = $issues;
+        $exception->problemType = $problemType;
+    }
+
+    /**
+     * Every field the V2 API reported as invalid. Empty for V1 errors.
+     *
+     * @return array<int, ProblemIssue>
+     */
+    public function getIssues(): array
+    {
+        return $this->issues;
+    }
+
+    /**
+     * The RFC 9457 problem type URI, when the response carried one.
+     */
+    public function getProblemType(): ?string
+    {
+        return $this->problemType;
     }
 
     /**
