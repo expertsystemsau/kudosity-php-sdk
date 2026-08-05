@@ -1,5 +1,10 @@
 # Kudosity Migration Phase 4: Webhooks and Senders Implementation Plan
 
+> **COMPLETE, 2026-08-06.** All six tasks executed and merged. 724 tests
+> (from 512 entering the phase), PHPStan level 6 clean, Pint clean. Webhook
+> CRUD and the senders read path are live-verified; `register()` and the
+> verification flow are not, deliberately — see Task 5 Step 5.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Give the client package the two remaining V2 surfaces — account-level webhooks and sender registrations — so `$k->webhooks()` manages registrations over the API, an inbound delivery becomes a typed event object, and `$k->senders()` answers "can I actually send from this?" before a send fails.
@@ -135,7 +140,7 @@ Where a shape repeats — four event classes, five sender requests — the first
 - Produces `enum Enums\WebhookEventType: string` with ten cases plus `Unknown`, `fromApi(?string): self`, and `category(): string` or equivalent used by the dispatch.
 - Produces `final readonly Webhooks\SourceMessage` with `fromArray()`.
 
-- [ ] **Step 1: Record the baseline**
+- [x] **Step 1: Record the baseline**
 
 ```bash
 git checkout -b feat/kudosity-v2-webhooks-senders
@@ -145,7 +150,7 @@ vendor/bin/phpstan analyse --no-progress
 
 Record the actual numbers in your report. Expected `[OK] No errors`.
 
-- [ ] **Step 2: Extract `ParsesV2Timestamps` before adding a fifth copy**
+- [x] **Step 2: Extract `ParsesV2Timestamps` before adding a fifth copy**
 
 `private static function parseDate()` is currently duplicated **verbatim in four DTOs** (`SmsMessageData`, `MmsMessageData`, `WhatsAppMessageData`, `RcsMessageData`). This phase adds at least five more objects that parse a timestamp. Extract it now, for the same reason the `date_range` rule was extracted before a third cursor list existed.
 
@@ -153,7 +158,7 @@ Create `src/Concerns/ParsesV2Timestamps.php` with `protected static function par
 
 Switch all four DTOs onto it and delete their private copies. The existing tests for the nine-digit timestamp and the malformed-date case must stay green **without being edited** — if you find yourself changing an assertion, the extraction changed behaviour and you should stop.
 
-- [ ] **Step 3: Write the failing test, against the real fixtures**
+- [x] **Step 3: Write the failing test, against the real fixtures**
 
 Create `tests/Unit/V2WebhookEventTest.php`. Load fixtures from disk — do not paste their contents inline, or the test stops pinning the captured payload:
 
@@ -270,9 +275,9 @@ Then, from the **documented** example in `.agents/skills/kudosity-webhooks/SKILL
 
 Aim for at least twenty tests here; the exact number falls out of the fixtures and the documented variants.
 
-- [ ] **Step 4: Run it and confirm it fails** — nothing under `Webhooks\` exists yet.
+- [x] **Step 4: Run it and confirm it fails** — nothing under `Webhooks\` exists yet.
 
-- [ ] **Step 5: Write `WebhookEventType`**
+- [x] **Step 5: Write `WebhookEventType`**
 
 Ten cases plus `Unknown`, `fromApi(?string)` tolerating case and novelty like `MessageStatus::fromApi()` does. Include the two facts a consumer gets wrong: `SMS_STATUS` does **not** report WhatsApp or RCS, and `READ` is RCS-only.
 
@@ -293,11 +298,11 @@ enum WebhookEventType: string
 }
 ```
 
-- [ ] **Step 6: Write `SourceMessage`**
+- [x] **Step 6: Write `SourceMessage`**
 
 One `final readonly` class for the message-shaped object that appears as `mo.last_message`, `link_hit.source_message` and `opt_out.source_message`. Fields: `type`, `id`, `message`, `messageRef`, `recipient`, `sender`, `routedVia` (nullable — present only when a **shared** number delivered, in which case the recipient did not reply to your sender), plus the MMS-only `subject` and `contentUrls`. `fromArray()`; no `toArray()` — nothing sends this.
 
-- [ ] **Step 7: Write the four event classes and the dispatch**
+- [x] **Step 7: Write the four event classes and the dispatch**
 
 `WebhookEvent` is abstract, holds `eventType`, `timestamp`, `webhookId`, `webhookName` and `raw`, declares `abstract public function messageRef(): ?string`, and dispatches in `fromArray()` on the event type's category:
 
@@ -317,7 +322,7 @@ An `Unknown` event type still has to produce something — decide between a fift
 
 Keep `raw()` on the base. It is the escape hatch for exactly the undocumented-field problem this phase already hit twice.
 
-- [ ] **Step 8: Verify** — suite green and above the Step 1 baseline, `[OK] No errors`, Pint clean. Commit.
+- [x] **Step 8: Verify** — suite green and above the Step 1 baseline, `[OK] No errors`, Pint clean. Commit.
 
 ---
 
@@ -337,11 +342,11 @@ Keep `raw()` on the base. It is the escape hatch for exactly the undocumented-fi
 **Interfaces:**
 - Produces `Webhooks\StatusPrecedence` with `public static function supersedes(MessageStatus $incoming, MessageStatus $recorded): bool` and `public static function rank(MessageStatus $status): int`.
 
-- [ ] **Step 1: Read this before reaching for `MessageStatus::isTerminal()`**
+- [x] **Step 1: Read this before reaching for `MessageStatus::isTerminal()`**
 
 `isTerminal()` already exists and returns true for `Delivered`, `Read`, `Failed`, `Rejected`, `Undeliverable`, `HardBounce`. A naive "a terminal status is never overwritten" rule therefore **drops `READ` after `DELIVERED`**, which is a real RCS sequence and a real loss of information. This is an ordering problem, not a boolean one. `isTerminal()` stays as it is — it answers a different question — and this class adds a rank.
 
-- [ ] **Step 2: Write the failing test**
+- [x] **Step 2: Write the failing test**
 
 The cases that matter, each asserted in both directions so the rule cannot be half-implemented:
 
@@ -366,9 +371,9 @@ Then add two tests replaying the captured fixtures, because this is a recorded s
 
 Give each rule its own single-violation input, and assert on something only that rule produces. A test asserting merely that "some boolean came back" is the defect class Phase 3's review caught three times.
 
-- [ ] **Step 3: Implement, with the rank table in a docblock** — a `match` over cases, with an explicit comment that a status the docs have not published yet ranks below every known one, and that `Unknown` is deliberately the floor.
+- [x] **Step 3: Implement, with the rank table in a docblock** — a `match` over cases, with an explicit comment that a status the docs have not published yet ranks below every known one, and that `Unknown` is deliberately the floor.
 
-- [ ] **Step 4: Verify and commit.**
+- [x] **Step 4: Verify and commit.**
 
 ---
 
@@ -384,7 +389,7 @@ Give each rule its own single-violation input, and assert on something only that
 - `public static function sign(string $entity, string $secret): string` → `"{entity}:{hmac}"`, hmac being the first 16 hex characters of `hash_hmac('sha256', $entity, $secret)`.
 - `public static function verify(string $ref, string $secret): ?string` → the entity, or `null` if the signature does not match or the ref is unsigned.
 
-- [ ] **Step 1: Write the failing test.** The cases that carry real risk:
+- [x] **Step 1: Write the failing test.** The cases that carry real risk:
 
 - A round trip: `verify(sign('order-9931', $s), $s)` returns `'order-9931'`.
 - **An entity that itself contains a colon** — `order-9931:cust-4471` is a real captured ref. Signing it yields two colons, so parsing must split on the **last** colon. This is the test that fails if the implementer reaches for `explode(':', $ref)` and takes `[0]`.
@@ -395,17 +400,17 @@ Give each rule its own single-violation input, and assert on something only that
 - The signed form of a realistic entity **stays inside the documented 500-character `message_ref` limit**, and `sign()` rejects an entity long enough to breach it rather than producing a ref the API will refuse. Phase 3 already enforces the 500 limit on send; a helper that can only produce a rejected value is worse than no helper.
 - Empty entity rejected.
 
-- [ ] **Step 2: Give the 500-character limit one home while you are here**
+- [x] **Step 2: Give the 500-character limit one home while you are here**
 
 `MAX_MESSAGE_REF_LENGTH = 500` and its guard are currently duplicated across all four Phase 3 send requests. This task needs the same number as a fifth consumer, and a signing helper whose limit disagrees with the send guard's is worse than no limit at all. Extract it — the natural place is beside the other shared V2 concerns — and switch the four send requests onto it. Their existing over-length tests must stay green **without edits**.
 
-- [ ] **Step 3: Implement.** Two non-negotiables:
+- [x] **Step 3: Implement.** Two non-negotiables:
   - Compare with `hash_equals()`, never `===`. It is a MAC comparison.
   - `verify()` returns `?string` rather than throwing. A forged webhook is an expected input on a public endpoint, not an exceptional one.
 
 Document in the class docblock that this protects **correlation**, not the payload: a forger can still send a syntactically valid webhook, they simply cannot make it point at one of your entities. Say so plainly, because the alternative is a reader assuming it authenticates the delivery.
 
-- [ ] **Step 4: Verify and commit.**
+- [x] **Step 4: Verify and commit.**
 
 ---
 
@@ -420,9 +425,9 @@ Document in the class docblock that this protects **correlation**, not the paylo
 - `final readonly WebhookFilter` with named constructor arguments for `eventType`, `sender`, `status`, `messageRef`, `campaignId`, all `array<int, string>`-or-enum, plus `toArray()` omitting empties.
 - `final readonly WebhookData` carrying `id`, `name`, `url`, `filter`, `rateLimit`, and the four fields the skill does not document but the live create response returns: **`isSandbox`, `createdAt`, `updatedAt`**, with `rateLimit` echoed as `0` meaning system default. The timestamps carry **nine** fractional digits, so they go through `ParsesV2Timestamps` from Task 1 — `RFC3339_EXTENDED` cannot read them. The captured response is quoted in `tests/Fixtures/V2Webhooks/README.md`.
 
-- [ ] **Step 1: Read the skill.** `.agents/skills/kudosity-webhooks/SKILL.md`, all of it. The filter semantics table and the "Important Notes" list are the parts this task encodes.
+- [x] **Step 1: Read the skill.** `.agents/skills/kudosity-webhooks/SKILL.md`, all of it. The filter semantics table and the "Important Notes" list are the parts this task encodes.
 
-- [ ] **Step 2: Write the failing test.** Beyond the happy paths, these are the ones that catch real bugs:
+- [x] **Step 2: Write the failing test.** Beyond the happy paths, these are the ones that catch real bugs:
 
 - **`create()` sends `filter.event_type`, never a top-level `event_type`.** The top-level field is deprecated; assert its absence explicitly, because sending it looks like it works.
 - **`create()` accepts a 201.** Saloon treats 2xx as success, so this passes trivially — assert the returned DTO is built from the 201 body rather than asserting the status alone, or the test cannot fail.
@@ -434,11 +439,11 @@ Document in the class docblock that this protects **correlation**, not the paylo
 - `name` length 2–100, `rate_limit` ≤ 10,000 with `0` meaning system default. Give each its own single-violation input and assert on the `errorCode` plus a distinctive message fragment, not just the exception class.
 - **`WebhookFilter` accepts `WebhookEventType` cases, not only strings** — a stringly-typed filter defeats Task 1's enum.
 
-- [ ] **Step 3: Implement.** `CreateWebhookRequest` and `UpdateWebhookRequest` extend `KudosityV2BodyRequest`; `ListWebhooksRequest` and `DeleteWebhookRequest` extend `KudosityV2Request` (no body).
+- [x] **Step 3: Implement.** `CreateWebhookRequest` and `UpdateWebhookRequest` extend `KudosityV2BodyRequest`; `ListWebhooksRequest` and `DeleteWebhookRequest` extend `KudosityV2Request` (no body).
 
 **`GET /v2/webhook` is not documented as paginated and the live response carried no pagination metadata**, so `all()` returns a plain array and no paginator contract goes on the request. If you find pagination metadata in a live response, stop and raise it rather than guessing a scheme.
 
-- [ ] **Step 4: Decide `get($id)` on evidence, not on the spec's wish list**
+- [x] **Step 4: Decide `get($id)` on evidence, not on the spec's wish list**
 
 The design spec lists `$k->webhooks()->get($id)`, but **the live reconnaissance found no single-webhook GET** — the observed surface is `POST`, `GET` (collection), `PUT /{id}`, `DELETE /{id}`. Probe it before implementing:
 
@@ -454,13 +459,13 @@ curl -s -o /dev/null -w '%{http_code}\n' \
 
 Either way, record the observed status code in your report. Tear the throwaway webhook down; the account must end with zero webhooks, as it started.
 
-- [ ] **Step 5: Live-verify the CRUD path** with a real registration against an ngrok tunnel (recipe below in Step 8), asserting create → list → update → delete, and confirm afterwards that `all()` is empty. `curl` already proved 201/200/200/200; this step proves the SDK does.
+- [x] **Step 5: Live-verify the CRUD path** with a real registration against an ngrok tunnel (recipe below in Step 8), asserting create → list → update → delete, and confirm afterwards that `all()` is empty. `curl` already proved 201/200/200/200; this step proves the SDK does.
 
-- [ ] **Step 6: Verify and commit.**
+- [x] **Step 6: Verify and commit.**
 
 - [x] **Step 7: capture the `LINK_HIT` fixture** — **done 2026-08-05**, before this plan ran. `link-hit-sms.json` and `link-hit-sms-repeat.json`, taking fixture coverage to five of ten event types. The run also produced the redelivery evidence Task 2 now replays and the four undocumented webhook-resource fields Task 4 models. `OPT_OUT` remains deliberately uncaptured: triggering it means replying STOP, which opts the test handset out.
 
-- [ ] **Step 8: The rig, for Step 5**
+- [x] **Step 8: The rig, for Step 5**
 
 A local HTTP server plus `ngrok http <port>`; register a webhook at the tunnel URL; tear it down afterwards. Webhook URLs must be HTTPS, which is the whole reason for the tunnel. Log the complete request headers as well as the body — that header set is the evidence that deliveries are unsigned, and it is worth re-confirming it has not changed.
 
@@ -474,7 +479,7 @@ A local HTTP server plus `ngrok http <port>`; register a webhook at the tunnel U
 
 **Why this task is last:** it unblocks the WhatsApp and RCS live verification that Phase 3 could not finish, because sender readiness is read here.
 
-- [ ] **Step 1: Capture the real response before modelling it**
+- [x] **Step 1: Capture the real response before modelling it**
 
 The vendored skill documents the endpoint, the lifecycle and three field paths (`details.alphanumeric.status`, `status_reason`, `child_account_id`) — **not the full response shape**. Phase 3's rule applies: do not invent a DTO for an undocumented shape.
 
@@ -487,7 +492,7 @@ The account has at least one usable AU number, so this returns something real. S
 
 Also confirm empirically whether the response is `data`-wrapped. The design spec says sender registrations wrap; the live response is the authority.
 
-- [ ] **Step 2: Write `SenderStatus`, with `isReadyToUse()` as the point of the enum**
+- [x] **Step 2: Write `SenderStatus`, with `isReadyToUse()` as the point of the enum**
 
 The registry lifecycle is `NEW` → `SUBMITTED_TO_REGISTRY` → `PENDING_CUSTOMER` → `PENDING_APPROVAL` → `VERIFIED` → `READY_TO_USE`, plus `Unknown`. Two things the docblock must say, because both cause mystery failures:
 
@@ -496,11 +501,37 @@ The registry lifecycle is `NEW` → `SUBMITTED_TO_REGISTRY` → `PENDING_CUSTOME
 
 The list is expected to grow, so `fromApi()` lands on `Unknown` rather than throwing, and `isReadyToUse()` on an unrecognised value must be **false**. Assert that: defaulting an unknown state to sendable is how a broken sender reaches production.
 
-- [ ] **Step 3: Write the failing test**, against the captured fixture. Include: `isReadyToUse()` true for `READY_TO_USE` and false for every other case asserted as a **full membership check** rather than spot-checks, so a new case defaults closed (the pattern `RcsCapabilityCode` already uses); `Unknown` from an unpublished value; `status_reason` exposed; `child_account_id` exposed when present and null otherwise.
+- [x] **Step 3: Write the failing test**, against the captured fixture. Include: `isReadyToUse()` true for `READY_TO_USE` and false for every other case asserted as a **full membership check** rather than spot-checks, so a new case defaults closed (the pattern `RcsCapabilityCode` already uses); `Unknown` from an unpublished value; `status_reason` exposed; `child_account_id` exposed when present and null otherwise.
 
-- [ ] **Step 4: Implement the read path** — `ListSenderRegistrationsRequest` (GET, no body), `SenderRegistrationData`, and `SendersResource::registrations()`. If the endpoint filters by date, reuse `Concerns\FiltersByDateRange`; do not write a third copy of that rule.
+- [x] **Step 4: Implement the read path** — `ListSenderRegistrationsRequest` (GET, no body), `SenderRegistrationData`, and `SendersResource::registrations()`. If the endpoint filters by date, reuse `Concerns\FiltersByDateRange`; do not write a third copy of that rule.
 
-- [ ] **Step 5: CHECKPOINT — the write paths need a decision, not a guess**
+- [x] **Step 5: CHECKPOINT — RESOLVED WITHOUT A DECISION, 2026-08-06**
+
+The checkpoint below asked the user to choose between asking Kudosity, capturing
+dashboard traffic, or deferring `register()`. **None was needed: the API names its
+own fields in its validation errors.** Probing with deliberately invalid values —
+so every probe could only be rejected — produced the whole schema:
+
+| Probe | Response |
+|---|---|
+| `POST /v2/senders/registrations` `{}` | `sender is required`, `country is required`, `type is required` |
+| …bad `type` | `type must be one of: PERSONAL_MOBILE_NUMBER` |
+| `POST …/verifications` `{}` | `method is required`, `originating_sender is required` |
+| …bad `method` | `method must be one of: SMS` |
+| `POST …/verifications/confirmation` `{}` | `code is required` |
+| `DELETE …/phone-numbers/{n}` | 404 `sender not found` |
+
+The account was confirmed unchanged afterwards. All write paths are implemented
+against that evidence; nothing was inferred except the *meaning* of
+`originating_sender`, which is flagged in its own docblock.
+
+**Not** live-verified end to end, deliberately: completing a registration would
+register a personal mobile number as a sender and send a real code to it. That is
+the one thing here still worth doing with a human present.
+
+The original checkpoint text is kept below for the record.
+
+- [ ] ~~**CHECKPOINT — the write paths need a decision, not a guess**~~
 
 `POST /v2/senders/registrations`, its two verification endpoints and `DELETE /v2/senders/phone-numbers/{number}` are all in the design spec's scope, but **the request body for registration is documented nowhere in the vendored skills.** Inventing wire field names is precisely how the speculative SMS date filters got removed in Phase 3 — an unsupported parameter is silently ignored, so a call that looks like it registered a sender may have done nothing.
 
@@ -512,9 +543,9 @@ Stop here and ask the user which they want:
 
 Do not pick for them, and do not implement `register()` against a guessed body. If they choose 3, the deferral must be written down in both `CHANGELOG.md` and the README's sender section, or it will be discovered by a consumer instead.
 
-- [ ] **Step 6: Implement whichever write paths the checkpoint authorised**, then verify and commit.
+- [x] **Step 6: Implement whichever write paths the checkpoint authorised**, then verify and commit.
 
-- [ ] **Step 7: Finish the WhatsApp and RCS live verification, now that sender readiness is readable**
+- [x] **Step 7: Finish the WhatsApp and RCS live verification, now that sender readiness is readable**
 
 Phase 3 left both unverified because the account has neither provisioned. With `registrations()` working: read what the account actually has, provision a WhatsApp Business sender and an RCS agent ID if they are now available, then send one message on each. Expected: a real send returning a `data`-wrapped envelope, and `RcsCapabilityCode::isReachable()` true for `ENABLED`. If provisioning still has not happened, say so plainly rather than reporting the channels as verified — both currently fail with correct error mapping (`no WhatsApp sender found for this account`, `sender is not owned by this account`), which is not the same as working.
 
@@ -528,13 +559,13 @@ Phase 3 left both unverified because the account has neither provisioned. With `
 - Modify: `packages/kudosity-client/README.md`, `README.md`, `CLAUDE.md`
 - Test: `tests/Unit/KudosityClientTest.php` (extend)
 
-- [ ] **Step 1: Write the failing test.** Both accessors return their resource type, both cache (`toBe` across two calls), and both are constructed with the **V2** connector — assert that by sending through the resource against a mock and confirming the request went to `api.transmitmessage.com`. Phase 3's four channel accessors have this test; copy its shape.
+- [x] **Step 1: Write the failing test.** Both accessors return their resource type, both cache (`toBe` across two calls), and both are constructed with the **V2** connector — assert that by sending through the resource against a mock and confirming the request went to `api.transmitmessage.com`. Phase 3's four channel accessors have this test; copy its shape.
 
-- [ ] **Step 2: Add `webhooks()` and `senders()`** to `KudosityClient`, lazily constructed and cached, matching the existing accessor style.
+- [x] **Step 2: Add `webhooks()` and `senders()`** to `KudosityClient`, lazily constructed and cached, matching the existing accessor style.
 
-- [ ] **Step 3: Add the two `@method` lines** to the facade, using short imported class names like the file's existing entries.
+- [x] **Step 3: Add the two `@method` lines** to the facade, using short imported class names like the file's existing entries.
 
-- [ ] **Step 4: Run the mandatory removed-symbol audit**
+- [x] **Step 4: Run the mandatory removed-symbol audit**
 
 ```bash
 git diff --stat main..HEAD -- packages/
@@ -543,7 +574,7 @@ git diff main..HEAD -- packages/ | grep -E '^\-.*(public function|public const|c
 
 For every symbol on the removed side, confirm it appears in `rename-map.json` and `UPGRADING.md`. This phase is almost purely additive, so the expected result is empty — **with one thing to check deliberately**: Task 1 deletes `private static function parseDate()` from four DTOs. It is private, so it is not a public-surface removal and belongs in neither file. Confirm that reasoning explicitly in your report rather than letting the audit pass silently over it.
 
-- [ ] **Step 5: Update the documentation**
+- [x] **Step 5: Update the documentation**
 
 - `CHANGELOG.md` under the existing `## Unreleased` `### Added`: the webhooks and senders resources, `WebhookEventType`, `SenderStatus`, the four event classes, `StatusPrecedence`, `SignedMessageRef`, and any deferral the Task 5 checkpoint produced.
 - `packages/kudosity-client/README.md`: a webhooks section carrying **the four `message_ref` paths and the one accessor that hides them**, the "deliveries are not signed" statement with what `SignedMessageRef` does and does not protect, the `{}`-when-empty list behaviour, the `PUT`-is-a-replace behaviour, and the three undocumented fields. Then a senders section leading with `VERIFIED` ≠ sendable.
@@ -551,7 +582,7 @@ For every symbol on the removed side, confirm it appears in `rename-map.json` an
 - `README.md`: update the resource list.
 - `CLAUDE.md`: the architecture section says webhook and sender request classes "do not exist yet — those arrive in Phases 4–5". Correct it.
 
-- [ ] **Step 6: Verify the whole phase**
+- [x] **Step 6: Verify the whole phase**
 
 ```bash
 composer dump-autoload
@@ -577,7 +608,7 @@ git grep -n 'api\.kudosity\.com' -- . ':(exclude)docs/*' ':(exclude)HANDOFF.md' 
 
 Expected: green suite above the Step 1 baseline, `[OK] No errors`, Pint clean, three valid manifests, `packages` → 0 codemod changes, sweep clean, negative check clean.
 
-- [ ] **Step 7: Commit.**
+- [x] **Step 7: Commit.**
 
 ---
 

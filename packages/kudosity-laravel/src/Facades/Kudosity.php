@@ -9,7 +9,9 @@ use ExpertSystems\Kudosity\KudosityV1Connector;
 use ExpertSystems\Kudosity\KudosityV2Connector;
 use ExpertSystems\Kudosity\Resources\MmsResource;
 use ExpertSystems\Kudosity\Resources\RcsResource;
+use ExpertSystems\Kudosity\Resources\SendersResource;
 use ExpertSystems\Kudosity\Resources\SmsV2Resource;
+use ExpertSystems\Kudosity\Resources\WebhooksResource;
 use ExpertSystems\Kudosity\Resources\WhatsAppResource;
 use Illuminate\Support\Facades\Facade;
 use Saloon\Http\Response;
@@ -29,6 +31,8 @@ use Saloon\Http\Response;
  * @method static MmsResource mms()
  * @method static WhatsAppResource whatsapp()
  * @method static RcsResource rcs()
+ * @method static WebhooksResource webhooks()
+ * @method static SendersResource senders()
  * @method static Response send(\ExpertSystems\Kudosity\Requests\KudosityV1Request $request)
  * @method static array<string, mixed> sendAndGetJson(\ExpertSystems\Kudosity\Requests\KudosityV1Request $request)
  * @method static KudosityClient setBaseUrl(string $baseUrl)

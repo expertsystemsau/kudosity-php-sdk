@@ -365,6 +365,79 @@ See the client package README's "V2 channels" section for the full method
 list, the per-endpoint response envelope, and the `sms_count`/`total_records`/
 `total_segments` string-vs-int gotcha.
 
+## Your V1 callbacks do not fire for V2 sends
+
+**Read this before repointing any send at a V2 channel.** It is the one change in
+this release that breaks something without producing an error.
+
+Under 1.x a send carried its own callback URLs — `dlr_callback` for delivery
+status, `reply_callback` for inbound replies — and the SDK's signed-URL helpers
+built them per send. **V2 has no per-send callback URL at all.** Delivery status
+and replies for V2 messages arrive at an *account-level webhook* you register
+once, over the API.
+
+So a call site migrated like this:
+
+```php
+// 1.x — the callback URL travelled with the send
+$client->sms()->send($message, $to, ['dlr_callback' => $url]);
+
+// 2.x on a V2 channel — the option is gone, and nothing warns you
+$client->sms()->send($message, to: $to, from: $from);
+```
+
+…sends the message successfully and then **silently stops receiving delivery
+receipts and replies**. Nothing throws, no status changes: the messages simply
+send and the callbacks never arrive.
+
+Register a webhook once instead:
+
+```php
+use ExpertSystems\Kudosity\Enums\WebhookEventType;
+
+$client->webhooks()->create(
+    name: 'Production events',
+    url: 'https://your-app.example.com/webhooks/kudosity',
+    eventTypes: [WebhookEventType::SmsStatus, WebhookEventType::SmsInbound],
+);
+```
+
+Three things to know while doing it:
+
+- **V1 callbacks still work — for V1 sends.** `bulk()`, `bulk()->sendToList()`
+  and `bulk()->schedule()` are V1 and keep their per-send callbacks. You will be
+  running both mechanisms during a partial migration, and V1 callbacks do not
+  fire for V2 messages any more than V2 webhooks replace them.
+- **One webhook can serve every channel**, and event types are filtered with
+  `filter.event_type`. There are ten of them; `SMS_STATUS` does **not** report
+  WhatsApp or RCS.
+- **Deliveries are not signed.** There is no HMAC or signature header of any
+  kind, so a receiver cannot prove a delivery came from Kudosity. Use
+  `Webhooks\SignedMessageRef` to sign your own `message_ref` on the way out and
+  verify it on the way in — that proves the delivery refers to one of your
+  entities, which is the only authenticity signal available. It does not
+  authenticate the payload.
+
+Handling must also be **idempotent on `status.id`**: several status events fire
+per message, arrival order is not guaranteed, and deliveries are at-least-once —
+a redelivered `SENT` arriving after `DELIVERED` has been observed in the wild.
+`Webhooks\StatusPrecedence::supersedes()` is the guard.
+
+## Senders
+
+`$client->senders()` reads sender registrations and runs the SMS verification
+flow. Nothing to migrate — new surface.
+
+One thing worth knowing before you reach for it: it registers a **personal
+mobile number**, and that is the only `type` the API accepts. Alphanumeric sender
+IDs, WhatsApp Business senders and RCS agents all need Kudosity approval and
+never appear here — and a **leased virtual number is not a registration** either,
+so an account can send perfectly well and report zero registrations. Use
+`$client->numbers()` (V1) for leased numbers.
+
+`VERIFIED` does not mean sendable; it means provisioning. Check
+`isReadyToUse()`.
+
 ## For maintainers
 
 Release checklist:

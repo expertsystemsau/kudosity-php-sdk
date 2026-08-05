@@ -15,8 +15,11 @@ use ExpertSystems\Kudosity\Resources\MmsResource;
 use ExpertSystems\Kudosity\Resources\NumbersResource;
 use ExpertSystems\Kudosity\Resources\RcsResource;
 use ExpertSystems\Kudosity\Resources\ReportingResource;
+use ExpertSystems\Kudosity\Resources\SendersResource;
 use ExpertSystems\Kudosity\Resources\SmsV2Resource;
+use ExpertSystems\Kudosity\Resources\WebhooksResource;
 use ExpertSystems\Kudosity\Resources\WhatsAppResource;
+use ExpertSystems\Kudosity\Webhooks\WebhookEvent;
 use Saloon\Http\Response;
 
 class KudosityClient
@@ -54,6 +57,10 @@ class KudosityClient
     protected ?WhatsAppResource $whatsAppResource = null;
 
     protected ?RcsResource $rcsResource = null;
+
+    protected ?WebhooksResource $webhooksResource = null;
+
+    protected ?SendersResource $sendersResource = null;
 
     /**
      * Create a new Kudosity client.
@@ -271,6 +278,42 @@ class KudosityClient
     public function rcs(): RcsResource
     {
         return $this->rcsResource ??= new RcsResource($this->v2Connector);
+    }
+
+    /**
+     * V2 account-level webhooks: `POST/GET/PUT/DELETE /v2/webhook`.
+     *
+     * Not the same mechanism as V1's callbacks. V1 attaches a `dlr_callback` /
+     * `reply_callback` to each send; V2 has no per-send callback URL at all, so a
+     * consumer moving a send from {@see self::bulk()} to {@see self::sms()}
+     * **loses their callbacks silently** unless they register a webhook here.
+     *
+     * Deliveries are unsigned — see
+     * {@see WebhookEvent}.
+     *
+     * @see https://developers.kudosity.com
+     */
+    public function webhooks(): WebhooksResource
+    {
+        return $this->webhooksResource ??= new WebhooksResource($this->v2Connector);
+    }
+
+    /**
+     * V2 sender registrations: `/v2/senders/registrations`.
+     *
+     * Narrower than the name suggests — it registers a **personal mobile
+     * number**, verified by an SMS code. Alphanumeric sender IDs, WhatsApp
+     * Business senders and RCS agents need Kudosity approval and never appear
+     * here, and a leased virtual number is not a registration either: use
+     * {@see self::numbers()} for those.
+     *
+     * `VERIFIED` means provisioning. Only `READY_TO_USE` can send.
+     *
+     * @see https://developers.kudosity.com
+     */
+    public function senders(): SendersResource
+    {
+        return $this->sendersResource ??= new SendersResource($this->v2Connector);
     }
 
     // =========================================================================

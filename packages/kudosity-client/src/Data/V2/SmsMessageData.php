@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace ExpertSystems\Kudosity\Data\V2;
 
 use DateTimeImmutable;
+use ExpertSystems\Kudosity\Concerns\ParsesV2Timestamps;
 use ExpertSystems\Kudosity\Enums\MessageStatus;
-use Throwable;
 
 /**
  * A single SMS message, as returned by `POST /v2/sms` and `GET /v2/sms/{id}`.
@@ -16,6 +16,8 @@ use Throwable;
  */
 final readonly class SmsMessageData
 {
+    use ParsesV2Timestamps;
+
     public function __construct(
         public string $id,
         public string $recipient,
@@ -55,29 +57,8 @@ final readonly class SmsMessageData
             routedVia: $routedVia === '' ? null : $routedVia,
             trackLinks: (bool) ($data['track_links'] ?? false),
             direction: is_string($data['direction'] ?? null) ? $data['direction'] : null,
-            createdAt: self::parseDate($data['created_at'] ?? null),
-            updatedAt: self::parseDate($data['updated_at'] ?? null),
+            createdAt: self::parseTimestamp($data['created_at'] ?? null),
+            updatedAt: self::parseTimestamp($data['updated_at'] ?? null),
         );
-    }
-
-    /**
-     * Parse a timestamp permissively.
-     *
-     * The API sends `2022-03-28T06:12:52.450674000Z` — nine fractional
-     * digits, which `DateTimeImmutable::createFromFormat(RFC3339_EXTENDED,
-     * ...)` cannot parse (it expects exactly six). `new DateTimeImmutable()`
-     * accepts it because PHP's parser truncates fractional seconds itself.
-     */
-    private static function parseDate(mixed $value): ?DateTimeImmutable
-    {
-        if (! is_string($value) || $value === '') {
-            return null;
-        }
-
-        try {
-            return new DateTimeImmutable($value);
-        } catch (Throwable) {
-            return null;
-        }
     }
 }

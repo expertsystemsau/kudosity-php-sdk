@@ -1,0 +1,13 @@
+{
+    "data": {
+        "registrations": []
+    },
+    "meta": {
+        "pagination": {
+            "limit": 25,
+            "page": 1,
+            "total_count": 0,
+            "type": "page"
+        }
+    }
+}

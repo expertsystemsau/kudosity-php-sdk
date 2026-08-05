@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace ExpertSystems\Kudosity\Data\V2;
 
 use DateTimeImmutable;
+use ExpertSystems\Kudosity\Concerns\ParsesV2Timestamps;
 use ExpertSystems\Kudosity\Enums\MessageStatus;
-use Throwable;
 
 /**
  * A single RCS message, as returned by `POST /v2/rcs/messages`,
@@ -22,6 +22,8 @@ use Throwable;
  */
 final readonly class RcsMessageData
 {
+    use ParsesV2Timestamps;
+
     /**
      * @param  array<string, mixed>  $content  The `content` object exactly as returned.
      *                                         Kept raw rather than parsed back into a
@@ -69,28 +71,7 @@ final readonly class RcsMessageData
             // SmsFallback for why the invariant stays and what that
             // trade-off costs.
             smsFallback: $fallback !== null ? SmsFallback::fromResponse($fallback) : null,
-            createdAt: self::parseDate($data['created_at'] ?? null),
+            createdAt: self::parseTimestamp($data['created_at'] ?? null),
         );
-    }
-
-    /**
-     * Parse a timestamp permissively.
-     *
-     * The API sends nine fractional digits, which
-     * `DateTimeImmutable::createFromFormat(RFC3339_EXTENDED, ...)` cannot parse
-     * — it expects exactly six. `new DateTimeImmutable()` accepts it because
-     * PHP's own parser truncates fractional seconds.
-     */
-    private static function parseDate(mixed $value): ?DateTimeImmutable
-    {
-        if (! is_string($value) || $value === '') {
-            return null;
-        }
-
-        try {
-            return new DateTimeImmutable($value);
-        } catch (Throwable) {
-            return null;
-        }
     }
 }

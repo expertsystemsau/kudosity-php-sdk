@@ -116,8 +116,12 @@ scheduling — those sends stay on `$client->bulk()` (V1) instead.
 `$client->mms()`, `$client->whatsapp()` and `$client->rcs()` cover the other
 three V2 channels — see [V2 channels](packages/kudosity-client/README.md#v2-channels)
 in the client package README for the full method list and response
-envelopes. Account operations live on `$client->account()`, reporting on
-`$client->reporting()`, and so on.
+envelopes. `$client->webhooks()` manages account-level webhooks, which is how
+delivery receipts and replies arrive for V2 sends — V2 has no per-send callback
+URL, so [migrating a send](UPGRADING.md#your-v1-callbacks-do-not-fire-for-v2-sends)
+without registering one silently loses its callbacks. `$client->senders()` reads
+sender registrations and runs the SMS verification flow. Account operations live
+on `$client->account()`, reporting on `$client->reporting()`, and so on.
 
 ```php
 use ExpertSystems\Kudosity\KudosityClient;
