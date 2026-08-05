@@ -13,7 +13,8 @@
     "TransmitSmsChannel": "KudosityChannel",
     "TransmitSmsMessage": "KudosityMessage",
     "TransmitSmsClient": "KudosityClient",
-    "TransmitSms": "Kudosity"
+    "TransmitSms": "Kudosity",
+    "SmsResource": "BulkSmsResource"
   },
   "constants": {
     "BASE_URL_SMS": "BASE_URL"
@@ -29,7 +30,8 @@
     "BASE_URL_MMS": null,
     "sendToList": null,
     "getResponses": null,
-    "getAllResponses": null
+    "getAllResponses": null,
+    "sms": null
   },
   "strings": {
     "'transmitsms'": "'kudosity'",

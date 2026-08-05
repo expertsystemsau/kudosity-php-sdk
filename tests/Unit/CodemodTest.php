@@ -232,3 +232,59 @@ it('flags config/transmitsms.php for a manual rename', function () {
 
     expect($output)->toContain('would need: rename config/transmitsms.php -> config/kudosity.php');
 });
+
+it('rewrites SmsResource references to a class that actually exists', function () {
+    // C1: SmsResource was deleted by this phase. Before the fix, the plain
+    // namespace-prefix rewrite turned `use ...\Resources\SmsResource;` into
+    // `use ...\Resources\SmsResource;` under the new namespace — a class
+    // that doesn't exist — with no warning and exit 0.
+    $file = $this->project.'/app/Notifications/Legacy.php';
+    file_put_contents($file, <<<'PHP'
+        <?php
+
+        use ExpertSystems\TransmitSms\Resources\SmsResource;
+
+        class Legacy
+        {
+            public function __construct(private SmsResource $resource) {}
+
+            public function mock(): SmsResource
+            {
+                return Mockery::mock(SmsResource::class);
+            }
+        }
+        PHP);
+
+    runCodemod($this->project);
+
+    $result = file_get_contents($file);
+
+    // Not a blanket `not->toContain('SmsResource')` — "BulkSmsResource" itself
+    // contains that substring. The old, unqualified class name must be gone.
+    expect($result)
+        ->toContain('use ExpertSystems\Kudosity\Resources\BulkSmsResource;')
+        ->toContain('private BulkSmsResource $resource')
+        ->toContain('public function mock(): BulkSmsResource')
+        ->toContain('Mockery::mock(BulkSmsResource::class)')
+        ->not->toContain('TransmitSms')
+        ->not->toContain('use ExpertSystems\Kudosity\Resources\SmsResource;');
+});
+
+it('flags KudosityClient::sms() call sites for manual review without false-positiving on emailSms()', function () {
+    $file = $this->project.'/app/Notifications/Legacy.php';
+    file_put_contents($file, <<<'PHP'
+        <?php
+
+        $client->sms()->send($message, $to);
+        $client->emailSms()->send($message, $to);
+        PHP);
+
+    $output = runCodemod($this->project);
+
+    expect(file_get_contents($file))->toContain('$client->sms()->send($message, $to);')
+        ->and($output)->toContain('review by hand: app/Notifications/Legacy.php uses sms() — see UPGRADING.md');
+
+    // Case-sensitive match: "sms(" must not fire a second time on "emailSms(".
+    $flagCount = substr_count($output, 'uses sms() — see UPGRADING.md');
+    expect($flagCount)->toBe(1);
+});

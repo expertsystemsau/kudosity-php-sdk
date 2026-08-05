@@ -208,6 +208,8 @@ briefly disagree.
 | `BASE_URL_MMS` constant | Removed with no replacement. |
 | `BASE_URL_SMS` constant | Renamed to `BASE_URL`. Replace `TransmitSmsConnector::BASE_URL_SMS` with `KudosityV1Connector::BASE_URL`. |
 | `KudosityException::fromResponse()` | Renamed to `fromV1Response()` — see below. |
+| `Resources\SmsResource` class | Removed — split three ways. Sends, `cancel()` and the offline phone helpers (`formatNumberLocal()`, `isValidNumber()`, `validateNumbers()`, `isValidSenderId()`) moved to `Resources\BulkSmsResource`; the reply readers (`getResponses()`, `getResponsesByKeywordId()`, `getResponsesByKeyword()`, `getAllResponses()`) moved to `Resources\ReportingResource`; the API-backed `formatNumber()` moved to `Resources\NumbersResource`. The codemod rewrites `use ExpertSystems\TransmitSms\Resources\SmsResource;`, `SmsResource::class` and type hints to `Resources\BulkSmsResource` — update the call site to the accessor it actually needs (see [Resource surface changes](#resource-surface-changes) below) if that's not the one you meant. |
+| `$client->sms()` accessor | Removed with no rewrite (flagged for manual review). See [Resource surface changes](#resource-surface-changes) below — replaced by `bulk()`, `reporting()` or `numbers()` depending on which method you were calling. |
 
 ### `fromResponse()` → `fromV1Response()`
 
@@ -269,11 +271,12 @@ alongside the other number endpoints.
 The codemod cannot automate any of these: the method names themselves
 (`sendToList`, `getResponses`, `getAllResponses`, ...) are unchanged, only the
 accessor before them changed, and a text-level tool can't tell your own
-`sms()`-returning method from ours. It flags `sendToList(`, `getResponses(`
-and `getAllResponses(` call sites for manual review the same way it flags
-`fromResponse(` above; the other renamed accessors in the table have no
+`sms()`-returning method from ours. It flags `sendToList(`, `getResponses(`,
+`getAllResponses(` and `sms(` call sites for manual review the same way it
+flags `fromResponse(` above; the other renamed accessors in the table have no
 matching method name elsewhere in the SDK, so nothing (yet) needs a flag for
-them.
+them. The `sms(` flag is case-sensitive, so it matches `$client->sms()` but
+not your own `emailSms()` or similar camelCase method names.
 
 Scheduling is now explicit rather than something you reach through the
 `configure` closure: `$client->bulk()->schedule($msg, $to, $at)`.
