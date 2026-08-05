@@ -4,10 +4,8 @@ declare(strict_types=1);
 
 namespace ExpertSystems\Kudosity;
 
-use ExpertSystems\Kudosity\Exceptions\RateLimitException;
+use ExpertSystems\Kudosity\Concerns\HasRetryPolicy;
 use ExpertSystems\Kudosity\Pagination\V1PagedPaginator;
-use Saloon\Exceptions\Request\FatalRequestException;
-use Saloon\Exceptions\Request\RequestException;
 use Saloon\Http\Auth\BasicAuthenticator;
 use Saloon\Http\Connector;
 use Saloon\Http\Request;
@@ -18,6 +16,7 @@ use Saloon\Traits\Plugins\AcceptsJson;
 class KudosityV1Connector extends Connector implements HasPagination
 {
     use AcceptsJson;
+    use HasRetryPolicy;
 
     public const BASE_URL = 'https://api.transmitsms.com';
 
@@ -190,65 +189,6 @@ class KudosityV1Connector extends Connector implements HasPagination
         return new V1PagedPaginator($this, $request);
     }
 
-    // =========================================================================
-    // Retry Configuration
-    // =========================================================================
-
-    /**
-     * Configure automatic retry behavior for transient failures.
-     *
-     * Uses Saloon's built-in retry functionality to automatically retry
-     * failed requests. This is particularly useful for handling:
-     * - Rate limit errors (HTTP 429)
-     * - Network timeouts
-     * - Server errors (HTTP 5xx)
-     *
-     * Example:
-     * ```php
-     * $connector->withRetry(
-     *     tries: 3,
-     *     intervalMs: 1000,
-     *     useExponentialBackoff: true
-     * );
-     * ```
-     *
-     * @param  int  $tries  Maximum number of retry attempts (including the initial request)
-     * @param  int  $intervalMs  Initial interval between retries in milliseconds (default: 1000ms)
-     * @param  bool  $useExponentialBackoff  Whether to double the interval after each retry (default: true)
-     * @param  bool  $throwOnMaxTries  Whether to throw an exception after all retries are exhausted (default: true)
-     * @return $this
-     *
-     * @see https://docs.saloon.dev/digging-deeper/retrying-requests
-     */
-    public function withRetry(
-        int $tries = 3,
-        int $intervalMs = 1000,
-        bool $useExponentialBackoff = true,
-        bool $throwOnMaxTries = true
-    ): self {
-        $this->tries = $tries;
-        $this->retryInterval = $intervalMs;
-        $this->useExponentialBackoff = $useExponentialBackoff;
-        $this->throwOnMaxTries = $throwOnMaxTries;
-
-        return $this;
-    }
-
-    /**
-     * Disable automatic retries.
-     *
-     * @return $this
-     */
-    public function withoutRetry(): self
-    {
-        $this->tries = null;
-        $this->retryInterval = null;
-        $this->useExponentialBackoff = null;
-        $this->throwOnMaxTries = null;
-
-        return $this;
-    }
-
     /**
      * Determine if the request has failed.
      *
@@ -310,46 +250,5 @@ class KudosityV1Connector extends Connector implements HasPagination
     public function getRequestException(Response $response, ?\Throwable $senderException): ?\Throwable
     {
         return Exceptions\KudosityException::fromV1Response($response);
-    }
-
-    /**
-     * Handle retry logic for failed requests.
-     *
-     * This method is called by Saloon to determine if a request should be retried.
-     * By default, it retries on:
-     * - Rate limit errors (HTTP 429 / OVER_LIMIT)
-     * - Server errors (HTTP 5xx)
-     * - Network/connection failures
-     *
-     * For rate limit errors, if the RateLimitException contains retry timing
-     * information from the API headers, you can access it to implement
-     * smarter retry strategies in custom implementations.
-     *
-     * @param  FatalRequestException|RequestException  $exception  The exception that caused the failure
-     * @param  Request  $request  The request that failed (can be modified before retry)
-     * @return bool Whether to retry the request
-     */
-    public function handleRetry(FatalRequestException|RequestException $exception, Request $request): bool
-    {
-        // Always retry on connection/network failures
-        if ($exception instanceof FatalRequestException) {
-            return true;
-        }
-
-        $response = $exception->getResponse();
-        $status = $response->status();
-
-        // Retry on rate limit errors
-        if ($status === 429) {
-            return true;
-        }
-
-        // Retry on server errors (5xx)
-        if ($status >= 500 && $status < 600) {
-            return true;
-        }
-
-        // Don't retry on client errors (4xx except 429)
-        return false;
     }
 }
