@@ -50,7 +50,11 @@ Six phases, specced in `docs/superpowers/specs/2026-08-04-kudosity-v2-migration-
 - [ ] **Phase 5 — Laravel integration.** Four notification channels, the V2 webhook receiver route, `kudosity:webhook:*` commands, config `base_url` split into `v1`/`v2`. **Blocked on nothing, but its receiver-auth design depends on the Kudosity answers below.**
 - [ ] **Phase 6 — tests, CI, docs, release.** Standalone PHPUnit 11 suite for the client package on PHP 8.2/8.3/8.4, doc finalisation, release.
 - [ ] **WhatsApp and RCS are still not verified end to end.** The account has neither provisioned. Both fail cleanly with correct error mapping, but no message has traversed either channel. **Phase 4 unblocks this**, because sender readiness is read via `GET /v2/senders/registrations`.
-- [ ] **Nothing is pushed.** `main` is **52 commits ahead of `origin/main`** and has never been pushed, so all of Phases 1-3 exists only on this machine. `split.yml` has never fired and no release exists.
+- [ ] **Two CI failures, both pre-existing Phase 1 code, both surfaced by the first-ever push (`edb8e8d`).** Neither is caused by Phase 3, and neither blocks Phase 4 — but CI is red until they are fixed.
+  - **`run-tests` fails on all 4 Windows jobs; all 4 Ubuntu jobs pass** (PHP 8.3/8.4 × Laravel 11/12). Exactly two tests fail, both in `Tests\Unit\CodemodTest`: *"it renames BASE_URL_SMS and flags the removed connector members for manual review"* (`tests/Unit/CodemodTest.php:196`) and *"it flags KudosityClient::sms() call sites for manual review without false-positiving on emailSms()"* (`:285`). **Root cause is path separators, not behaviour** — the codemod reports `app\Notifications\Legacy.php` while the tests assert `app/Notifications/Legacy.php`. The functional assertions in the same test passed (`BASE_URL_SMS` was renamed, `BASE_URL_MMS` written), so the codemod works on Windows; only its printed paths differ. **Recommended fix: normalise the codemod's *displayed* paths to `/`** (keep native separators for filesystem operations). That fixes both tests and gives consistent report text cross-platform, which matters because those reports get pasted into issues and `UPGRADING.md`.
+  - **`Split Monorepo` fails.** Its targets are `expertsystemsau/kudosity-php-client` and `expertsystemsau/kudosity-laravel-client`, **which do not exist yet** — creating them is already on the release checklist. Note the split runs on 2026-08-04 *succeeded*, because the targets were then the old `transmitsms-*` names: **Phase 1's rename broke this workflow and it could not be noticed while `main` was unpushed.** Also note `split.yml` fires on **every push to `main`**, not only on `v*` tags, so it will keep failing until those repos exist. No release risk: release creation is gated on `refs/tags/`, and `update-changelog.yml` only fires on `release: released`.
+  - Unrelated noise: pushing also woke Dependabot, which opened several dependency-update runs; one failed. Not connected to this work.
+- [x] **`main` is pushed** — `origin/main` is at `edb8e8d`, 0 commits ahead. Phases 1-3 are no longer only on one machine. No release exists and no tag has been cut.
 
 ### Awaiting answers from Kudosity (emails drafted, not blocking Phase 4)
 
@@ -105,9 +109,9 @@ Answers 1 and 2 shape **Phase 5's** receiver authentication, not Phase 4's code.
 
 ## Current State
 
-**Working.** `main` at `9f18b93`, tree clean, 52 commits ahead of unpushed `origin/main`. Phases 1-3 merged. SMS and MMS live-verified.
+**Working.** `main` pushed and level with `origin/main` at `edb8e8d`. Phases 1-3 merged. SMS and MMS live-verified. Local suite green, PHPStan level 6 clean, Pint clean. CI green on Ubuntu (PHP 8.3/8.4 × Laravel 11/12) and PHPStan.
 
-**Broken.** Nothing.
+**Broken.** Two CI failures, both pre-existing Phase 1 code, detailed under Not Yet Done: `run-tests` on Windows only (2 `CodemodTest` tests, path-separator assertions at `tests/Unit/CodemodTest.php:196` and `:285`) and `Split Monorepo` (target repos not created yet). Nothing broken locally, and neither blocks Phase 4.
 
 **Uncommitted changes.** None.
 
