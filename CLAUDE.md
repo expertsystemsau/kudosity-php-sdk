@@ -41,12 +41,17 @@ composer format
 Built on Saloon PHP v4:
 
 - **KudosityV1Connector** - Configures the V1 base URL, authentication (Basic Auth), headers, and timeout
-- **KudosityClient** - High-level client wrapper with response validation
+- **KudosityV2Connector** - Configures the V2 base URL, authentication (`x-api-key` header, key only), headers, and timeout
+- **KudosityClient** - High-level client wrapper holding both connectors, with V1 response validation
 - **KudosityV1Request** - Abstract base for V1 API requests (uses form body, all endpoints must end with `.json`)
+- **KudosityV2Request** - Abstract base for V2 API requests (no body; paths are written out in full, no suffix). Write requests extend **KudosityV2BodyRequest** instead, which adds the JSON body — kept off the base so GET readers never inherit one.
 
-This package currently speaks only the V1 API (`https://api.transmitsms.com`,
-`KudosityV1Connector::BASE_URL`). See "Two APIs, two auth schemes" below for
-how the V2 API (`api.transmitmessage.com`) fits in once it lands.
+As of 2.0, the V2 transport, error mapping (`KudosityException::fromV2Response()`),
+envelope handling (`Concerns\UnwrapsData`) and both paginators
+(`V2PagedPaginator`, `V2CursorPaginator`) exist and are tested. No V2
+*endpoint* classes exist yet — no SMS, MMS, WhatsApp, RCS, webhook or sender
+requests — those arrive in Phases 3–4. See "Two APIs, two auth schemes"
+below for how the two APIs fit together.
 
 ### Laravel Integration (kudosity-laravel)
 
