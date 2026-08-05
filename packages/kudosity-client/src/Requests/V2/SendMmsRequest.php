@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace ExpertSystems\Kudosity\Requests\V2;
 
+use ExpertSystems\Kudosity\Concerns\GuardsMessageRef;
 use ExpertSystems\Kudosity\Data\V2\MmsMessageData;
 use ExpertSystems\Kudosity\Exceptions\ValidationException;
 use ExpertSystems\Kudosity\Requests\KudosityV2BodyRequest;
@@ -23,6 +24,8 @@ use Saloon\Http\Response;
  */
 class SendMmsRequest extends KudosityV2BodyRequest
 {
+    use GuardsMessageRef;
+
     /**
      * Only one media file can be attached per message.
      */
@@ -37,11 +40,6 @@ class SendMmsRequest extends KudosityV2BodyRequest
      * The documented maximum for the message body.
      */
     public const MAX_MESSAGE_LENGTH = 1000;
-
-    /**
-     * The documented maximum for the caller's own reference field.
-     */
-    public const MAX_MESSAGE_REF_LENGTH = 500;
 
     /**
      * @param  array<int, string>  $contentUrls
@@ -112,16 +110,7 @@ class SendMmsRequest extends KudosityV2BodyRequest
             );
         }
 
-        if ($messageRef !== null && mb_strlen($messageRef) > self::MAX_MESSAGE_REF_LENGTH) {
-            throw new ValidationException(
-                message: sprintf(
-                    'message_ref length (%d) exceeds the maximum of %d characters',
-                    mb_strlen($messageRef),
-                    self::MAX_MESSAGE_REF_LENGTH,
-                ),
-                errorCode: 'FIELD_INVALID',
-            );
-        }
+        self::guardMessageRef($messageRef);
     }
 
     public function resolveEndpoint(): string

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace ExpertSystems\Kudosity\Requests\V2;
 
+use ExpertSystems\Kudosity\Concerns\GuardsMessageRef;
 use ExpertSystems\Kudosity\Contracts\WhatsAppContent;
 use ExpertSystems\Kudosity\Data\V2\SmsFallback;
 use ExpertSystems\Kudosity\Data\V2\WhatsAppMessageData;
@@ -31,10 +32,7 @@ use Saloon\Http\Response;
  */
 class SendWhatsAppRequest extends KudosityV2BodyRequest
 {
-    /**
-     * The documented maximum for the caller's own reference field.
-     */
-    public const MAX_MESSAGE_REF_LENGTH = 500;
+    use GuardsMessageRef;
 
     /**
      * @throws ValidationException If message_ref exceeds its documented maximum
@@ -46,16 +44,7 @@ class SendWhatsAppRequest extends KudosityV2BodyRequest
         protected ?SmsFallback $smsFallback = null,
         protected ?string $messageRef = null,
     ) {
-        if ($messageRef !== null && mb_strlen($messageRef) > self::MAX_MESSAGE_REF_LENGTH) {
-            throw new ValidationException(
-                message: sprintf(
-                    'message_ref length (%d) exceeds the maximum of %d characters',
-                    mb_strlen($messageRef),
-                    self::MAX_MESSAGE_REF_LENGTH,
-                ),
-                errorCode: 'FIELD_INVALID',
-            );
-        }
+        self::guardMessageRef($messageRef);
 
         // The endpoint wants E.164 with no spaces, dashes or leading `+`, and a
         // recipient carrying any of those is a 400. Normalising here means a

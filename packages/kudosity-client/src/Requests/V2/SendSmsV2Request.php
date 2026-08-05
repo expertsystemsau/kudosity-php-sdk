@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace ExpertSystems\Kudosity\Requests\V2;
 
+use ExpertSystems\Kudosity\Concerns\GuardsMessageRef;
 use ExpertSystems\Kudosity\Data\V2\SmsMessageData;
 use ExpertSystems\Kudosity\Exceptions\ValidationException;
 use ExpertSystems\Kudosity\Requests\KudosityV2BodyRequest;
@@ -20,10 +21,7 @@ use Saloon\Http\Response;
  */
 class SendSmsV2Request extends KudosityV2BodyRequest
 {
-    /**
-     * The documented maximum for the caller's own reference field.
-     */
-    public const MAX_MESSAGE_REF_LENGTH = 500;
+    use GuardsMessageRef;
 
     /**
      * @throws ValidationException If message_ref exceeds its documented maximum
@@ -35,16 +33,7 @@ class SendSmsV2Request extends KudosityV2BodyRequest
         protected ?string $messageRef = null,
         protected bool $trackLinks = false,
     ) {
-        if ($messageRef !== null && mb_strlen($messageRef) > self::MAX_MESSAGE_REF_LENGTH) {
-            throw new ValidationException(
-                message: sprintf(
-                    'message_ref length (%d) exceeds the maximum of %d characters',
-                    mb_strlen($messageRef),
-                    self::MAX_MESSAGE_REF_LENGTH,
-                ),
-                errorCode: 'FIELD_INVALID',
-            );
-        }
+        self::guardMessageRef($messageRef);
     }
 
     public function resolveEndpoint(): string

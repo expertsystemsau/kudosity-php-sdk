@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace ExpertSystems\Kudosity\Requests\V2;
 
+use ExpertSystems\Kudosity\Concerns\GuardsMessageRef;
 use ExpertSystems\Kudosity\Contracts\WhatsAppContent;
 use ExpertSystems\Kudosity\Data\V2\RcsMessageData;
 use ExpertSystems\Kudosity\Data\V2\SmsFallback;
@@ -32,15 +33,12 @@ use Saloon\Http\Response;
  */
 class SendRcsRequest extends KudosityV2BodyRequest
 {
+    use GuardsMessageRef;
+
     /**
      * The documented maximum for a Simple RCS message, full UTF-8.
      */
     public const MAX_MESSAGE_LENGTH = 3072;
-
-    /**
-     * The documented maximum for the caller's own reference field.
-     */
-    public const MAX_MESSAGE_REF_LENGTH = 500;
 
     /**
      * @throws ValidationException If sender looks like a phone number rather than
@@ -85,16 +83,7 @@ class SendRcsRequest extends KudosityV2BodyRequest
             );
         }
 
-        if ($messageRef !== null && mb_strlen($messageRef) > self::MAX_MESSAGE_REF_LENGTH) {
-            throw new ValidationException(
-                message: sprintf(
-                    'message_ref length (%d) exceeds the maximum of %d characters',
-                    mb_strlen($messageRef),
-                    self::MAX_MESSAGE_REF_LENGTH,
-                ),
-                errorCode: 'FIELD_INVALID',
-            );
-        }
+        self::guardMessageRef($messageRef);
 
         // Same reasoning as SendWhatsAppRequest: E.164 with no spaces, dashes
         // or leading `+`, and no country is assumed for a local number — the
