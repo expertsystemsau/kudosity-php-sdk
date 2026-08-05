@@ -1,0 +1,14 @@
+{
+    "event_type": "SMS_STATUS",
+    "status": {
+        "id": "85fdf391-cfd8-4340-b004-419223c84e83",
+        "message_ref": "order-9931:cust-4471",
+        "recipient": "61400000000",
+        "sender": "61481074185",
+        "status": "DELIVERED",
+        "type": "SMS"
+    },
+    "timestamp": "2026-08-05T11:58:03Z",
+    "webhook_id": "8aa2842d-8931-4f6f-b55a-826a6698699a",
+    "webhook_name": "SDK 2.0 phase 4 recon"
+}

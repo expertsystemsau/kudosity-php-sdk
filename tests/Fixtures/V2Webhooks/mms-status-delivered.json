@@ -1,0 +1,15 @@
+{
+    "event_type": "MMS_STATUS",
+    "status": {
+        "description": "Sent to Vodafone (response status details: Success)",
+        "id": "e94b5a63-c030-42e8-91a6-c083f3c000be",
+        "message_ref": "mms-order-7742:cust-4471",
+        "recipient": "61400000000",
+        "sender": "61481074185",
+        "status": "DELIVERED",
+        "type": "MMS"
+    },
+    "timestamp": "2026-08-05T12:08:21Z",
+    "webhook_id": "8aa2842d-8931-4f6f-b55a-826a6698699a",
+    "webhook_name": "SDK 2.0 phase 4 recon"
+}

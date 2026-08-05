@@ -1,0 +1,21 @@
+{
+    "event_type": "SMS_INBOUND",
+    "mo": {
+        "id": "dfbc7499-d4ef-4c2b-af4e-703935db4d5f",
+        "last_message": {
+            "id": "85fdf391-cfd8-4340-b004-419223c84e83",
+            "message": "Kudosity SDK webhook recon. Please reply YES to this message so we can capture an inbound event.",
+            "message_ref": "order-9931:cust-4471",
+            "recipient": "61400000000",
+            "sender": "61481074185",
+            "type": "SMS"
+        },
+        "message": "YES ",
+        "recipient": "61481074185",
+        "sender": "61400000000",
+        "type": "SMS"
+    },
+    "timestamp": "2026-08-05T12:06:58Z",
+    "webhook_id": "8aa2842d-8931-4f6f-b55a-826a6698699a",
+    "webhook_name": "SDK 2.0 phase 4 recon"
+}
