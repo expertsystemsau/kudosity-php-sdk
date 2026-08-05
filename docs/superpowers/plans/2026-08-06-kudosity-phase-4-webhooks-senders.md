@@ -551,7 +551,10 @@ git grep -in 'transmitsms' -- . \
   ':(exclude)bin/kudosity-codemod' ':(exclude)tests/Unit/CodemodTest.php' \
   ':(exclude)HANDOFF.md' ':(exclude).ai-skills/*' \
   | grep -v 'api\.transmitsms\.com' | grep -v 'TransmitSMS is now' || echo "sweep clean"
-git grep -n 'api\.kudosity\.com' -- . ':(exclude)docs/*' && echo "CORRUPTED HOSTNAME — STOP" || echo "negative check clean"
+# The negative check needs the SAME exclusions as the sweep: HANDOFF.md and the
+# handoff archive narrate the corruption by name, so without these it always fires.
+git grep -n 'api\.kudosity\.com' -- . ':(exclude)docs/*' ':(exclude)HANDOFF.md' ':(exclude).ai-skills/*' \
+  && echo "CORRUPTED HOSTNAME — STOP" || echo "negative check clean"
 ```
 
 Expected: green suite above the Step 1 baseline, `[OK] No errors`, Pint clean, three valid manifests, `packages` → 0 codemod changes, sweep clean, negative check clean.
