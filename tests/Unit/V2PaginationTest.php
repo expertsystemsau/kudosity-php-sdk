@@ -183,6 +183,26 @@ it('omits the cursor on the first request and sends limit and direction', functi
         ->and($query->get('direction'))->toBe('next');
 });
 
+it('follows the returned cursor onto the next request and stops when has_next goes false', function () {
+    $mock = new MockClient([
+        rcsPage(['a', 'b'], true, 'cursor-2'),
+        rcsPage(['c'], false, null),
+    ]);
+    $connector = new KudosityV2Connector('key');
+    $connector->withMockClient($mock);
+
+    $paginator = $connector->paginate(new StubListRcsRequest);
+    $paginator->setPerPageLimit(25);
+
+    $ids = array_column(iterator_to_array($paginator->items()), 'id');
+    expect($ids)->toBe(['a', 'b', 'c']);
+
+    $recorded = $mock->getRecordedResponses();
+    expect($recorded)->toHaveCount(2)
+        ->and($recorded[0]->getPendingRequest()->query()->get('cursor'))->toBeNull()
+        ->and($recorded[1]->getPendingRequest()->query()->get('cursor'))->toBe('cursor-2');
+});
+
 it('reads items from the nested data.messages path', function () {
     $connector = pagedConnector([StubListRcsRequest::class => rcsPage(['a', 'b'], false, null)]);
 

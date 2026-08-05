@@ -126,6 +126,9 @@ class KudosityV2Connector extends Connector implements HasPagination
      */
     public function paginate(Request $request): V2PagedPaginator|V2CursorPaginator
     {
+        // Cursor is checked first on the assumption the two markers are
+        // mutually exclusive; a request implementing both would silently get
+        // the cursor paginator.
         if ($request instanceof PaginatesV2Cursor) {
             return new V2CursorPaginator($this, $request);
         }

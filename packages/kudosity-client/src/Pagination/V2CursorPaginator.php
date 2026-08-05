@@ -49,6 +49,11 @@ class V2CursorPaginator extends CursorPaginator
         return $request;
     }
 
+    /**
+     * Satisfies the abstract base method but is never called: applyPagination()
+     * is fully overridden above and reads the cursor via nextCursorOrNull()
+     * directly instead of going through this.
+     */
     protected function getNextCursor(Response $response): int|string
     {
         return $this->nextCursorOrNull($response) ?? '';
