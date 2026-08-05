@@ -1578,6 +1578,7 @@ Phase 3 needs the `sms()` name for V2. The V1 send surface becomes `bulk()`, the
 - Delete: `packages/kudosity-client/src/Resources/SmsResource.php`
 - Modify: `packages/kudosity-client/src/Resources/ReportingResource.php`
 - Modify: `packages/kudosity-client/src/Resources/NumbersResource.php`
+- Modify: `packages/kudosity-client/src/KudosityClient.php` (swap `sms()` for `bulk()`, nothing more)
 - Modify: `packages/kudosity-laravel/src/Notifications/KudosityChannel.php`
 - Modify: `rename-map.json`, `UPGRADING.md`
 - Test: `tests/Unit/BulkSmsResourceTest.php`
@@ -1590,7 +1591,8 @@ Phase 3 needs the `sms()` name for V2. The V1 send surface becomes `bulk()`, the
   - `Concerns\FormatsPhoneNumbers` with `formatNumberLocal(string $number, ?string $countryCode = null): string`, `isValidNumber(string $number): bool`, `validateNumbers(string $numbers): array{valid: string[], invalid: string[]}`, `isValidSenderId(string $senderId): bool`. It reads `$this->connector->getDefaultCountryCode()`.
   - `ReportingResource` additionally: `getResponses(int $messageId)`, `getResponsesByKeywordId(int $keywordId)`, `getResponsesByKeyword(string $keyword, string $number)`, `getResponsesRequest(GetSmsResponsesRequest $request)`, `getAllResponses()`, `getAllResponsesRequest(GetUserSmsResponsesRequest $request)` — all returning `V1PagedPaginator`, all moved verbatim.
   - `NumbersResource::formatNumber(string $number, ?string $countryCode = null): FormattedNumberData`, moved verbatim.
-- Task 6 exposes `bulk()` on the client and removes `sms()`.
+  - `KudosityClient::bulk(): BulkSmsResource`, and `sms()` removed — the minimum needed to keep the suite green in this task.
+- Task 6 replaces the client's single connector with two and reworks its constructor and factories.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1829,7 +1831,32 @@ Add a line to the class docblock explaining the grouping: replies are reads, and
 
 Move `formatNumber()` from the deleted `SmsResource` into `packages/kudosity-client/src/Resources/NumbersResource.php` verbatim, with its imports (`FormatNumberRequest`, `FormattedNumberData`, `KudosityException`). It calls `format-number.json`, so it belongs with the other number endpoints.
 
-- [ ] **Step 7: Point the Laravel channel at `bulk()`**
+- [ ] **Step 7a: Add `bulk()` to the client and remove `sms()`**
+
+The channel change in Step 7b calls `$client->bulk()`, so the accessor has to exist in this task or the suite ends red. Task 6 does the full two-connector rework; this is only the accessor swap.
+
+In `packages/kudosity-client/src/KudosityClient.php`: delete the `sms()` method, the `?SmsResource $smsResource` property and the `SmsResource` import, and add:
+
+```php
+    protected ?BulkSmsResource $bulkResource = null;
+```
+
+```php
+    /**
+     * V1 bulk SMS: multiple recipients, contact lists, scheduled sends, cancel.
+     *
+     * V2's `sms()` — arriving in the next release — takes exactly one recipient
+     * and cannot schedule, so these sends stay on V1.
+     */
+    public function bulk(): BulkSmsResource
+    {
+        return $this->bulkResource ??= new BulkSmsResource($this->connector);
+    }
+```
+
+`$this->connector` is still the single V1 connector property at this point — Task 6 renames it to `$this->v1Connector`.
+
+- [ ] **Step 7b: Point the Laravel channel at `bulk()`**
 
 In `packages/kudosity-laravel/src/Notifications/KudosityChannel.php`, the final send currently reads:
 
@@ -1922,8 +1949,8 @@ git commit -m "refactor!: split the V1 SmsResource into bulk(), reporting() and 
   - `KudosityClient::__construct(string $apiKey, string $apiSecret = '', ?string $v1BaseUrl = null, ?string $v2BaseUrl = null, int $timeout = 30)`
   - `KudosityClient::v1(): KudosityV1Connector`, `v2(): KudosityV2Connector`, `connector(): KudosityV1Connector` (retained, delegates to `v1()`)
   - `KudosityClient::fromConnectors(?KudosityV1Connector $v1 = null, ?KudosityV2Connector $v2 = null): self`; `fromConnector(KudosityV1Connector $connector): self` retained as a V1-only shorthand
-  - `KudosityClient::bulk(): BulkSmsResource`; `sms()` **removed**
   - `KudosityV1Connector` throws `KudosityException` with a clear message when the secret is empty at send time
+  - `bulk()` and the absence of `sms()` carry over from Task 5 unchanged; Task 6 only repoints `bulk()` at `$this->v1Connector`
 - Phase 3 adds `sms()`, `mms()`, `whatsapp()`, `rcs()`; Phase 4 adds `webhooks()`, `senders()`.
 
 - [ ] **Step 1: Write the failing test**
@@ -2063,14 +2090,12 @@ Add the `KudosityException` import. Note the test asserts on the substring `V1 A
 
 In `packages/kudosity-client/src/KudosityClient.php`:
 
-Replace the single `$connector` property with two, and add the `BulkSmsResource` cache while removing the `SmsResource` one:
+Replace the single `$connector` property with two. The `$bulkResource` cache already exists from Task 5 — leave it:
 
 ```php
     protected KudosityV1Connector $v1Connector;
 
     protected KudosityV2Connector $v2Connector;
-
-    protected ?BulkSmsResource $bulkResource = null;
 ```
 
 Replace the constructor:
@@ -2182,19 +2207,16 @@ Replace the accessors:
         return $this->v1();
     }
 
-    /**
-     * V1 bulk SMS: multiple recipients, contact lists, scheduled sends, cancel.
-     *
-     * V2's `sms()` — arriving in the next release — takes exactly one recipient
-     * and cannot schedule, so these stay on V1.
-     */
+And repoint the `bulk()` accessor Task 5 added:
+
+```php
     public function bulk(): BulkSmsResource
     {
         return $this->bulkResource ??= new BulkSmsResource($this->v1Connector);
     }
 ```
 
-Delete `sms()` and the `SmsResource` import and property. Point every remaining `$this->connector` reference in the file at `$this->v1Connector`, including inside `send()`, `sendAndGetJson()`, `validateResponse()` and `setBaseUrl()`. `setBaseUrl()` sets the **V1** base URL — rename it `setV1BaseUrl()` and keep `setBaseUrl()` delegating to it, with a docblock saying which host it means, since an ambiguous `setBaseUrl()` on a two-API client is a trap.
+Point every remaining `$this->connector` reference in the file at `$this->v1Connector`, including inside the other resource accessors, `send()`, `sendAndGetJson()`, `validateResponse()` and `setBaseUrl()`. `setBaseUrl()` sets the **V1** base URL — rename it `setV1BaseUrl()` and keep `setBaseUrl()` delegating to it, with a docblock saying which host it means, since an ambiguous `setBaseUrl()` on a two-API client is a trap.
 
 Also update `validateResponse()` — it uses the V1 `error.code` convention, so its docblock must say it is V1-only, and `send()`/`sendAndGetJson()` keep taking `KudosityV1Request`.
 
