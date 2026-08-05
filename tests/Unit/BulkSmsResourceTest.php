@@ -92,15 +92,21 @@ it('lets an explicit sender override the connector default', function () {
 it('passes the request to the configure closure after defaults are applied', function () {
     $mock = new MockClient([SendSmsRequest::class => sendSmsSuccess()]);
     $connector = new KudosityV1Connector('key', 'secret');
+    $connector->setDefaultFrom('MyBrand');
     $connector->withMockClient($mock);
 
     (new BulkSmsResource($connector))->send(
         'Hi',
         '61400000000',
-        configure: fn (SendSmsRequest $r) => $r->validity(60)
+        configure: fn (SendSmsRequest $r) => $r->from('Override')->validity(60)
     );
 
-    expect($mock->getLastPendingRequest()->body()->all()['validity'])->toBe(60);
+    $body = $mock->getLastPendingRequest()->body()->all();
+
+    // Only passes if configure() genuinely runs after applyDefaults() — if it
+    // ran first, the connector default would clobber the closure's override.
+    expect($body['from'])->toBe('Override')
+        ->and($body['validity'])->toBe(60);
 });
 
 it('reports whether a cancel succeeded', function () {

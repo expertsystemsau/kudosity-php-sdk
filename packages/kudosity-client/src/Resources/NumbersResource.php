@@ -18,6 +18,10 @@ use ExpertSystems\Kudosity\Requests\LeaseNumberRequest;
 /**
  * Numbers resource for managing virtual mobile numbers.
  *
+ * `formatNumber()` lives here rather than on `bulk()` because it's an API
+ * call (`format-number.json`), not a local utility — the offline equivalent,
+ * `formatNumberLocal()`, stays with the other send-time phone helpers.
+ *
  * @see https://developers.kudosity.com
  */
 class NumbersResource extends Resource
