@@ -189,8 +189,9 @@ The facade proxies to the same resources as the core client.
 ```php
 use ExpertSystems\Kudosity\Laravel\Facades\Kudosity;
 
-// Send an SMS
-Kudosity::sms()->send('Hello from Laravel!', '+61400000000');
+// Send an SMS — bulk(), because sms() is reserved for Kudosity's upcoming
+// single-recipient V2 endpoint (see "Core Client" above)
+Kudosity::bulk()->send('Hello from Laravel!', '+61400000000');
 
 // Get account balance
 $balance = Kudosity::account()->getBalance();
