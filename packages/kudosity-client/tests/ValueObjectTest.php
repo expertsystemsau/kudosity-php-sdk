@@ -11,7 +11,6 @@ use ExpertSystems\Kudosity\Data\V2\Content\CustomContent;
 use ExpertSystems\Kudosity\Data\V2\Content\TemplateContent;
 use ExpertSystems\Kudosity\Data\V2\Content\TextContent;
 use ExpertSystems\Kudosity\Exceptions\InvalidSignatureException;
-use ExpertSystems\Kudosity\Exceptions\ValidationException;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
