@@ -56,11 +56,45 @@ it('routes to V1 for each option V2 cannot express', function (callable $configu
         fn (KudosityMessage $m) => $m->to('61400000000')->linkHitsCallback('https://e.com/hits'),
         'V2 has no per-send callback URL at all',
     ],
+    'a dlr handler' => [
+        fn (KudosityMessage $m) => $m->to('61400000000')->onDlr('App\\Handlers\\Dlr'),
+        'onDlr() becomes a per-send dlr_callback, which V2 has no room for',
+    ],
+    'a reply handler' => [
+        fn (KudosityMessage $m) => $m->to('61400000000')->onReply('App\\Handlers\\Reply'),
+        'onReply() becomes a per-send reply_callback',
+    ],
+    'a link-hit handler' => [
+        fn (KudosityMessage $m) => $m->to('61400000000')->onLinkHit('App\\Handlers\\LinkHit'),
+        'onLinkHit() becomes a per-send link_hits_callback',
+    ],
     'multiple recipients' => [
         fn (KudosityMessage $m) => $m->to('61400000000,61400000001'),
         'POST /v2/sms takes exactly one recipient',
     ],
 ]);
+
+it('routes the handler form to V1 as surely as the raw callback URL', function () {
+    // The trap worth its own test. onDlr() is the idiomatic way to use this
+    // package — the whole signed-URL mechanism exists for it — and it ends up as
+    // a dlr_callback on the request. A message using it that routed to V2 would
+    // send perfectly and never call the handler, which is a silence, not an
+    // error. Asserted against the raw form so the two cannot diverge.
+    $viaHandler = (new KudosityMessage('Hi'))->to('61400000000')->onDlr('App\\Handlers\\Dlr');
+    $viaUrl = (new KudosityMessage('Hi'))->to('61400000000')->dlrCallback('https://e.com/dlr');
+
+    expect($viaHandler->apiVersion())->toBe(ApiVersion::V1)
+        ->and($viaUrl->apiVersion())->toBe($viaHandler->apiVersion())
+        ->and($viaHandler->hasCallbackHandlers())->toBeTrue();
+});
+
+it('throws on forceV2() with a callback handler, not just a callback URL', function () {
+    (new KudosityMessage('Hi'))
+        ->to('61400000000')
+        ->onReply('App\\Handlers\\Reply')
+        ->forceV2()
+        ->apiVersion();
+})->throws(ValidationException::class, 'onReply');
 
 it('treats a single recipient with surrounding whitespace as one recipient', function () {
     // A trailing comma or a space must not be mistaken for a second recipient and

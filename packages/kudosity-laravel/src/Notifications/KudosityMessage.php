@@ -507,6 +507,13 @@ class KudosityMessage
             'dlrCallback()' => $this->dlrCallback !== null,
             'replyCallback()' => $this->replyCallback !== null,
             'linkHitsCallback()' => $this->linkHitsCallback !== null,
+            // The handler forms matter as much as the raw URLs, and are easier to
+            // miss: onDlr() is the idiomatic way to use this package, and it ends
+            // up as a dlr_callback on the request. A message using it that routed
+            // to V2 would send fine and never call the handler.
+            'onDlr()' => $this->dlrHandler !== null,
+            'onReply()' => $this->replyHandler !== null,
+            'onLinkHit()' => $this->linkHitHandler !== null,
             'multiple recipients in to()' => $this->hasMultipleRecipients(),
         ];
     }
