@@ -40,10 +40,13 @@ use Saloon\Http\Faking\MockResponse;
  * Each of the eight request classes below is otherwise untouched by the rest
  * of the client suite — no other test constructs or sends one — so this file
  * is their only source of coverage, not only the paginator's and the
- * resources'.
+ * resources'. The existing PaginatorTest.php also calls
+ * KudosityV1Connector::paginate() but does not attribute it, so this file is
+ * that method's only source of coverage too.
  */
 #[CoversClass(V1PagedPaginator::class)]
 #[CoversClass(KudosityClient::class)]
+#[CoversClass(KudosityV1Connector::class)]
 #[CoversClass(NumbersResource::class)]
 #[CoversClass(ListsResource::class)]
 #[CoversClass(KeywordsResource::class)]
