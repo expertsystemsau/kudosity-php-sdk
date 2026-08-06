@@ -41,6 +41,15 @@ use Saloon\Http\Request;
  * local guards are cheaper still: they fire before the request leaves the
  * process, so an over-long `message_ref` or a phone number in an RCS agent slot
  * costs nothing to discover.
+ *
+ * Task 7b batch 6 ported `V2SmsTest.php`, which duplicated this file's
+ * `test_optional_body_keys_are_omitted_rather_than_sent_null` (the same
+ * two-key omission, plus driving `SmsV2Resource::send()`, which the
+ * request-only version here did not) — that test came out. The reverse also
+ * happened: the ported file's own "rejects a message_ref longer than 500
+ * characters" was not re-added, because `test_it_rejects_an_over_long_message_ref_before_sending`
+ * below already covers that guard on this exact class, together with the
+ * accept-at-500 boundary case the root suite never had.
  */
 final class RequestShapeTest extends TestCase
 {
@@ -208,16 +217,6 @@ final class RequestShapeTest extends TestCase
             'message_ref' => 'order-1',
             'track_links' => true,
         ], $body);
-    }
-
-    public function test_optional_body_keys_are_omitted_rather_than_sent_null(): void
-    {
-        // A null the API did not ask for is not the same as an absent key —
-        // some V2 endpoints reject an explicit null where they accept nothing.
-        $body = (new SendSmsV2Request('hi', '61478038915', '61481074185'))->body()?->all();
-
-        $this->assertArrayNotHasKey('message_ref', (array) $body);
-        $this->assertArrayNotHasKey('track_links', (array) $body);
     }
 
     public function test_a_webhook_update_sends_the_whole_shape_because_put_is_a_replace(): void

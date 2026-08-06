@@ -28,6 +28,18 @@ use PHPUnit\Framework\TestCase;
  * Code written against one and reused for the other reads null. Both resolve
  * through `Concerns\UnwrapsData::payload()`, so covering only one side leaves
  * the seam half tested.
+ *
+ * Task 7b batch 6 ported `V2SmsTest.php`, which duplicated four tests this
+ * file used to hold: `test_sms_count_arrives_as_a_string_and_is_cast`,
+ * `test_routed_via_empty_string_normalises_to_null`,
+ * `test_a_populated_routed_via_survives` and
+ * `test_a_list_response_casts_its_string_totals` all asserted a fact the
+ * ported file asserts at least as strongly (the list-cast case more so — two
+ * hydrated messages there, one here). All four came out. `SmsMessageData` and
+ * `SmsListData` stay in the `#[CoversClass]` list above and in
+ * `dtoClasses()` below: this file remains their empty-payload completeness
+ * check, which needs every V2 DTO represented regardless of whether it also
+ * has a dedicated resource-level test elsewhere.
  */
 #[CoversClass(SmsMessageData::class)]
 #[CoversClass(MmsMessageData::class)]
@@ -61,27 +73,6 @@ final class DtoTest extends TestCase
             'created_at' => '2022-03-28T06:12:52.450674000Z',
             'updated_at' => '2022-03-28T06:12:52.450674000Z',
         ], $overrides);
-    }
-
-    public function test_sms_count_arrives_as_a_string_and_is_cast(): void
-    {
-        // Verified live: the API really does send "1", not 1. A consumer
-        // adding these up gets string concatenation without the cast.
-        $this->assertSame(2, SmsMessageData::fromArray(self::smsBody(['sms_count' => '2']))->smsCount);
-    }
-
-    public function test_routed_via_empty_string_normalises_to_null(): void
-    {
-        // The only deliberate transformation in this DTO, and it shipped once
-        // with no assertion at all despite a fixture setting up the exact case.
-        $this->assertNull(SmsMessageData::fromArray(self::smsBody())->routedVia);
-    }
-
-    public function test_a_populated_routed_via_survives(): void
-    {
-        // The other side of the normalisation, so it cannot be satisfied by
-        // nulling everything.
-        $this->assertSame('61481074185', SmsMessageData::fromArray(self::smsBody(['routed_via' => '61481074185']))->routedVia);
     }
 
     public function test_a_nine_fractional_digit_timestamp_parses(): void
@@ -162,22 +153,6 @@ final class DtoTest extends TestCase
         $this->assertSame('DemoAgent', $rcs->sender);
         $this->assertNotNull($rcs->smsFallback);
         $this->assertSame('fallback', $rcs->smsFallback->message);
-    }
-
-    public function test_a_list_response_casts_its_string_totals(): void
-    {
-        // Named for what it asserts: a version of this test once existed that
-        // never checked the casts, so deleting them left it green.
-        $list = SmsListData::fromArray([
-            'smses' => [self::smsBody()],
-            'total_records' => '17',
-            'total_segments' => '23',
-        ]);
-
-        $this->assertSame(17, $list->totalRecords);
-        $this->assertSame(23, $list->totalSegments);
-        $this->assertCount(1, $list->messages);
-        $this->assertInstanceOf(SmsMessageData::class, $list->messages[0]);
     }
 
     public function test_a_webhook_resource_carries_the_four_undocumented_fields(): void
