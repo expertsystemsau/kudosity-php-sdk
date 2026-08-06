@@ -162,8 +162,8 @@ Mutation testing ran on Phase 5 tasks 1-4 — 4 on the provider, 7 on the routin
 | `packages/kudosity-laravel/src/Notifications/KudosityMessage.php` | `v1OnlyOptions()` is the routing table. Add to it if a new V1-only option appears. |
 | `packages/kudosity-laravel/src/KudosityServiceProvider.php` | `baseUrlFor()` holds the flat-`base_url` guard — the thing a too-broad codemod rule would silently disable. |
 | `packages/kudosity-client/src/Contracts/SentMessage.php` | Why the channel's return type is stable across the routing decision. |
-| **`tests/Fixtures/V2Webhooks/README.md`** | **Read before touching anything that reads a webhook payload.** Real captured deliveries plus the arrival timeline; several behaviours the upstream docs contradict. |
-| `tests/Fixtures/V2Senders/README.md` | What is and is not verified about the sender item shape, and the probe table that produced the request schemas. |
+| **`packages/kudosity-client/tests/Fixtures/V2Webhooks/README.md`** | **Read before touching anything that reads a webhook payload.** Real captured deliveries plus the arrival timeline; several behaviours the upstream docs contradict. |
+| `packages/kudosity-client/tests/Fixtures/V2Senders/README.md` | What is and is not verified about the sender item shape, and the probe table that produced the request schemas. |
 | `rename-map.json` | The consumer migration contract. Entry ordering matters — see Failed Approaches. |
 | `.github/workflows/split.yml` | **Must keep `actions/checkout@v4`** — see Warnings. |
 | `.env` | Gitignored, mode 600. `KUDOSITY_API_KEY`, `KUDOSITY_API_SECRET`, `KUDOSITY_FROM`, `KUDOSITY_TEST_RECIPIENT`. |

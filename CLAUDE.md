@@ -95,9 +95,9 @@ webhook transport needs:
   arrive with no `last_message` — so an MMS reply has no correlation key.
 
 **When writing anything that reads a webhook payload, read
-`tests/Fixtures/V2Webhooks/README.md` first.** The fixtures are real captured
+`packages/kudosity-client/tests/Fixtures/V2Webhooks/README.md` first.** The fixtures are real captured
 deliveries and they record several behaviours the upstream docs contradict or
-omit. Likewise `tests/Fixtures/V2Senders/README.md` for what is and is not
+omit. Likewise `packages/kudosity-client/tests/Fixtures/V2Senders/README.md` for what is and is not
 verified about the sender item shape.
 
 Phase 5 (Laravel channels, the webhook receiver route, `kudosity:webhook:*`

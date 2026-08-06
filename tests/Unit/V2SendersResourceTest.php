@@ -21,13 +21,23 @@ use Saloon\Http\Faking\MockResponse;
 use Saloon\PaginationPlugin\Paginator;
 
 /**
- * The real empty response, captured live. See tests/Fixtures/V2Senders/README.md.
+ * The real empty response, captured live. See
+ * packages/kudosity-client/tests/Fixtures/V2Senders/README.md.
+ *
+ * Reads through to the client package's copy, which is the one a consumer
+ * receives — `split.yml` publishes only `packages/*`.
  *
  * @return array<string, mixed>
  */
 function senderFixture(string $name): array
 {
-    $path = dirname(__DIR__).'/Fixtures/V2Senders/'.$name.'.json';
+    $path = dirname(__DIR__, 2).'/packages/kudosity-client/tests/Fixtures/V2Senders/'.$name.'.json';
+
+    if (! is_file($path)) {
+        // Named rather than silently decoding null: a typo'd fixture that
+        // yields [] makes every assertion against it pass vacuously.
+        throw new InvalidArgumentException("No such sender fixture: {$name} (looked in {$path})");
+    }
 
     return json_decode((string) file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
 }

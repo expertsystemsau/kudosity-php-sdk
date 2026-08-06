@@ -123,7 +123,7 @@ function replay(array $fixtures): ?StatusEvent
 it('ends at DELIVERED for the exact sequence the live API delivered', function () {
     // SENT, then DELIVERED, then SENT AGAIN — the real redelivery, 60s later,
     // carrying its original timestamp. Not an invented case: see the timeline in
-    // tests/Fixtures/V2Webhooks/README.md.
+    // packages/kudosity-client/tests/Fixtures/V2Webhooks/README.md.
     $winner = replay(['sms-status-sent', 'sms-status-delivered', 'sms-status-sent']);
 
     expect($winner?->status)->toBe(MessageStatus::Delivered);

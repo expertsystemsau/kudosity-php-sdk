@@ -17,13 +17,25 @@ declare(strict_types=1);
  *
  * Read from disk rather than inlined: the fixture is the evidence, and a pasted
  * copy stops tracking it the moment either drifts. See
- * tests/Fixtures/V2Webhooks/README.md for what each one pins.
+ * packages/kudosity-client/tests/Fixtures/V2Webhooks/README.md for what each
+ * one pins.
+ *
+ * **The files live in the client package**, which is the package whose API
+ * produced them and the only one published to a consumer. This function reads
+ * through to that single copy rather than keeping a second one here, so the two
+ * suites can never disagree about what the API actually sent.
  *
  * @return array<string, mixed>
  */
 function webhookFixture(string $name): array
 {
-    $path = __DIR__.'/V2Webhooks/'.$name.'.json';
+    $path = __DIR__.'/../../packages/kudosity-client/tests/Fixtures/V2Webhooks/'.$name.'.json';
+
+    if (! is_file($path)) {
+        // Named rather than silently decoding null: a typo'd fixture that
+        // yields [] makes every assertion against it pass vacuously.
+        throw new InvalidArgumentException("No such webhook fixture: {$name} (looked in {$path})");
+    }
 
     return json_decode((string) file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
 }
