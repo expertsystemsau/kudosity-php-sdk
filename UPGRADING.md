@@ -365,6 +365,22 @@ See the client package README's "V2 channels" section for the full method
 list, the per-endpoint response envelope, and the `sms_count`/`total_records`/
 `total_segments` string-vs-int gotcha.
 
+### `rcs()->capabilities()` now validates `sender` too
+
+`$client->rcs()->send()` already rejected a phone-number-shaped `$agentId`
+before this release; `$client->rcs()->capabilities()` did not, and reached
+the live API instead. It now throws `ValidationException` (`FIELD_INVALID`)
+at construction, for the same reason and with the same check.
+
+**Affected:** only calls to `capabilities()` that pass something
+phone-number-shaped as `sender`. Previously this reached Kudosity and failed
+with `"sender is not owned by this account"` — true, but silent about the
+real mistake. Now it fails locally, before any request is sent, with a
+message naming the actual problem.
+
+**Action:** pass a registered RCS agent ID (e.g. `"DemoSender"`), not a phone
+number.
+
 ## Your V1 callbacks do not fire for V2 sends
 
 **Read this before repointing any send at a V2 channel.** It is the one change in

@@ -282,8 +282,31 @@ packages/
 
 ## Testing
 
+This monorepo runs two independent suites.
+
+The Laravel integration suite (Pest 4 + Orchestra Testbench, PHP 8.3+) — 168 tests, 394 assertions:
+
 ```bash
+composer install
 composer test
+```
+
+The client package's own suite (PHPUnit 11), installed and run standalone —
+no Laravel, no Testbench — on the PHP 8.2 floor both packages declare, plus
+8.3 and 8.4 — 785 tests, 1470 assertions:
+
+```bash
+cd packages/kudosity-client
+composer install
+vendor/bin/phpunit
+```
+
+PHP 8.2 itself usually isn't available in a local toolchain; run the same
+suite in a container instead:
+
+```bash
+cd packages/kudosity-client
+docker run --rm -v "$PWD":/app -w /app php:8.2-cli php vendor/bin/phpunit
 ```
 
 ## Changelog
