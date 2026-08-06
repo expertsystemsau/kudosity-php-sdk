@@ -25,15 +25,29 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | API Base URL
+    | API Base URLs
     |--------------------------------------------------------------------------
     |
-    | The base URL for the Kudosity V1 API (contact lists, bulk and scheduled
-    | sends, reporting, balance). Override only to point at a proxy or a test
-    | double.
+    | Kudosity runs two APIs under one account, on two different hostnames.
+    | Neither is a kudosity.com domain, and neither should be "corrected":
+    |
+    |   v1 - api.transmitsms.com     contact lists, bulk and scheduled sends,
+    |                                reporting, balance. Needs key AND secret.
+    |   v2 - api.transmitmessage.com single-recipient SMS, MMS, WhatsApp, RCS,
+    |                                webhooks, senders. Needs the key only.
+    |
+    | Override only to point at a proxy or a test double.
+    |
+    | NOTE: this replaced a single flat 'base_url' string in 2.0. If your
+    | published config still has one, the service provider will tell you — it
+    | throws rather than guessing, because a stale value points at the V1 host
+    | and would send every V2 request to the wrong API.
     |
     */
-    'base_url' => env('KUDOSITY_BASE_URL', 'https://api.transmitsms.com'),
+    'base_url' => [
+        'v1' => env('KUDOSITY_BASE_URL_V1', 'https://api.transmitsms.com'),
+        'v2' => env('KUDOSITY_BASE_URL_V2', 'https://api.transmitmessage.com'),
+    ],
 
     /*
     |--------------------------------------------------------------------------
@@ -83,6 +97,43 @@ return [
     | signature and dispatches your configured handler jobs.
     |
     */
+    /*
+    |--------------------------------------------------------------------------
+    | Default Country Code
+    |--------------------------------------------------------------------------
+    |
+    | Used by the offline phone-number helpers when normalising a local number
+    | to E.164. Leave null to require numbers already in international format —
+    | the SDK never guesses a country, because guessing wrong sends a real
+    | message to the wrong person rather than failing.
+    |
+    */
+    'country_code' => env('KUDOSITY_COUNTRY_CODE'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Per-Channel Senders
+    |--------------------------------------------------------------------------
+    |
+    | Each V2 channel needs its own default, because they are not the same kind
+    | of value. 'from' above covers SMS. An MMS sender must be a number; a
+    | WhatsApp sender must be a registered WhatsApp Business number; and an RCS
+    | sender is a registered AGENT ID, not a phone number at all — passing a
+    | number there is rejected before the request leaves the process.
+    |
+    */
+    'mms' => [
+        'sender' => env('KUDOSITY_MMS_SENDER'),
+    ],
+
+    'whatsapp' => [
+        'sender' => env('KUDOSITY_WHATSAPP_SENDER'),
+    ],
+
+    'rcs' => [
+        'agent_id' => env('KUDOSITY_RCS_AGENT_ID'),
+    ],
+
     'webhooks' => [
         /*
         |----------------------------------------------------------------------

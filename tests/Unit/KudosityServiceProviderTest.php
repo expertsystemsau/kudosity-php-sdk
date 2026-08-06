@@ -55,7 +55,10 @@ describe('KudosityServiceProvider', function () {
         it('uses config values for connector', function () {
             config()->set('kudosity.api_key', 'my-api-key');
             config()->set('kudosity.api_secret', 'my-api-secret');
-            config()->set('kudosity.base_url', 'https://custom.api.com');
+            // 2.0: base_url is keyed by API version. Setting the old flat string
+            // now throws — deliberately, see ServiceProviderV2Test. This test was
+            // the first thing that guard caught.
+            config()->set('kudosity.base_url', ['v1' => 'https://custom.api.com', 'v2' => 'https://v2.custom.api.com']);
             config()->set('kudosity.timeout', 60);
 
             // Clear the existing singleton to force re-creation

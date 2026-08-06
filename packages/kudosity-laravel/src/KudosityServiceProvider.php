@@ -8,6 +8,7 @@ use ExpertSystems\Kudosity\Callbacks\CallbackUrlBuilder;
 use ExpertSystems\Kudosity\Callbacks\CallbackUrlParser;
 use ExpertSystems\Kudosity\KudosityClient;
 use ExpertSystems\Kudosity\KudosityV1Connector;
+use ExpertSystems\Kudosity\KudosityV2Connector;
 use ExpertSystems\Kudosity\Laravel\Notifications\KudosityChannel;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Notifications\ChannelManager;
@@ -27,15 +28,15 @@ class KudosityServiceProvider extends ServiceProvider
             'kudosity'
         );
 
-        // Register the connector as a singleton
+        // Register the V1 connector as a singleton
         $this->app->singleton(KudosityV1Connector::class, function ($app) {
-            /** @var array{api_key: string, api_secret: string, base_url: string, timeout: int, from: string} $config */
+            /** @var array{api_key: string, api_secret: string, timeout: int, from: string} $config */
             $config = $app['config']['kudosity'];
 
             $connector = new KudosityV1Connector(
                 apiKey: $config['api_key'],
                 apiSecret: $config['api_secret'],
-                baseUrl: $config['base_url'],
+                baseUrl: $this->baseUrlFor($app, 'v1'),
                 timeout: (int) $config['timeout'],
             );
 
@@ -47,10 +48,32 @@ class KudosityServiceProvider extends ServiceProvider
             return $connector;
         });
 
-        // Register the client as a singleton, using the connector
+        // Register the V2 connector as a singleton.
+        //
+        // This has to be explicit: KudosityV2Connector's $apiKey parameter has
+        // no default, so the container cannot autowire it, and a consumer
+        // type-hinting it would fail at resolution rather than at send time.
+        $this->app->singleton(KudosityV2Connector::class, function ($app) {
+            /** @var array{api_key: string, timeout: int} $config */
+            $config = $app['config']['kudosity'];
+
+            return new KudosityV2Connector(
+                apiKey: $config['api_key'],
+                baseUrl: $this->baseUrlFor($app, 'v2'),
+                timeout: (int) $config['timeout'],
+            );
+        });
+
+        // Register the client as a singleton, from BOTH configured connectors.
+        //
+        // fromConnectors(), not fromConnector(): the latter derives a V2
+        // connector internally with library defaults, so `kudosity.timeout`
+        // reached V1 only and the client's V2 connector was a different
+        // instance from the container's.
         $this->app->singleton(KudosityClient::class, function ($app) {
-            return KudosityClient::fromConnector(
-                $app->make(KudosityV1Connector::class)
+            return KudosityClient::fromConnectors(
+                $app->make(KudosityV1Connector::class),
+                $app->make(KudosityV2Connector::class),
             );
         });
 
@@ -80,6 +103,7 @@ class KudosityServiceProvider extends ServiceProvider
         // Create aliases for easier resolution
         $this->app->alias(KudosityClient::class, 'kudosity');
         $this->app->alias(KudosityV1Connector::class, 'kudosity.connector');
+        $this->app->alias(KudosityV2Connector::class, 'kudosity.connector.v2');
     }
 
     /**
@@ -121,6 +145,44 @@ class KudosityServiceProvider extends ServiceProvider
             ->group(function () {
                 $this->loadRoutesFrom(__DIR__.'/../routes/webhooks.php');
             });
+    }
+
+    /**
+     * Resolve the base URL for one API version.
+     *
+     * 2.0 replaced a single flat `base_url` string with a `v1`/`v2` pair. A
+     * published config file is not re-published on upgrade, so a stale flat
+     * value is not hypothetical — and it points at the V1 host, which means
+     * silently ignoring it would send every V2 request to the wrong API. Fail
+     * instead, naming both replacement keys.
+     *
+     * @param  Application  $app
+     *
+     * @throws \RuntimeException If the config still carries a flat base_url
+     */
+    protected function baseUrlFor($app, string $version): string
+    {
+        $configured = $app['config']['kudosity.base_url'];
+
+        if (is_string($configured) && $configured !== '') {
+            throw new \RuntimeException(
+                'Kudosity config `base_url` is now an array keyed by API version. Replace '.
+                "`'base_url' => '{$configured}'` with `'base_url' => ['v1' => …, 'v2' => …]` — ".
+                'see base_url.v1 and base_url.v2 in the published config, or UPGRADING.md. '.
+                'Kudosity runs two APIs on two hostnames, so a single value cannot serve both.'
+            );
+        }
+
+        $url = $app['config']["kudosity.base_url.{$version}"];
+
+        if (! is_string($url) || $url === '') {
+            throw new \RuntimeException(
+                "Kudosity config `base_url.{$version}` is missing or empty. Both base_url.v1 and ".
+                'base_url.v2 are required; see the published config for the defaults.'
+            );
+        }
+
+        return $url;
     }
 
     /**
@@ -166,11 +228,13 @@ class KudosityServiceProvider extends ServiceProvider
         return [
             KudosityClient::class,
             KudosityV1Connector::class,
+            KudosityV2Connector::class,
             KudosityChannel::class,
             CallbackUrlBuilder::class,
             CallbackUrlParser::class,
             'kudosity',
             'kudosity.connector',
+            'kudosity.connector.v2',
         ];
     }
 }
