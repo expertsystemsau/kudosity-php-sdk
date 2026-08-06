@@ -111,11 +111,15 @@ final class PaginatorTest extends TestCase
         // GET /v2/webhook returns {} when empty, omitting the collection key
         // entirely rather than sending an empty array. That endpoint is not
         // itself paginated, but any V2 list response can be truncated the
-        // same way, and a single mock response here means a second request
-        // would fail the test outright rather than just yielding nothing.
+        // same way. `total_records` here implies several more pages at the
+        // default limit of 100 — if the explicit "items are empty" check in
+        // isLastPage() were ever dropped, the total/limit arithmetic alone
+        // would say there is more to fetch, and the single mock response
+        // supplied means that attempt fails the test outright rather than
+        // this passing by coincidence of the fallback also saying "done".
         $connector = new KudosityV2Connector('key');
         $connector->withMockClient(new MockClient([
-            MockResponse::make([], 200),
+            MockResponse::make(['total_records' => '1000'], 200),
         ]));
 
         $seen = [];
