@@ -7,9 +7,14 @@ declare(strict_types=1);
  *
  * Shared by V2WebhookEventTest.php, V2StatusPrecedenceTest.php and the webhook
  * resource spec. Lives here rather than being declared in one spec and
- * `require_once`'d by the others, for the same reason as
- * {@see StubV2SendRequest} — this file is loaded once, up front, by
+ * `require_once`'d by the others — this file is loaded once, up front, by
  * tests/Pest.php, so running a single spec file in isolation still works.
+ *
+ * (Root `StubV2SendRequest.php` used to be loaded the same way and served as
+ * the other example of this pattern; it moved to
+ * packages/kudosity-client/tests/Fixtures/ in Task 7b batch 3, once the last
+ * root spec depending on it was ported, and is loaded there via a composer
+ * classmap entry instead.)
  */
 
 /**
