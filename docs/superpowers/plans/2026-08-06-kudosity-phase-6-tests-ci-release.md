@@ -908,6 +908,12 @@ git diff -U0 main -- packages | grep -E '^-\s*(public|protected|const|final publ
 
 Expected: empty. This phase changes no production code. **A non-empty result means a task exceeded its scope** — investigate before continuing, and if a removal is genuine, add it to `rename-map.json` and `UPGRADING.md`. Every phase so far that skipped this step shipped a consumer-contract gap.
 
+**This audit answers one question only: was a symbol removed?** The pattern is anchored to `^-`, so it is blind by construction to an *added* symbol, a changed signature, and any change inside a method body. Task 7 reported "no production code changed" on the strength of an empty result while Task 3's `1be3716` had in fact added a `ValidationException` guard to `CheckRcsCapabilitiesRequest`. Run the companion check too, and treat only the pair as a scope gate:
+
+```bash
+git diff --name-only main -- packages | grep /src/    # did any production file change at all?
+```
+
 - [ ] **Step 6: Run the codemod against itself**
 
 ```bash
