@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    The client package's own suite, run STANDALONE:
+
+        cd packages/kudosity-client && composer install && vendor/bin/phpunit
+
+    Two jobs, and the second is the reason it exists at all. It covers the
+    framework-agnostic surface, and it runs on **PHP 8.2** — the floor both
+    packages declare and which the root suite cannot reach, because Pest 4
+    requires 8.3. Running against this package's own vendor/ rather than the
+    monorepo root also proves the package installs without Laravel.
+
+    PHPUnit 11 rather than 12: 12 requires PHP >= 8.3, which would defeat the
+    point.
+-->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true"
+         cacheDirectory=".phpunit.cache"
+         executionOrder="random"
+         failOnWarning="true"
+         failOnRisky="true"
+         failOnNotice="true"
+         failOnDeprecation="true"
+         beStrictAboutOutputDuringTests="true"
+         beStrictAboutTestsThatDoNotTestAnything="true"
+         displayDetailsOnPhpunitDeprecations="true">
+    <testsuites>
+        <testsuite name="kudosity-php-client">
+            <directory>tests</directory>
+        </testsuite>
+    </testsuites>
+
+    <source>
+        <include>
+            <directory>src</directory>
+        </include>
+    </source>
+</phpunit>

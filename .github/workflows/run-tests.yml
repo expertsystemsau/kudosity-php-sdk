@@ -9,18 +9,77 @@ on:
       - 'composer.json'
       - 'composer.lock'
       - 'packages/**/composer.json'
+      - 'packages/kudosity-client/phpunit.xml.dist'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  # Run the whole suite (framework-agnostic client + Laravel integration) with Pest.
+  # The client package's own suite, installed and run STANDALONE on the full
+  # declared PHP range.
   #
-  # There is no separate client-only job: the client package ships no tests of its
-  # own, and its classes are exercised by the root suite in tests/ alongside the
-  # Laravel integration. PHP 8.2 is intentionally excluded because Pest v4 requires
-  # PHP >= 8.3, so the whole suite (client included) runs on 8.3+.
+  # This is the only job that executes PHP 8.2, the floor both packages declare.
+  # The Pest suite below cannot: Pest 4 requires PHP >= 8.3, so before this job
+  # existed the floor was advertised and never run. It is also the only job that
+  # resolves the client package's dependencies on their own, which is what proves
+  # it installs without Laravel — the root composer.json would mask a stray
+  # framework dependency completely.
+  #
+  # 1.9.0 removed an earlier `test-client` job for running an empty directory.
+  # This one runs real tests; if it ever stops, the suite is what should fail,
+  # not the job that should vanish.
+  test-client:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        php: [8.2, 8.3, 8.4]
+
+    name: Client standalone - P${{ matrix.php }}
+
+    defaults:
+      run:
+        working-directory: packages/kudosity-client
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: dom, curl, libxml, mbstring, zip, fileinfo
+          coverage: none
+
+      - name: Setup problem matchers
+        run: |
+          echo "::add-matcher::${{ runner.tool_cache }}/php.json"
+          echo "::add-matcher::${{ runner.tool_cache }}/phpunit.json"
+
+      - name: Install dependencies
+        run: composer update --prefer-dist --no-interaction
+
+      - name: List Installed Dependencies
+        run: composer show -D
+
+      - name: Fail if a framework crept into the client package
+        run: |
+          if composer show 2>/dev/null | grep -Eq '^(laravel|illuminate|orchestra|pestphp)/'; then
+            echo "::error::The client package must install without a framework."
+            composer show | grep -E '^(laravel|illuminate|orchestra|pestphp)/'
+            exit 1
+          fi
+
+      - name: Execute tests
+        run: vendor/bin/phpunit
+
+  # The Laravel integration, plus the client classes as exercised through it.
+  #
+  # 8.3+ only, because Pest 4 requires PHP >= 8.3. The 8.2 floor is covered by
+  # the standalone client job above, not here.
   test-laravel:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 5

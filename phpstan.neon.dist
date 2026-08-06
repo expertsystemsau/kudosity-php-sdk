@@ -3,6 +3,14 @@ includes:
 
 parameters:
     level: 6
+    # Both packages declare `php: ^8.2`, but the dev toolchain runs on 8.3/8.4,
+    # so without this PHPStan analyses against whatever PHP is executing it and
+    # a typed class constant, `json_validate()` or `#[\Override]` would pass
+    # review and fatal on a consumer's 8.2. Analysing the whole declared range
+    # makes the floor a build failure rather than a bug report.
+    phpVersion:
+        min: 80200
+        max: 80499
     paths:
         - packages/kudosity-client/src
         - packages/kudosity-laravel/src

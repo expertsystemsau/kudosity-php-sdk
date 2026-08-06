@@ -32,3 +32,7 @@ testbench.yaml
 /coverage
 
 .env
+
+# Sub-package vendor dirs, created by the standalone client suite
+packages/*/vendor
+packages/*/phpunit.xml
