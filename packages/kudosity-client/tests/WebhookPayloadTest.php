@@ -12,7 +12,6 @@ use ExpertSystems\Kudosity\Webhooks\InboundMedia;
 use ExpertSystems\Kudosity\Webhooks\LinkHitEvent;
 use ExpertSystems\Kudosity\Webhooks\OptOutEvent;
 use ExpertSystems\Kudosity\Webhooks\StatusEvent;
-use ExpertSystems\Kudosity\Webhooks\UnknownEvent;
 use ExpertSystems\Kudosity\Webhooks\WebhookEvent;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -24,13 +23,22 @@ use PHPUnit\Framework\TestCase;
  * Read `Fixtures/V2Webhooks/README.md` before changing anything here. Every
  * behaviour below was established by a live capture, and several of them
  * contradict the upstream documentation.
+ *
+ * Eight tests moved out in the Task 7b batch 5 port, superseded by a
+ * strictly stronger ported equivalent in V2WebhookEventTest.php (which
+ * covers UnknownEvent now, so it is no longer named here): the
+ * unrecognised-event-type test, the inbound sender/recipient test, the
+ * link-hit-cumulative test, the inbound-MMS-media trio
+ * (arrives-inline/decodes/infers), the undecodable-media test, the
+ * cannot-correlate-an-inbound-mms test, and the two MMS-status/undocumented-
+ * fields tests (folded into one exact-value test there). See the task
+ * report for the full reconciliation.
  */
 #[CoversClass(WebhookEvent::class)]
 #[CoversClass(StatusEvent::class)]
 #[CoversClass(InboundEvent::class)]
 #[CoversClass(LinkHitEvent::class)]
 #[CoversClass(OptOutEvent::class)]
-#[CoversClass(UnknownEvent::class)]
 #[CoversClass(InboundMedia::class)]
 final class WebhookPayloadTest extends TestCase
 {
@@ -136,20 +144,6 @@ final class WebhookPayloadTest extends TestCase
         $this->assertSame($enumCases, $tabled);
     }
 
-    public function test_an_unrecognised_event_type_is_returned_not_thrown(): void
-    {
-        // A receiver does not choose what it is sent. Throwing turns an unknown
-        // type into a 500, which reads as a dead endpoint from Kudosity's side
-        // and earns a retry into the same 500.
-        $payload = Fixtures::webhook('sms-status-sent');
-        $payload['event_type'] = 'TELEPATHY_STATUS';
-
-        $event = WebhookEvent::fromArray($payload);
-
-        $this->assertInstanceOf(UnknownEvent::class, $event);
-        $this->assertSame('TELEPATHY_STATUS', $event->raw['event_type']);
-    }
-
     /** @return array<string, array{0: string, 1: string}> */
     public static function correlationPaths(): array
     {
@@ -184,43 +178,6 @@ final class WebhookPayloadTest extends TestCase
         );
     }
 
-    public function test_the_customer_is_the_sender_on_an_inbound_event(): void
-    {
-        // Reversed from an outbound message, and the webhook filter's `sender`
-        // key matches mo.recipient for inbound events — so filtering inbound by
-        // sender filters by YOUR number.
-        $inbound = WebhookEvent::fromArray(Fixtures::webhook('sms-inbound-with-last-message'));
-
-        $this->assertSame('61400000000', $inbound->sender);
-        $this->assertSame('61481074185', $inbound->recipient);
-    }
-
-    public function test_a_link_hit_counts_cumulatively_and_is_not_evidence_of_a_human(): void
-    {
-        // The first hit routinely lands in the same second as DELIVERED — a
-        // messaging-app link preview. `hits` counts machine fetches.
-        $first = WebhookEvent::fromArray(Fixtures::webhook('link-hit-sms'));
-        $second = WebhookEvent::fromArray(Fixtures::webhook('link-hit-sms-repeat'));
-
-        $this->assertSame(1, $first->hits);
-        $this->assertTrue($first->isFirstHit());
-        $this->assertSame(2, $second->hits);
-        $this->assertFalse($second->isFirstHit());
-    }
-
-    public function test_inbound_mms_media_arrives_inline_rather_than_as_a_url(): void
-    {
-        // content_urls is the OUTBOUND request shape and is absent from a real
-        // MMS_INBOUND. Before InboundMedia the picture parsed cleanly and was
-        // discarded.
-        $inbound = WebhookEvent::fromArray(Fixtures::webhook('mms-inbound-with-media'));
-
-        $this->assertSame([], $inbound->contentUrls);
-        $this->assertCount(1, $inbound->media);
-        $this->assertSame('image/jpeg', $inbound->media[0]->mimeType());
-        $this->assertStringStartsWith("\xFF\xD8\xFF", (string) $inbound->media[0]->bytes());
-    }
-
     public function test_inbound_media_type_is_sniffed_not_read_from_the_filename(): void
     {
         // The name arrives from whoever sent the message. Saving it to disk on
@@ -231,32 +188,6 @@ final class WebhookPayloadTest extends TestCase
         $this->assertSame('image/jpeg', WebhookEvent::fromArray($payload)->media[0]->mimeType());
     }
 
-    public function test_undecodable_media_yields_null_bytes_rather_than_throwing(): void
-    {
-        // Same reasoning as UnknownEvent: degrade, do not throw inside a public
-        // endpoint.
-        $payload = Fixtures::webhook('mms-inbound-with-media');
-        $payload['mo']['media'][0]['content'] = '!!!! not base64 !!!!';
-
-        $media = WebhookEvent::fromArray($payload)->media[0];
-
-        $this->assertNull($media->bytes());
-        $this->assertSame(0, $media->sizeInBytes());
-        $this->assertNull($media->mimeType());
-    }
-
-    public function test_an_inbound_mms_cannot_be_correlated(): void
-    {
-        // It arrives with no last_message, while the SMS_INBOUND captured a day
-        // earlier correlated fine. The asymmetry is invisible from the event
-        // class, which is shared between the two.
-        $inbound = WebhookEvent::fromArray(Fixtures::webhook('mms-inbound-with-media'));
-
-        $this->assertFalse($inbound->isCorrelated());
-        $this->assertNull($inbound->messageRef());
-        $this->assertNull($inbound->message);
-    }
-
     public function test_a_carrier_mmsc_id_survives_intact(): void
     {
         // Not a UUID. Anything validating V2 ids as UUIDs rejects a real
@@ -265,24 +196,6 @@ final class WebhookPayloadTest extends TestCase
             'vj41WbAbHfzIjSMIfB91BH@mmsc.telstra.com',
             WebhookEvent::fromArray(Fixtures::webhook('mms-inbound-with-media'))->id,
         );
-    }
-
-    public function test_an_mms_status_carries_the_carrier_description(): void
-    {
-        // Undocumented field, and MMS_STATUS reaching DELIVERED at all
-        // contradicts the doc's "internal statuses only".
-        $event = WebhookEvent::fromArray(Fixtures::webhook('mms-status-delivered'));
-
-        $this->assertSame(MessageStatus::Delivered, $event->status);
-        $this->assertNotNull($event->description);
-    }
-
-    public function test_the_two_undocumented_top_level_fields_are_exposed(): void
-    {
-        $event = WebhookEvent::fromArray(Fixtures::webhook('sms-status-sent'));
-
-        $this->assertNotNull($event->webhookId);
-        $this->assertNotNull($event->webhookName);
     }
 
     /** @return array<string, array{0: mixed}> */
