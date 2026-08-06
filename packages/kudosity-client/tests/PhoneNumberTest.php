@@ -71,6 +71,30 @@ final class PhoneNumberTest extends TestCase
         PhoneNumber::toInternational('0400000000', 'XX');
     }
 
+    public function test_a_country_name_resolves_the_same_dialing_code_as_its_iso_alias(): void
+    {
+        // The table maps both an ISO code and a full country name to the
+        // same dialing code — asserted by the two producing an identical
+        // result rather than by reading the constant directly. Moved here
+        // from ValueObjectTest.php in Task 7b batch 1's fix round: this
+        // class now owns Support\PhoneNumber.
+        $this->assertSame(
+            PhoneNumber::toInternational('0400000000', 'AU'),
+            PhoneNumber::toInternational('0400000000', 'Australia'),
+        );
+    }
+
+    public function test_an_unsupported_country_code_is_rejected(): void
+    {
+        // Same behaviour as test_to_international_throws_for_invalid_country_code
+        // above (a different invalid literal, 'ZZ' vs 'XX') — kept as a
+        // separate test because it was moved verbatim from ValueObjectTest.php
+        // in Task 7b batch 1's fix round rather than folded into the other.
+        $this->expectException(InvalidArgumentException::class);
+
+        PhoneNumber::toInternational('0400000000', 'ZZ');
+    }
+
     public function test_to_international_returns_number_as_is_when_no_country_code_provided(): void
     {
         $this->assertSame('0400000000', PhoneNumber::toInternational('0400000000'));

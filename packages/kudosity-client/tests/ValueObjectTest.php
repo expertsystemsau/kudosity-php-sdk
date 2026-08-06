@@ -13,41 +13,30 @@ use ExpertSystems\Kudosity\Data\V2\Content\TextContent;
 use ExpertSystems\Kudosity\Data\V2\SmsFallback;
 use ExpertSystems\Kudosity\Exceptions\InvalidSignatureException;
 use ExpertSystems\Kudosity\Exceptions\ValidationException;
-use ExpertSystems\Kudosity\Requests\V2\SendRcsRequest;
-use ExpertSystems\Kudosity\Support\CountryCodes;
-use ExpertSystems\Kudosity\Support\PhoneNumber;
-use InvalidArgumentException;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
 /**
- * The three WhatsAppContent variants, SmsFallback, PhoneNumber (plus the
- * country-code table it reads from), and the CallbackUrlBuilder/Parser
- * signing contract.
+ * The three WhatsAppContent variants, SmsFallback, and the
+ * CallbackUrlBuilder/Parser signing contract.
  *
- * Two of this task's brief examples do not match the shipped source and are
- * corrected here rather than followed verbatim (both confirmed by a RED run
+ * One of this task's brief examples does not match the shipped source and is
+ * corrected here rather than followed verbatim (confirmed by a RED run
  * against the brief's literal text — see the task report):
  *
  * - TemplateContent::toArray() returns `['template' => [...]]`, not the
  *   inner array bare. The brief's assertion omitted the `template` wrapper
  *   that every other variant (and the interface's own docblock) carries.
- * - `PhoneNumber::toE164()` does not exist, and the real method,
- *   `toInternational()`, does not throw for a local number given no country
- *   code — it deliberately returns the digits unchanged, leading zero and
- *   all. {@see SendRcsRequest}'s own
- *   comment states the real contract: no country is assumed, and the
- *   leftover leading zero is what makes the API itself reject the number
- *   with a 400, rather than the SDK guessing locally. The root package's
- *   own `tests/Unit/PhoneNumberTest.php` already documents this same
- *   passthrough ("returns number as-is when no country code provided").
+ *
+ * The three `PhoneNumber`/`CountryCodes` tests this class used to hold moved
+ * to `PhoneNumberTest.php` and `CountryCodesTest.php` in Task 7b batch 1's fix
+ * round — one class, one owning test file, per `#[CoversClass]` coverage
+ * attribution (see that task's report for why the attribution matters).
  */
 #[CoversClass(TemplateContent::class)]
 #[CoversClass(TextContent::class)]
 #[CoversClass(CustomContent::class)]
 #[CoversClass(SmsFallback::class)]
-#[CoversClass(PhoneNumber::class)]
-#[CoversClass(CountryCodes::class)]
 #[CoversClass(CallbackUrlBuilder::class)]
 #[CoversClass(CallbackUrlParser::class)]
 final class ValueObjectTest extends TestCase
@@ -213,38 +202,6 @@ final class ValueObjectTest extends TestCase
         $this->assertNotNull($fallback);
         $this->assertSame('fallback', $fallback->message);
         $this->assertNull($fallback->sender);
-    }
-
-    // -----------------------------------------------------------------
-    // PhoneNumber / the country-code table
-    // -----------------------------------------------------------------
-
-    public function test_it_never_guesses_a_country_for_a_local_number(): void
-    {
-        // Guessing wrong sends a real message to the wrong person, which is
-        // worse than failing. PhoneNumber does not throw for this input —
-        // per SendRcsRequest's own comment, it deliberately leaves the
-        // leading zero in place so the API itself rejects the number with a
-        // loud 400, rather than inventing a dialing code locally.
-        $this->assertSame('0400000000', PhoneNumber::toInternational('0400000000', null));
-    }
-
-    public function test_a_country_name_resolves_the_same_dialing_code_as_its_iso_alias(): void
-    {
-        // The table maps both an ISO code and a full country name to the
-        // same dialing code — asserted by the two producing an identical
-        // result rather than by reading the constant directly.
-        $this->assertSame(
-            PhoneNumber::toInternational('0400000000', 'AU'),
-            PhoneNumber::toInternational('0400000000', 'Australia'),
-        );
-    }
-
-    public function test_an_unsupported_country_code_is_rejected(): void
-    {
-        $this->expectException(InvalidArgumentException::class);
-
-        PhoneNumber::toInternational('0400000000', 'ZZ');
     }
 
     // -----------------------------------------------------------------
