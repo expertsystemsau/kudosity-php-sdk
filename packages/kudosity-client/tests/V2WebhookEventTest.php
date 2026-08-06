@@ -73,6 +73,13 @@ use PHPUnit\Framework\TestCase;
  * test_an_inbound_mms_cannot_be_correlated. All of the superseded
  * WebhookPayloadTest.php tests were removed in this same commit. See the
  * task report for the full reconciliation.
+ *
+ * OptOutSource is named here too: the `optOutSources()` provider's 'absent'
+ * row is the only place in the client suite that calls
+ * `OptOutSource::fromApi(null)`, a different branch from the one
+ * EnumToleranceTest's generic tolerance check drives (an unrecognised
+ * non-empty string). Missing here during this port, it briefly cost the
+ * union one statement of coverage — see the task report.
  */
 #[CoversClass(WebhookEvent::class)]
 #[CoversClass(StatusEvent::class)]
@@ -82,6 +89,7 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(UnknownEvent::class)]
 #[CoversClass(InboundMedia::class)]
 #[CoversClass(SourceMessage::class)]
+#[CoversClass(OptOutSource::class)]
 final class V2WebhookEventTest extends TestCase
 {
     /**
