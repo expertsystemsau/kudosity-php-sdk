@@ -53,6 +53,16 @@ use Saloon\Http\Request;
  * `V2MmsTest.php` port likewise did not re-add a "rejects a subject longer
  * than 20 characters" test — `test_it_rejects_an_mms_subject_over_twenty_characters`
  * below already covers `SendMmsRequest`'s subject-length guard.
+ *
+ * Task 7b batch 7 ported `V2WebhooksResourceTest.php`, which duplicated this
+ * file's `test_a_webhook_url_must_be_https_unless_explicitly_opted_out` — that
+ * test asserted only the exception class for one non-HTTPS URL; the ported
+ * file's dataset covers the identical scenario as one of four cases, plus a
+ * message assertion this file never made — so the dominated original came
+ * out. `test_the_insecure_url_opt_in_is_explicit_and_works` stays: it drives
+ * the constructor through positional arguments and checks `resolveEndpoint()`,
+ * a different construction path from the ported file's named-argument,
+ * instanceof-only equivalent.
  */
 final class RequestShapeTest extends TestCase
 {
@@ -188,16 +198,6 @@ final class RequestShapeTest extends TestCase
         $this->expectExceptionMessageMatches('/agent/i');
 
         new CheckRcsCapabilitiesRequest(['61400000000'], '61481074185');
-    }
-
-    public function test_a_webhook_url_must_be_https_unless_explicitly_opted_out(): void
-    {
-        // Deliveries carry message text and phone numbers and are unsigned, so
-        // a plaintext endpoint is readable and forgeable. The API accepts
-        // http://; this SDK is deliberately stricter.
-        $this->expectException(ValidationException::class);
-
-        new CreateWebhookRequest('rig', 'http://e.com/hook');
     }
 
     public function test_the_insecure_url_opt_in_is_explicit_and_works(): void
