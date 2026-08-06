@@ -36,6 +36,11 @@ use Saloon\Http\Faking\MockResponse;
  * results is a legal answer. Each case below drives a real resource method
  * (not the paginator in isolation) so a class that stops declaring its
  * correct paginationItemsKey() fails here, exactly as it did in production.
+ *
+ * Each of the eight request classes below is otherwise untouched by the rest
+ * of the client suite — no other test constructs or sends one — so this file
+ * is their only source of coverage, not only the paginator's and the
+ * resources'.
  */
 #[CoversClass(V1PagedPaginator::class)]
 #[CoversClass(KudosityClient::class)]
@@ -43,6 +48,14 @@ use Saloon\Http\Faking\MockResponse;
 #[CoversClass(ListsResource::class)]
 #[CoversClass(KeywordsResource::class)]
 #[CoversClass(ReportingResource::class)]
+#[CoversClass(GetNumbersRequest::class)]
+#[CoversClass(GetListsRequest::class)]
+#[CoversClass(GetKeywordsRequest::class)]
+#[CoversClass(GetSmsSentRequest::class)]
+#[CoversClass(GetUserSmsSentRequest::class)]
+#[CoversClass(GetListRequest::class)]
+#[CoversClass(GetSmsResponsesRequest::class)]
+#[CoversClass(GetUserSmsResponsesRequest::class)]
 final class V1PaginationTest extends TestCase
 {
     /**
