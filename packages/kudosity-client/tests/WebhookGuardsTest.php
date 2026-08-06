@@ -28,6 +28,16 @@ use PHPUnit\Framework\TestCase;
  * full reconciliation. `test_it_reduces_the_captured_out_of_order_pair_to_delivered`
  * stayed — it is a genuinely different call (reduce() over the two captured
  * fixtures) from anything ported there.
+ *
+ * Three SignedMessageRef tests moved out the same way, folded into
+ * V2SignedMessageRefTest.php: the round-trip test (its isValid() check is now
+ * one more assertion on a stronger test there), the composite-entity test (a
+ * strict subset of a stronger ported test there) and the unsigned-ref test
+ * (its two cases split across two stronger ported tests there). The
+ * different-secret test and the signature-length test stayed — the former is
+ * an exact behavioural duplicate of a root test that was therefore not
+ * re-ported, and the latter derives SIGNATURE_LENGTH from an actual sign()
+ * output, which nothing ported there does. See the task report.
  */
 #[CoversClass(StatusPrecedence::class)]
 #[CoversClass(SignedMessageRef::class)]
@@ -48,37 +58,12 @@ final class WebhookGuardsTest extends TestCase
         $this->assertSame(MessageStatus::Delivered, $winner->status);
     }
 
-    public function test_a_signed_ref_round_trips(): void
-    {
-        $signed = SignedMessageRef::sign('order-9931', 'secret');
-
-        $this->assertSame('order-9931', SignedMessageRef::verify($signed, 'secret'));
-        $this->assertTrue(SignedMessageRef::isValid($signed, 'secret'));
-    }
-
-    public function test_a_composite_entity_is_parsed_from_the_last_colon(): void
-    {
-        // Real captured refs are composite — "order-9931:cust-4471" — so
-        // explode(':', $ref)[0] truncates the entity while still looking like
-        // it worked.
-        $signed = SignedMessageRef::sign('order-9931:cust-4471', 'secret');
-
-        $this->assertSame('order-9931:cust-4471', SignedMessageRef::verify($signed, 'secret'));
-    }
-
     public function test_a_ref_signed_with_another_secret_does_not_verify(): void
     {
         $signed = SignedMessageRef::sign('order-9931', 'secret');
 
         $this->assertNull(SignedMessageRef::verify($signed, 'a-different-secret'));
         $this->assertFalse(SignedMessageRef::isValid($signed, 'a-different-secret'));
-    }
-
-    public function test_an_unsigned_ref_does_not_verify(): void
-    {
-        // What an attacker sends: a plausible entity with no signature at all.
-        $this->assertNull(SignedMessageRef::verify('order-9931', 'secret'));
-        $this->assertNull(SignedMessageRef::verify(null, 'secret'));
     }
 
     public function test_the_signature_is_the_documented_length(): void
