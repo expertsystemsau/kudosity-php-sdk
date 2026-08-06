@@ -925,6 +925,52 @@ git commit -m "test: retire the root tests the client suite now owns"
 
 ---
 
+## Task 7b: Port the 24 root test files the client package owns
+
+**Added 2026-08-07, after Task 7 executed.** Task 7's premise did not survive contact with the suites, and this task is the user's answer to that.
+
+### Why this task exists
+
+Task 7 assumed Tasks 2–6 had duplicated the root tests, so retiring the copies would leave the root suite covering the Laravel package and `bin/kudosity-codemod` and nothing else. They had not. For every class the two suites share, the client suite asserts a strict **subset** — verified by a reviewer against ten root/client pairs, assertion by assertion. Only `tests/ExampleTest.php` was genuinely superseded, and it was deleted in `6034d86`.
+
+The measurement that makes the gap concrete: the client suite alone covers **24.75%** of its own `src/` (16 of 151 classes ever execute), while the union of both suites covers **65.90%**. Two thirds of the client package's coverage exists only in the root Pest suite — which requires PHP 8.3+ and installs Laravel, and therefore **never runs on the 8.2 floor this phase exists to prove**. Deleting on class identity would have destroyed real behaviour: 7 of 8 V1 pagination envelope keys, 27 of 30 `PhoneNumber` tests, all of `Support\Url`, the `SignedMessageRef` forgery cases, ~30 root-only `V2WebhookEventTest` assertions.
+
+**Decision (user, 2026-08-07): do the full port.** All 24 files whose class under test lives in `packages/kudosity-client/src` move to the client suite, in batches. The Definition of Done stands as written.
+
+### Global rules for every batch
+
+- **Port by rewriting each assertion from the behaviour, never by transliterating the Pest call.** A Pest `expect($x)->toBe($y)` mistranslated into `assertTrue(...)` against a truthy value passes forever. This is the phase's named defect class and a *ported* test is the likeliest place for it, because a test that already existed is assumed to work.
+- **No test's assertions may weaken.** Same inputs, same specificity, same count of distinct behaviours asserted. If a Pest idiom has no clean PHPUnit equivalent, ask rather than approximate. A Pest chained `->and(...)` is several assertions and stays several assertions.
+- PHPUnit 11 attributes: `#[DataProvider]` for a Pest `dataset()`, `#[CoversClass]` as the neighbouring client tests use it. Never Pest, never PHPUnit 12.
+- **One commit per file**, adding the client test and deleting the root file together, so a wrong call is one `git revert`.
+- Every root file in this task is confirmed free of container and framework dependencies — no `config()`, no `app()`, no `Illuminate`, no Testbench feature. The only shared code any of them touches is `tests/Fixtures/StubV2SendRequest.php` (`KudosityClientTest`, `V2ConnectorTest`, `V2ErrorTest`) and the `webhookFixture()` helper (`V2SignedMessageRefTest`, `V2StatusPrecedenceTest`, `V2WebhookEventTest`), whose client equivalent is `Fixtures::webhook()`. `StubV2SendRequest` moves into the client suite's `Fixtures/` on first use.
+- **The union over `packages/kudosity-client/src` must not fall from 65.90% (1714/2601 statements).** It should hold almost exactly: the same behaviour is being asserted from a different suite. **Client-alone coverage must rise** with every batch — that is the number this task exists to move, and reporting it per batch is how we know the port is doing its job rather than shuffling files.
+- Each batch runs: the client suite, the client suite on `php:8.2-cli` via Docker, the root suite, PHPStan, Pint. Coverage per the recipe in the ledger (`kudosity-cov:8.3`/`:8.4`, `-d memory_limit=1G`, then `union-coverage.php`).
+- **Root count must drop by exactly the ported file's test count and the client count must rise by at least it** (a Pest chained expectation often becomes more than one PHPUnit test). Reconcile any difference explicitly; an unexplained gap means a test was dropped.
+
+### Batches
+
+| # | Files | Root tests | Notes |
+|---|---|---:|---|
+| 1 | `PhoneNumberTest`, `CountryCodesTest`, `UrlValidationTest` | 95 | Pure support classes, no dependencies. `Support\Url` has no client-side reference at all. |
+| 2 | `DtoTest` → **`V1DtoTest`**, `ExceptionTest`, `RateLimitExceptionTest`, `RetryConfigurationTest`, `BulkSmsResourceTest`, `SendSmsRequestTest` | 100 | V1 surface. **Rename on the way over** — the client suite already has a `DtoTest.php` for `Data\V2\*`. |
+| 3 | `KudosityClientTest`, `V2ConnectorTest`, `V2ErrorTest`, `V2FoundationsTest` | 75 | Move `StubV2SendRequest` into the client `Fixtures/` here. `KudosityClientTest` pins each resource to the **V2 host** by reading the sent URI — an `instanceof` check passes for a resource wired to the wrong connector, so that assertion must survive intact. |
+| 4 | `PaginationTest`, `V2PaginationTest`, `V2DateRangeFilterTest` | 51 | `PaginationTest`'s eight envelope keys each go through the real resource method, including the `members` regression that shipped in 1.9.0. |
+| 5 | `V2WebhookEventTest`, `V2StatusPrecedenceTest`, `V2SignedMessageRefTest` | 135 | Read `tests/Fixtures/V2Webhooks/README.md` first. `webhookFixture()` → `Fixtures::webhook()`. The forgery cases are the security-relevant ones. |
+| 6 | `V2SmsTest`, `V2MmsTest`, `V2WhatsAppTest` | 81 | Resource-level behaviour; `RequestShapeTest` already pins endpoints and guards, so port what it does not cover. |
+| 7 | `V2RcsTest`, `V2WebhooksResourceTest`, `V2SendersResourceTest` | 138 | `V2SendersResourceTest` holds the inlined sender-fixture loader — it moves to the shared `Fixtures` class, per Task 1's precedent. |
+
+After batch 7: remove whatever is left unused at root (`tests/Fixtures/StubV2SendRequest.php`, the `WebhookPayloads` re-export, `webhookFixture()`) only if nothing references it, and confirm the root suite is Laravel + `CodemodTest` + `ArchTest` and nothing else.
+
+### Definition of done for 7b
+
+- All 24 files ported, one commit each, no assertion weakened.
+- Root suite contains only: the 11 STAY files (Laravel package), `CodemodTest`, `ArchTest`.
+- Union over client `src/` still ≥ 65.90%; **client-alone coverage substantially higher than 24.75%** and reported.
+- The whole client suite green on 8.2, 8.3 and 8.4.
+
+---
+
 ## Task 8: Documentation and the 2.0.0 changelog
 
 **Files:**
