@@ -229,7 +229,7 @@ git grep -n 'api\.kudosity\.com' -- . ':(exclude)docs/*' ':(exclude)HANDOFF.md' 
   && echo "CORRUPTED HOSTNAME — STOP" || echo "negative check clean"
 ```
 
-- [ ] **Step 5: Live-verify the receiver end to end.** The rig is the same one Phase 4 used: a local server plus `ngrok http <port>`, register a webhook at the tunnel URL through `kudosity:webhook:install`, send one tracked SMS, confirm the typed events fire, then tear down and confirm the account is back to zero webhooks. **This is the step that proves the phase**, because everything else is mocked.
+- [x] **Step 5: Live-verify the receiver end to end.** Done 2026-08-06 — see HANDOFF.md. The rig is the same one Phase 4 used: a local server plus `ngrok http <port>`, register a webhook at the tunnel URL through `kudosity:webhook:install`, send one tracked SMS, confirm the typed events fire, then tear down and confirm the account is back to zero webhooks. **This is the step that proves the phase**, because everything else is mocked.
 
 Credentials are in the gitignored `.env`. **Skip `OPT_OUT`** — triggering it opts the test handset out of receiving messages.
 
