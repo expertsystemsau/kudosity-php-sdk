@@ -16,7 +16,7 @@ use PHPUnit\Framework\TestCase;
  *
  * SmsFallback's tests move here in full, consolidating its coverage into one
  * owning file (it was previously split with ValueObjectTest.php) — the same
- * move batch 1 made for Support\PhoneNumber. Six of the eleven ported tests
+ * move batch 1 made for Support\PhoneNumber. Eight of the eleven ported tests
  * below duplicate, or supersede, what ValueObjectTest.php used to assert
  * (different literal fixture values in most cases, same behaviour); those
  * eight tests come out of that file in this commit. Two are genuinely novel
