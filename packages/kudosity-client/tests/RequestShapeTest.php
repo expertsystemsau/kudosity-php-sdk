@@ -49,7 +49,10 @@ use Saloon\Http\Request;
  * happened: the ported file's own "rejects a message_ref longer than 500
  * characters" was not re-added, because `test_it_rejects_an_over_long_message_ref_before_sending`
  * below already covers that guard on this exact class, together with the
- * accept-at-500 boundary case the root suite never had.
+ * accept-at-500 boundary case the root suite never had. The same batch's
+ * `V2MmsTest.php` port likewise did not re-add a "rejects a subject longer
+ * than 20 characters" test — `test_it_rejects_an_mms_subject_over_twenty_characters`
+ * below already covers `SendMmsRequest`'s subject-length guard.
  */
 final class RequestShapeTest extends TestCase
 {
