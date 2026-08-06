@@ -32,7 +32,12 @@ use PHPUnit\Framework\TestCase;
  * round, and the eight `SmsFallback` tests it used to hold moved to
  * `V2FoundationsTest.php` in Task 7b batch 3 — one class, one owning test
  * file, per `#[CoversClass]` coverage attribution (see batch 1's task report
- * for why the attribution matters).
+ * for why the attribution matters). Six of this file's nine `TemplateContent`
+ * tests moved to `V2WhatsAppTest.php` in Task 7b batch 6, superseded there by
+ * tests that assert the same fact at least as strongly (the template-name
+ * rule in particular, at seven isolated violations rather than three
+ * conflated ones). The three that remain — the combined `contentType()` +
+ * `toArray()` check per variant — have no counterpart in that file.
  */
 #[CoversClass(TemplateContent::class)]
 #[CoversClass(TextContent::class)]
@@ -77,64 +82,6 @@ final class ValueObjectTest extends TestCase
 
         $this->assertSame('custom', $custom->contentType());
         $this->assertSame(['custom' => $payload], $custom->toArray());
-    }
-
-    public function test_template_parameters_are_omitted_from_the_payload_when_there_are_none(): void
-    {
-        // A gapless omission, not a null or an empty array on the wire —
-        // asserted by absence of the key entirely.
-        $this->assertSame(['template' => ['name' => 'order_update']], (new TemplateContent('order_update'))->toArray());
-    }
-
-    public function test_template_locale_is_included_when_given(): void
-    {
-        $template = new TemplateContent('order_update', ['ACME'], 'en_US');
-
-        $this->assertSame(
-            ['template' => ['name' => 'order_update', 'parameters' => ['ACME'], 'locale' => 'en_US']],
-            $template->toArray(),
-        );
-    }
-
-    public function test_template_rejects_an_empty_name(): void
-    {
-        $this->expectException(ValidationException::class);
-        $this->expectExceptionMessageMatches('/name is required/');
-
-        new TemplateContent('');
-    }
-
-    public function test_template_rejects_a_name_that_breaks_the_naming_rule(): void
-    {
-        // Uppercase and a space, neither of which the documented rule
-        // allows — a name only this rule, and not the empty-name check,
-        // catches.
-        $this->expectException(ValidationException::class);
-        $this->expectExceptionMessageMatches('/lowercase alphanumeric/');
-
-        new TemplateContent('Order Confirmation');
-    }
-
-    public function test_template_name_pattern_rejects_a_trailing_newline(): void
-    {
-        // The /D modifier on NAME_PATTERN is load-bearing: without it, PCRE's
-        // $ also matches immediately before a final newline, so a name read
-        // from a file or a copied line would pass with the newline still on
-        // the wire.
-        $this->expectException(ValidationException::class);
-        $this->expectExceptionMessageMatches('/lowercase alphanumeric/');
-
-        new TemplateContent("order_confirmation\n");
-    }
-
-    public function test_template_rejects_a_non_string_parameter(): void
-    {
-        // Rejected rather than stringified: an int here would send a
-        // template call that succeeds while saying something nobody wrote.
-        $this->expectException(ValidationException::class);
-        $this->expectExceptionMessageMatches('/must be strings/');
-
-        new TemplateContent('order_update', [123]);
     }
 
     // -----------------------------------------------------------------
