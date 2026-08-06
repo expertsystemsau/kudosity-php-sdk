@@ -9,6 +9,9 @@ use ExpertSystems\Kudosity\Callbacks\CallbackUrlParser;
 use ExpertSystems\Kudosity\KudosityClient;
 use ExpertSystems\Kudosity\KudosityV1Connector;
 use ExpertSystems\Kudosity\KudosityV2Connector;
+use ExpertSystems\Kudosity\Laravel\Console\Commands\WebhookDeleteCommand;
+use ExpertSystems\Kudosity\Laravel\Console\Commands\WebhookInstallCommand;
+use ExpertSystems\Kudosity\Laravel\Console\Commands\WebhookListCommand;
 use ExpertSystems\Kudosity\Laravel\Notifications\KudosityChannel;
 use ExpertSystems\Kudosity\Laravel\Notifications\KudosityMmsChannel;
 use ExpertSystems\Kudosity\Laravel\Notifications\KudosityRcsChannel;
@@ -123,6 +126,12 @@ class KudosityServiceProvider extends ServiceProvider
     public function boot(): void
     {
         if ($this->app->runningInConsole()) {
+            $this->commands([
+                WebhookListCommand::class,
+                WebhookInstallCommand::class,
+                WebhookDeleteCommand::class,
+            ]);
+
             $this->publishes([
                 __DIR__.'/../config/kudosity.php' => config_path('kudosity.php'),
             ], 'kudosity-config');
