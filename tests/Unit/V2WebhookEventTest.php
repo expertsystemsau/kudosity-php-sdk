@@ -6,6 +6,7 @@ use ExpertSystems\Kudosity\Enums\MessageStatus;
 use ExpertSystems\Kudosity\Enums\OptOutSource;
 use ExpertSystems\Kudosity\Enums\WebhookEventType;
 use ExpertSystems\Kudosity\Webhooks\InboundEvent;
+use ExpertSystems\Kudosity\Webhooks\InboundMedia;
 use ExpertSystems\Kudosity\Webhooks\LinkHitEvent;
 use ExpertSystems\Kudosity\Webhooks\OptOutEvent;
 use ExpertSystems\Kudosity\Webhooks\StatusEvent;
@@ -409,3 +410,146 @@ it('survives a payload whose section key is missing or the wrong type', function
     'a string' => ['nope'],
     'a list' => [[1, 2, 3]],
 ]);
+
+// ---------------------------------------------------------------------------
+// Inbound MMS media
+//
+// Captured 2026-08-06, from the first inbound MMS this account could receive —
+// Kudosity replaced the virtual number precisely because the previous one could
+// not. The payload does not resemble the outbound one it was modelled on.
+// ---------------------------------------------------------------------------
+
+it('exposes inbound MMS media, which arrives inline as base64 rather than as a URL', function () {
+    // The whole reason this test exists: `content_urls` was written from the
+    // OUTBOUND documentation, and a real inbound MMS carries no such key. Media
+    // comes back under `mo.media[]` with the bytes themselves, so a receiver
+    // reading contentUrls got an empty array and dropped the picture.
+    $inbound = WebhookEvent::fromArray(webhookFixture('mms-inbound-with-media'));
+
+    expect($inbound->contentUrls)->toBe([])
+        ->and($inbound->media)->toHaveCount(1)
+        ->and($inbound->media[0])->toBeInstanceOf(InboundMedia::class)
+        ->and($inbound->media[0]->name)->toBe('image000000.jpg');
+});
+
+it('decodes inbound media to the original bytes', function () {
+    $media = WebhookEvent::fromArray(webhookFixture('mms-inbound-with-media'))->media[0];
+
+    // The fixture's base64 is a real JPEG, shrunk from the 204KB one that
+    // actually arrived. Assert on the magic bytes rather than a length, so the
+    // test says "this is a decodable JPEG" rather than "this is 705 bytes".
+    expect($media->bytes())->toStartWith("\xFF\xD8\xFF")
+        ->and($media->sizeInBytes())->toBe(strlen((string) $media->bytes()));
+});
+
+it('infers a media type, because the payload carries no content-type field at all', function () {
+    $media = WebhookEvent::fromArray(webhookFixture('mms-inbound-with-media'))->media[0];
+
+    expect($media->mimeType())->toBe('image/jpeg');
+});
+
+it('sniffs the bytes rather than trusting the filename extension', function () {
+    // A name is attacker-influenced in a way the bytes are not: an inbound MMS
+    // is whatever a stranger sent. Saving `image000000.jpg` to disk on the
+    // strength of its extension is how a receiver ends up hosting something
+    // else, so the type reported is the one the content actually is.
+    $payload = webhookFixture('mms-inbound-with-media');
+    $payload['mo']['media'][0]['name'] = 'not-really.png';
+
+    expect(WebhookEvent::fromArray($payload)->media[0]->mimeType())->toBe('image/jpeg');
+});
+
+it('returns null bytes rather than throwing when inbound media will not decode', function () {
+    // A receiver does not choose what it is sent. Same reasoning as
+    // UnknownEvent: degrade, do not throw inside a public endpoint.
+    $payload = webhookFixture('mms-inbound-with-media');
+    $payload['mo']['media'][0]['content'] = '!!!! not base64 !!!!';
+
+    $media = WebhookEvent::fromArray($payload)->media[0];
+
+    expect($media->bytes())->toBeNull()
+        ->and($media->sizeInBytes())->toBe(0)
+        ->and($media->mimeType())->toBeNull()
+        ->and($media->content)->toBe('!!!! not base64 !!!!');
+});
+
+it('has no media and no correlation for an inbound event that carries neither', function () {
+    $inbound = WebhookEvent::fromArray(webhookFixture('sms-inbound-with-last-message'));
+
+    expect($inbound->media)->toBe([]);
+});
+
+it('cannot correlate an inbound MMS, which arrives with no last_message', function () {
+    // SMS_INBOUND carried `last_message` and correlated fine. MMS_INBOUND did
+    // not — so messageRef() is null and routing an MMS reply has to fall back
+    // to something else. Recorded because the asymmetry is invisible from the
+    // event class, which is shared between the two.
+    $inbound = WebhookEvent::fromArray(webhookFixture('mms-inbound-with-media'));
+
+    expect($inbound->isCorrelated())->toBeFalse()
+        ->and($inbound->messageRef())->toBeNull()
+        ->and($inbound->lastMessage)->toBeNull();
+});
+
+it('reports a null message for a picture-only inbound MMS, whose payload omits the key', function () {
+    expect(WebhookEvent::fromArray(webhookFixture('mms-inbound-with-media'))->message)->toBeNull();
+});
+
+it('exposes the inbound sender verbatim, leading plus included', function () {
+    // MMS_INBOUND delivers `+61…` while `mo.recipient` in the SAME payload has
+    // no plus, and SMS_INBOUND had none either. Normalising here would hide an
+    // inconsistency the consumer needs to know about when matching numbers.
+    $inbound = WebhookEvent::fromArray(webhookFixture('mms-inbound-with-media'));
+
+    expect($inbound->sender)->toBe('+61400000000')
+        ->and($inbound->recipient)->toBe('61481074185');
+});
+
+it('keeps a carrier MMSC id intact rather than assuming every V2 id is a UUID', function () {
+    expect(WebhookEvent::fromArray(webhookFixture('mms-inbound-with-media'))->id)
+        ->toBe('vj41WbAbHfzIjSMIfB91BH@mmsc.telstra.com');
+});
+
+it('ignores media entries that are not shaped like media', function () {
+    $payload = webhookFixture('mms-inbound-with-media');
+    $payload['mo']['media'][] = 'nope';
+    $payload['mo']['media'][] = ['name' => 'no-content.jpg'];
+
+    expect(WebhookEvent::fromArray($payload)->media)->toHaveCount(1);
+});
+
+it('survives a media key that is not a list at all', function (mixed $media) {
+    $payload = webhookFixture('mms-inbound-with-media');
+    $payload['mo']['media'] = $media;
+
+    expect(WebhookEvent::fromArray($payload)->media)->toBe([]);
+})->with([
+    'a string' => ['nope'],
+    'null' => [null],
+    'a scalar' => [7],
+]);
+
+it('reports an unknown media type as null rather than guessing octet-stream', function () {
+    // Decodable bytes, no recognised signature, no recognised extension. A
+    // guessed `application/octet-stream` reads as a fact the payload never
+    // stated — the same reason V1 sends report a null status instead of an
+    // invented Pending.
+    $payload = webhookFixture('mms-inbound-with-media');
+    $payload['mo']['media'][0]['content'] = base64_encode('plainly not a known format');
+    $payload['mo']['media'][0]['name'] = 'attachment.unheardof';
+
+    $media = WebhookEvent::fromArray($payload)->media[0];
+
+    expect($media->bytes())->toBe('plainly not a known format')
+        ->and($media->mimeType())->toBeNull();
+});
+
+it('falls back to the extension only when the bytes match no signature', function () {
+    // WebP has no signature entry, so this is the fallback's real job: it is
+    // reached, and it is reached second.
+    $payload = webhookFixture('mms-inbound-with-media');
+    $payload['mo']['media'][0]['content'] = base64_encode('no signature here');
+    $payload['mo']['media'][0]['name'] = 'sticker.WEBP';
+
+    expect(WebhookEvent::fromArray($payload)->media[0]->mimeType())->toBe('image/webp');
+});

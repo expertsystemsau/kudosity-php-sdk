@@ -84,9 +84,15 @@ webhook transport needs:
   at-least-once, so a late `SENT` must not overwrite a recorded `DELIVERED`. A
   rank, not a terminal check: `MessageStatus::isTerminal()` is true for both
   `DELIVERED` and `READ`, and an RCS read receipt follows delivery.
-- **`Webhooks\SignedMessageRef`** — deliveries are **unsigned**, so this signs
-  our own correlation key. Protects correlation, not the payload. Parse from the
+- **`Webhooks\SignedMessageRef`** — deliveries are **unsigned** (confirmed by
+  Kudosity, 2026-08-06: V2 signing is roadmap, not shipped), so this signs our
+  own correlation key. Protects correlation, not the payload. Parse from the
   **last** colon; real refs are composite.
+- **`Webhooks\InboundMedia` / `InboundEvent::$media`** — an inbound MMS delivers
+  its attachment as **inline base64** under `mo.media[]`. `$contentUrls` reads
+  `mo.content_urls`, which is the *outbound* shape and is absent from a real
+  `MMS_INBOUND`. Payloads run to hundreds of KB, carry no content type, and
+  arrive with no `last_message` — so an MMS reply has no correlation key.
 
 **When writing anything that reads a webhook payload, read
 `tests/Fixtures/V2Webhooks/README.md` first.** The fixtures are real captured

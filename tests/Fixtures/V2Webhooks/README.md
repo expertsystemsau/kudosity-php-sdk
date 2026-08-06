@@ -1,13 +1,16 @@
 # V2 webhook fixtures — captured from the live API
 
-These are **real webhook deliveries**, captured on 2026-08-05 by registering a
-webhook against an ngrok tunnel and sending live messages. They are not copied
-from the upstream documentation, which matters: the live payloads carry fields
-the docs omit.
+These are **real webhook deliveries**, captured on 2026-08-05 and 2026-08-06 by
+registering a webhook against an ngrok tunnel and sending live messages. They are
+not copied from the upstream documentation, which matters: the live payloads
+carry fields the docs omit — and, in the inbound MMS case, omit a field the docs
+say is there.
 
-Phone numbers are redacted — the recipient to `61400000000`, the sender to
-`61481074185` (the example sender the vendored skills use). Message and webhook
-IDs are left intact; they are opaque UUIDs for records that no longer exist.
+Phone numbers are redacted — the customer's handset to `61400000000`, our own
+number to `61481074185` (the example sender the vendored skills use). On inbound
+events those roles are reversed, so it is `mo.recipient` that reads
+`61481074185`. Message and webhook IDs are left intact; they are opaque
+identifiers for records that no longer exist.
 
 | Fixture | Event |
 |---|---|
@@ -17,6 +20,7 @@ IDs are left intact; they are opaque UUIDs for records that no longer exist.
 | `mms-status-delivered.json` | `MMS_STATUS`, carrying a carrier `description` |
 | `link-hit-sms.json` | `LINK_HIT`, `hits: 1` — captured 2026-08-05, and **not a human tap**; see below |
 | `link-hit-sms-repeat.json` | `LINK_HIT`, `hits: 2` — the same link again, proving `hits` is cumulative |
+| `mms-inbound-with-media.json` | `MMS_INBOUND` with an inline base64 attachment — captured 2026-08-06, **base64 shrunk**; see below |
 
 ## Three fields the documentation does not mention
 
@@ -108,6 +112,42 @@ Re-confirmed unchanged on the 2026-08-05 link-hit run. That run also saw
 `x-forwarded-for`, `x-forwarded-host` and `x-forwarded-proto` — **those are the
 ngrok tunnel's, not Kudosity's.** Anything reading them is reading the test rig.
 
+**Kudosity confirmed this in writing on 2026-08-06**, so it is no longer an
+inference from one capture: `x-transmitsms-signature` is a V1 mechanism, it is
+"currently unsupported with V2s", and it is on the roadmap. Their recommended
+substitute is `message_ref` — which is what `SignedMessageRef` signs. Whether
+they publish stable egress IP ranges was referred to their product team and is
+still open, so `35.197.178.201` above is an observation, not a range to allowlist.
+
+## The MMS run, 2026-08-06 — the inbound shape resembles nothing else
+
+`mms-inbound-with-media.json` is a real `MMS_INBOUND`, captured during the Phase
+5 live receiver verification. **Its base64 has been swapped for a 705-byte JPEG.**
+The photo that actually arrived made the delivery **204,426 bytes**, of which
+204,096 were the one `content` field — so the fixture keeps the shape and drops
+the weight. Everything else is verbatim apart from the redacted numbers.
+
+Five things about it contradict the outbound API it was modelled on:
+
+- **Media arrives inline as base64, not as URLs.** The key is `mo.media[]`, whose
+  entries are `{"content": "<base64>", "name": "image000000.jpg"}`. There is no
+  `content_urls` on an inbound MMS — that is the *outbound* request shape. The
+  SDK read `mo.content_urls` until this capture, so an inbound picture parsed
+  cleanly and was silently dropped. `InboundEvent::$media` is the fix.
+- **No content type anywhere.** A filename is all you get, which is why
+  `InboundMedia::mimeType()` sniffs the decoded bytes and treats the extension
+  as a fallback. The name comes from a stranger; the bytes do not.
+- **`mo.id` is not a UUID.** It was `vj41WbAbHfzIjSMIfB91BH@mmsc.telstra.com` — a
+  carrier MMSC identifier with an `@host` suffix. Anything that validates V2 ids
+  as UUIDs rejects a real inbound MMS.
+- **`mo.sender` carries a leading `+` and `mo.recipient` does not**, in the same
+  payload. `SMS_INBOUND` had no `+` on either. Nothing normalises this,
+  deliberately — matching numbers across channels has to cope with both forms.
+- **No `last_message`, and no `message` key at all** for a picture-only reply.
+  So `messageRef()` is null and `isCorrelated()` is false for an inbound MMS,
+  while the `SMS_INBOUND` captured a day earlier correlated fine. An MMS reply
+  cannot be routed on the correlation key.
+
 ## Webhook resource shape, from `POST /v2/webhook`
 
 The create response carries four fields the skill does not document:
@@ -129,12 +169,10 @@ elsewhere in this SDK.
 the test handset out of receiving messages — a one-way door on the only handset
 this account can test against.
 
-`MMS_INBOUND` is missing. Two picture-message replies to the dedicated number
-produced no event at all, with `MMS_INBOUND` present in the webhook filter and
-the receiving endpoint verified reachable throughout — while inbound *SMS* to the
-same number from the same handset worked. This points at inbound MMS needing
-separate provisioning on the number rather than an SDK or configuration fault.
-Open question with Kudosity.
+`MMS_INBOUND` **was** missing, and is now captured — see the 2026-08-06 section.
+The 2026-08-05 diagnosis was right: the number needed provisioning, not the SDK.
+Kudosity replaced the account's virtual number for exactly this reason, and the
+first reply to the replacement produced an event.
 
 `WHATSAPP_*` and `RCS_*` are also absent: the account has neither a WhatsApp
 sender nor an RCS agent provisioned.

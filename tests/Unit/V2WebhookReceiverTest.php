@@ -54,6 +54,7 @@ it('dispatches the right typed event for each captured delivery', function (stri
     ['sms-status-delivered', KudosityStatusReceived::class],
     ['mms-status-delivered', KudosityStatusReceived::class],
     ['sms-inbound-with-last-message', KudosityInboundReceived::class],
+    ['mms-inbound-with-media', KudosityInboundReceived::class],
     ['link-hit-sms', KudosityLinkHitReceived::class],
     ['link-hit-sms-repeat', KudosityLinkHitReceived::class],
 ]);
@@ -246,4 +247,20 @@ it('keeps the three V1 GET callback routes registered', function () {
 
 it('registers the events route under the configured prefix and path', function () {
     expect(route('kudosity.webhooks.events', [], false))->toBe('/webhooks/kudosity/events');
+});
+
+it('carries inbound MMS media through to the dispatched event', function () {
+    // The end of the chain the live run exercised: a real inbound MMS reaches
+    // the route, parses, and arrives at a listener with the picture intact.
+    // Before InboundMedia the event dispatched perfectly and the bytes were
+    // reachable only by digging through $raw — a silence, not an error.
+    Event::fake();
+
+    postEvent(webhookFixture('mms-inbound-with-media'))->assertOk();
+
+    Event::assertDispatched(KudosityInboundReceived::class, function ($event) {
+        return count($event->inbound->media) === 1
+            && $event->inbound->media[0]->mimeType() === 'image/jpeg'
+            && str_starts_with((string) $event->inbound->media[0]->bytes(), "\xFF\xD8\xFF");
+    });
 });

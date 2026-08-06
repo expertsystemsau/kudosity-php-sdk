@@ -24,13 +24,21 @@ use ExpertSystems\Kudosity\Enums\WebhookEventType;
  * **`$lastMessage` is best-effort.** Kudosity attaches the recent outbound it
  * believes this is a reply to, and omits it when nothing matches. When it is
  * null the message is unsolicited: it can be neither correlated nor
- * authenticated, so treat it as low-trust.
+ * authenticated, so treat it as low-trust. A captured `SMS_INBOUND` carried it;
+ * a captured `MMS_INBOUND` did not, so `messageRef()` is null for an MMS reply
+ * and routing one cannot lean on correlation.
+ *
+ * **An inbound MMS delivers its picture in `$media`, not `$contentUrls`.** The
+ * bytes arrive inline as base64 under `mo.media[]`; `content_urls` is the
+ * *outbound* shape and is absent from every inbound MMS captured. See
+ * {@see InboundMedia}, which also carries the size warning.
  */
 final readonly class InboundEvent extends WebhookEvent
 {
     /**
      * @param  array<string, mixed>  $raw
-     * @param  array<int, string>  $contentUrls  MMS only.
+     * @param  array<int, string>  $contentUrls  Documented for MMS, and empty on every inbound MMS captured so far — see $media.
+     * @param  array<int, InboundMedia>  $media  MMS only. Where an inbound picture actually arrives.
      */
     public function __construct(
         WebhookEventType $eventType,
@@ -47,6 +55,7 @@ final readonly class InboundEvent extends WebhookEvent
         public ?SourceMessage $lastMessage,
         public ?string $subject = null,
         public array $contentUrls = [],
+        public array $media = [],
     ) {
         parent::__construct($eventType, $timestamp, $webhookId, $webhookName, $raw);
     }
@@ -69,6 +78,19 @@ final readonly class InboundEvent extends WebhookEvent
             }
         }
 
+        // Kept separate from content_urls rather than folded into it: these are
+        // bytes, not addresses, and a consumer that treated them as URLs would
+        // hand a 204KB base64 string to an HTTP client.
+        $media = [];
+
+        if (is_array($mo['media'] ?? null)) {
+            foreach ($mo['media'] as $entry) {
+                if (($item = InboundMedia::fromArray($entry)) !== null) {
+                    $media[] = $item;
+                }
+            }
+        }
+
         return new self(
             ...self::commonFields($payload),
             type: is_string($mo['type'] ?? null) ? $mo['type'] : null,
@@ -82,6 +104,7 @@ final readonly class InboundEvent extends WebhookEvent
                 : null,
             subject: is_string($mo['subject'] ?? null) ? $mo['subject'] : null,
             contentUrls: $contentUrls,
+            media: $media,
         );
     }
 
