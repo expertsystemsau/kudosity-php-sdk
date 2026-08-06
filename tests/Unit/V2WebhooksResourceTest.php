@@ -194,6 +194,18 @@ it('rejects a non-HTTPS webhook URL, which is stricter than the platform', funct
     'ftp' => ['ftp://example.com/hook'],
 ])->throws(ValidationException::class, 'must use HTTPS');
 
+it('accepts a plaintext URL only when insecure is opted into explicitly', function () {
+    // The escape hatch for local development. Opt-in, never sniffed from the URL:
+    // this class cannot tell a laptop from production, so the caller decides.
+    expect(new CreateWebhookRequest('Local', 'http://kudosity.test/hook', allowInsecureUrl: true))
+        ->toBeInstanceOf(CreateWebhookRequest::class);
+});
+
+it('still refuses a non-HTTP scheme even with insecure opted in', function () {
+    // The opt-in relaxes http:// specifically, not "any URL at all".
+    new CreateWebhookRequest('Local', 'ftp://kudosity.test/hook', allowInsecureUrl: true);
+})->throws(ValidationException::class, 'must use HTTPS');
+
 it('accepts an uppercase HTTPS scheme', function () {
     // The scheme check is case-insensitive in both directions, or a legitimate
     // URL gets rejected for its capitalisation.

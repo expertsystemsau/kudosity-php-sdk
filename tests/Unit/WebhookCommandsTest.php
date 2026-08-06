@@ -108,7 +108,10 @@ it('installs a webhook at a signed receiver URL, not a bare one', function () {
         ->and($captured)->toContain('s=');
 });
 
-it('refuses a plaintext APP_URL with an explanation, not a stack trace', function () {
+it('refuses a plaintext APP_URL outside a local environment', function () {
+    // The real-environment rule: HTTPS only. Deliveries carry message content and
+    // phone numbers and are unsigned.
+    app()['env'] = 'production';
     config()->set('app.url', 'http://app.example.test');
     fakeWebhooks();
 
@@ -116,6 +119,47 @@ it('refuses a plaintext APP_URL with an explanation, not a stack trace', functio
         ->expectsOutputToContain('must be HTTPS')
         ->expectsOutputToContain('APP_URL')
         ->assertExitCode(1);
+});
+
+it('allows a plaintext receiver on a local environment, with a warning', function () {
+    // Local development often has no TLS — a container, or a tunnel terminating
+    // elsewhere — and the traffic never leaves the machine. Permitted, but never
+    // silently: the warning says why it is acceptable here and nowhere else.
+    app()['env'] = 'local';
+    config()->set('app.url', 'http://kudosity.test');
+
+    $insecure = null;
+
+    fakeWebhooks()->shouldReceive('create')->once()->withArgs(function (...$args) use (&$insecure) {
+        $insecure = $args[5] ?? null;
+
+        return true;
+    })->andReturn(fakeHook());
+
+    $this->artisan('kudosity:webhook:install')
+        ->expectsOutputToContain('APP_ENV=local')
+        ->assertExitCode(0);
+
+    // The opt-in must actually reach the request, or the client-side guard rejects
+    // it after the command has said it was fine.
+    expect($insecure)->toBeTrue();
+});
+
+it('does not opt in to plaintext when the local URL is already HTTPS', function () {
+    app()['env'] = 'local';
+    config()->set('app.url', 'https://kudosity.test');
+
+    $insecure = null;
+
+    fakeWebhooks()->shouldReceive('create')->once()->withArgs(function (...$args) use (&$insecure) {
+        $insecure = $args[5] ?? null;
+
+        return true;
+    })->andReturn(fakeHook());
+
+    $this->artisan('kudosity:webhook:install')->assertExitCode(0);
+
+    expect($insecure)->toBeFalse();
 });
 
 it('rejects an unrecognised event type instead of registering a webhook that delivers nothing', function () {

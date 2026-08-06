@@ -43,7 +43,19 @@ class WebhookInstallCommand extends Command
     {
         $url = (string) ($this->option('url') ?: $urls->build(CallbackType::EVENTS, self::HANDLER_MARKER));
 
-        if (! str_starts_with(strtolower($url), 'https://')) {
+        // Plaintext is allowed only on a local environment. Laravel knows which
+        // environment it is; the client package does not, which is why the
+        // decision is made here and passed down explicitly.
+        $allowInsecure = app()->environment('local') && str_starts_with(strtolower($url), 'http://');
+
+        if ($allowInsecure) {
+            $this->components->warn(
+                'Registering a plaintext http:// receiver because APP_ENV=local. Deliveries carry message '.
+                'content and are unsigned, so never do this outside local development.'
+            );
+        }
+
+        if (! $allowInsecure && ! str_starts_with(strtolower($url), 'https://')) {
             // Caught here rather than let through to the request class, so the
             // operator gets an explanation naming the cause rather than a
             // ValidationException about a URL they never typed.
@@ -71,6 +83,7 @@ class WebhookInstallCommand extends Command
                 url: $url,
                 eventTypes: $events,
                 rateLimit: $this->option('rate-limit') !== null ? (int) $this->option('rate-limit') : null,
+                allowInsecureUrl: $allowInsecure,
             );
         } catch (KudosityException $e) {
             $this->components->error($e->getMessage());

@@ -481,9 +481,14 @@ if (StatusPrecedence::supersedes($event->status, $recorded)) {
   fetches, so it is not an engagement metric.
 - `link_hit.url` is the original destination; the *shortened* link is in
   `source_message.message`.
-- **This SDK rejects an `http://` webhook URL even though the API accepts one.**
-  The docs require HTTPS, deliveries carry message content, and they are
-  unsigned. `WebhookData::isSecure()` reports on registrations that already exist.
+- **This SDK rejects an `http://` webhook URL by default even though the API
+  accepts one.** The docs require HTTPS, deliveries carry message content and
+  phone numbers, and they are unsigned. For local development pass
+  `allowInsecureUrl: true` — an explicit opt-in rather than something inferred
+  from the hostname, because the SDK cannot tell a laptop from production.
+  `kudosity:webhook:install` opts in automatically **only** when `APP_ENV=local`,
+  and warns when it does. `WebhookData::isSecure()` reports on registrations that
+  already exist.
 
 ## Senders
 

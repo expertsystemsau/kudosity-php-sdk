@@ -276,9 +276,13 @@ php artisan kudosity:webhook:install --name="Prod events" --rate-limit=250
 php artisan kudosity:webhook:delete {id} --force
 ```
 
-`install` refuses a plaintext `APP_URL`, and rejects an unrecognised `--event`
-rather than registering a webhook that would deliver nothing. Omit `--event`
-entirely to receive all ten types.
+`install` rejects an unrecognised `--event` rather than registering a webhook that
+would deliver nothing. Omit `--event` entirely to receive all ten types.
+
+**HTTPS is required for any real environment.** A plaintext `http://` receiver is
+permitted only when `APP_ENV=local` — local development often has no TLS and the
+traffic never leaves the machine — and the command warns when it takes that path.
+Anywhere else, a plaintext `APP_URL` is refused with an explanation.
 
 ## DLR & Reply Callbacks
 

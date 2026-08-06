@@ -42,9 +42,10 @@ class UpdateWebhookRequest extends KudosityV2BodyRequest
         protected string $url,
         protected ?WebhookFilter $filter = null,
         protected ?int $rateLimit = null,
+        bool $allowInsecureUrl = false,
     ) {
         CreateWebhookRequest::guardName($name);
-        CreateWebhookRequest::guardUrl($url);
+        CreateWebhookRequest::guardUrl($url, $allowInsecureUrl);
         CreateWebhookRequest::guardRateLimit($rateLimit);
     }
 
