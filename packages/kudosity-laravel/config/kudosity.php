@@ -226,5 +226,23 @@ return [
             'path' => 'link-hits',
             'queue' => env('KUDOSITY_LINK_HITS_QUEUE', 'default'),
         ],
+
+        /*
+        |----------------------------------------------------------------------
+        | V2 Events Receiver
+        |----------------------------------------------------------------------
+        |
+        | One POST route handling all ten V2 event types. This is where delivery
+        | status and inbound messages for V2 sends arrive — V2 has no per-send
+        | callback URL, so without a registered webhook pointing here, a send
+        | migrated from V1 silently stops reporting.
+        |
+        | The three GET routes above stay live for V1 sends.
+        |
+        */
+        'events' => [
+            'enabled' => env('KUDOSITY_WEBHOOKS_EVENTS_ENABLED', true),
+            'path' => env('KUDOSITY_WEBHOOKS_EVENTS_PATH', 'events'),
+        ],
     ],
 ];

@@ -13,11 +13,23 @@ use ExpertSystems\Kudosity\Laravel\Contracts\HandlesDlrCallback;
 use ExpertSystems\Kudosity\Laravel\Contracts\HandlesLinkHitCallback;
 use ExpertSystems\Kudosity\Laravel\Contracts\HandlesReplyCallback;
 use ExpertSystems\Kudosity\Laravel\Events\DlrReceived;
+use ExpertSystems\Kudosity\Laravel\Events\KudosityInboundReceived;
+use ExpertSystems\Kudosity\Laravel\Events\KudosityLinkHitReceived;
+use ExpertSystems\Kudosity\Laravel\Events\KudosityOptOutReceived;
+use ExpertSystems\Kudosity\Laravel\Events\KudosityStatusReceived;
 use ExpertSystems\Kudosity\Laravel\Events\LinkHitReceived;
 use ExpertSystems\Kudosity\Laravel\Events\ReplyReceived;
+use ExpertSystems\Kudosity\Webhooks\InboundEvent;
+use ExpertSystems\Kudosity\Webhooks\LinkHitEvent;
+use ExpertSystems\Kudosity\Webhooks\OptOutEvent;
+use ExpertSystems\Kudosity\Webhooks\SignedMessageRef;
+use ExpertSystems\Kudosity\Webhooks\StatusEvent;
+use ExpertSystems\Kudosity\Webhooks\WebhookEvent;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * Handles incoming webhook callbacks from Kudosity.
@@ -30,6 +42,93 @@ class WebhookController extends Controller
     public function __construct(
         protected CallbackUrlParser $parser,
     ) {}
+
+    /**
+     * Receive a V2 webhook delivery.
+     *
+     * One route for all ten event types, because one registration can serve every
+     * channel. `event_type` decides which typed Laravel event is dispatched.
+     *
+     * ## Why this returns 200 so readily
+     *
+     * A non-2xx tells Kudosity the endpoint is unhealthy and earns a retry — which
+     * arrives at the same failure. So an event type this SDK does not recognise, and
+     * a body that will not parse, are both **logged and accepted**: the delivery is
+     * genuinely not retryable, and holding the connection open for it helps nobody.
+     * Only a bad signature is refused, with 403.
+     *
+     * ## Authenticity
+     *
+     * V2 deliveries carry no signature of any kind — no HMAC, no auth header. The
+     * only check available is the unguessable URL we registered, whose signature
+     * travels in the query string; V2 preserves it when it POSTs, so the existing
+     * {@see CallbackUrlParser} verifies it exactly as it does for V1 callbacks.
+     *
+     * That authenticates the *endpoint*, not the payload. To establish that a
+     * delivery refers to one of your own entities, sign the `message_ref` on the way
+     * out and verify it here — see
+     * {@see SignedMessageRef}.
+     */
+    public function events(Request $request): Response
+    {
+        $query = $request->query->all();
+
+        // Stricter than CallbackUrlParser alone, deliberately.
+        //
+        // The parser has an "events-only mode": with neither `h` nor `c` present
+        // it returns without verifying anything. That is right for the V1 GET
+        // routes, where a bare callback URL carries no handler and there is
+        // nothing to protect — the payload is the point.
+        //
+        // It is wrong here. This route's ENTIRE authenticity story is that the URL
+        // is unguessable, and its default path (`webhooks/kudosity/events`) is
+        // documented. Accepting an unsigned POST would let anyone who read the
+        // README forge delivery receipts and inbound messages. So a signature and
+        // a handler are both required before the parser is consulted.
+        if (! isset($query['s'], $query['h']) || $query['s'] === '' || $query['h'] === '') {
+            return response('Invalid signature', 403);
+        }
+
+        try {
+            $parsed = $this->parser->parse($query);
+        } catch (InvalidSignatureException $e) {
+            return response('Invalid signature', 403);
+        }
+
+        $context = $parsed['context'];
+
+        try {
+            // No empty-payload guard: an empty or event_type-less body already
+            // resolves to an UnknownEvent, which is logged and accepted by the
+            // default arm below. A mutation proved an explicit check changed
+            // nothing but which log level fired, so it is not carried.
+            $event = WebhookEvent::fromArray($request->json()->all());
+        } catch (Throwable $e) {
+            // A truncated, non-JSON or hostile body. Not retryable, so accept it
+            // and leave a trace rather than making Kudosity redeliver garbage.
+            Log::warning('Kudosity: could not parse a V2 webhook delivery', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return response('OK', 200);
+        }
+
+        match (true) {
+            $event instanceof StatusEvent => KudosityStatusReceived::dispatch($event, $context),
+            $event instanceof InboundEvent => KudosityInboundReceived::dispatch($event, $context),
+            $event instanceof LinkHitEvent => KudosityLinkHitReceived::dispatch($event, $context),
+            $event instanceof OptOutEvent => KudosityOptOutReceived::dispatch($event, $context),
+            // An event type Kudosity shipped after this SDK. Logged with the raw
+            // payload so it is recoverable, and accepted so the endpoint does not
+            // look dead.
+            default => Log::info('Kudosity: unrecognised V2 webhook event type', [
+                'event_type' => $event->raw['event_type'] ?? null,
+                'payload' => $event->raw,
+            ]),
+        };
+
+        return response('OK', 200);
+    }
 
     /**
      * Handle DLR (Delivery Receipt) callback.

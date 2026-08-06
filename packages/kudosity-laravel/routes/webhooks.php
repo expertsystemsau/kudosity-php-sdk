@@ -33,3 +33,17 @@ if (config('kudosity.webhooks.link_hits.enabled', true)) {
         [WebhookController::class, 'linkHits']
     )->name('kudosity.webhooks.link-hits');
 }
+
+/*
+| The V2 events receiver. One POST route for all ten event types, because one
+| account-level registration can serve every channel — V2 has no per-send
+| callback URL, so this is where delivery status and replies for V2 sends arrive.
+| The three GET routes above remain live for V1 sends, whose callbacks are
+| unaffected.
+*/
+if (config('kudosity.webhooks.events.enabled', true)) {
+    Route::post(
+        config('kudosity.webhooks.events.path', 'events'),
+        [WebhookController::class, 'events']
+    )->name('kudosity.webhooks.events');
+}
