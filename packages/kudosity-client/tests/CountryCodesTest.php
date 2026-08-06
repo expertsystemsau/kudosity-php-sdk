@@ -93,4 +93,53 @@ final class CountryCodesTest extends TestCase
     {
         $this->assertNull(CountryCodes::normalizeToIso('Unknown'));
     }
+
+    // -----------------------------------------------------------------
+    // matchDialingCode / startsWithKnownDialingCode
+    //
+    // Added in Task 7b batch 1's fix round: before this, the only caller
+    // anywhere in either suite was PhoneNumber::isInternational(), tested
+    // exclusively from PhoneNumberTest.php — which carries
+    // #[CoversClass(PhoneNumber::class)], not CountryCodes::class. PHPUnit's
+    // coverage attribution is scoped by a test's own covers metadata, so
+    // that indirect exercise never counted towards CountryCodes.php's
+    // coverage at all, in either suite, on either side of the port. Direct
+    // tests here, under this file's #[CoversClass(CountryCodes::class)], is
+    // the fix — the class that reads self::CODES owns the test that reads
+    // it directly.
+    // -----------------------------------------------------------------
+
+    public function test_match_dialing_code_returns_the_matched_code_for_a_known_prefix(): void
+    {
+        $this->assertSame('61', CountryCodes::matchDialingCode('61400000000'));
+        $this->assertSame('1', CountryCodes::matchDialingCode('12818691226'));
+    }
+
+    public function test_match_dialing_code_returns_null_when_nothing_matches(): void
+    {
+        // No known dialing code starts with '0', so a number that starts
+        // with a leading zero (a local-format number, never itself a valid
+        // dialing-code prefix) cannot match anything.
+        $this->assertNull(CountryCodes::matchDialingCode('0400000000'));
+    }
+
+    public function test_starts_with_known_dialing_code_wraps_match_dialing_code(): void
+    {
+        $this->assertTrue(CountryCodes::startsWithKnownDialingCode('61400000000'));
+        $this->assertFalse(CountryCodes::startsWithKnownDialingCode('0400000000'));
+    }
+
+    // Not asserted: that the longest matching code wins over a shorter one
+    // sharing the same prefix (the reason matchDialingCode() sorts by length
+    // before scanning — see its docblock's own '61' vs '6' example). Checked
+    // this exhaustively against the real table: of the 64 unique dialing
+    // codes in self::CODES, none is a prefix of any other (verified by
+    // pairwise str_starts_with() over all of them). Since a shorter code can
+    // only ever out-match a longer one on a string where the shorter is
+    // genuinely a prefix of it, there is currently no real input for which
+    // sort order changes matchDialingCode()'s result — a test asserting
+    // "longest wins" against this table would pass whether or not the sort
+    // exists, which is exactly the kind of test this whole phase exists to
+    // rule out. The sort is defensive against a future entry creating a
+    // collision, not something today's data can exercise.
 }
