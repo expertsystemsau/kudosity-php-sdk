@@ -4,8 +4,15 @@ declare(strict_types=1);
 
 namespace ExpertSystems\Kudosity\Laravel\Notifications;
 
+use ExpertSystems\Kudosity\Exceptions\ValidationException;
+
 class KudosityMessage
 {
+    /**
+     * An explicit override of the routing decision, when the caller has made one.
+     */
+    protected ?ApiVersion $forcedVersion = null;
+
     protected string $content;
 
     protected ?string $to = null;
@@ -475,5 +482,145 @@ class KudosityMessage
         return $this->dlrHandler !== null
             || $this->replyHandler !== null
             || $this->linkHitHandler !== null;
+    }
+
+    // =========================================================================
+    // API version routing
+    // =========================================================================
+
+    /**
+     * The options V2 cannot express, mapped to the builder method that sets them.
+     *
+     * Order is the order they are reported in, which is why it is a list rather
+     * than derived from the property names: a developer reading "why did this go
+     * to V1" wants the most likely culprit first.
+     *
+     * @return array<string, bool>
+     */
+    protected function v1OnlyOptions(): array
+    {
+        return [
+            'toList()' => $this->listId !== null,
+            'sendAt()' => $this->sendAt !== null,
+            'validity()' => $this->validity !== null,
+            'repliesToEmail()' => $this->repliesToEmail !== null,
+            'dlrCallback()' => $this->dlrCallback !== null,
+            'replyCallback()' => $this->replyCallback !== null,
+            'linkHitsCallback()' => $this->linkHitsCallback !== null,
+            // The handler forms matter as much as the raw URLs, and are easier to
+            // miss: onDlr() is the idiomatic way to use this package, and it ends
+            // up as a dlr_callback on the request. A message using it that routed
+            // to V2 would send fine and never call the handler.
+            'onDlr()' => $this->dlrHandler !== null,
+            'onReply()' => $this->replyHandler !== null,
+            'onLinkHit()' => $this->linkHitHandler !== null,
+            'multiple recipients in to()' => $this->hasMultipleRecipients(),
+        ];
+    }
+
+    /**
+     * Every reason this message cannot be sent over V2.
+     *
+     * Empty when it can. Exposed for diagnostics — "which option pushed this to
+     * V1" is a question worth being able to answer without reading the source.
+     *
+     * @return array<int, string>
+     */
+    public function v1Reasons(): array
+    {
+        return array_keys(array_filter($this->v1OnlyOptions()));
+    }
+
+    /**
+     * Which API this message will be sent over.
+     *
+     * V2 by default; V1 when the message uses something V2 cannot do. Pure — safe
+     * to call in a log line or a test without sending anything.
+     *
+     * @throws ValidationException If forceV2() was called on a message using a
+     *                             V1-only option
+     */
+    public function apiVersion(): ApiVersion
+    {
+        $reasons = $this->v1Reasons();
+
+        if ($this->forcedVersion === ApiVersion::V2 && $reasons !== []) {
+            // Throwing rather than dropping the options. Silently ignoring a
+            // sendAt() turns a scheduled send into an immediate one — a wrong
+            // send rather than a failed one, and the kind nobody notices until a
+            // customer is woken at 3am.
+            throw new ValidationException(
+                message: sprintf(
+                    'forceV2() cannot be honoured: %s %s no V2 equivalent. Remove the option, or drop '.
+                    'forceV2() and let the message route to V1.',
+                    implode(', ', $reasons),
+                    count($reasons) === 1 ? 'has' : 'have',
+                ),
+                errorCode: 'FIELD_INVALID',
+            );
+        }
+
+        if ($this->forcedVersion !== null) {
+            return $this->forcedVersion;
+        }
+
+        return $reasons === [] ? ApiVersion::V2 : ApiVersion::V1;
+    }
+
+    /**
+     * Send this message over V1, even though V2 could carry it.
+     *
+     * A legitimate escape hatch — an account may depend on V1-side reporting —
+     * and the last of forceV1()/forceV2() called wins, so a builder can be
+     * reconfigured.
+     */
+    public function forceV1(): self
+    {
+        $this->forcedVersion = ApiVersion::V1;
+
+        return $this;
+    }
+
+    /**
+     * Require this message to go over V2.
+     *
+     * Combined with a V1-only option this **throws** at {@see self::apiVersion()}
+     * rather than dropping the option.
+     */
+    public function forceV2(): self
+    {
+        $this->forcedVersion = ApiVersion::V2;
+
+        return $this;
+    }
+
+    /**
+     * Whether an explicit override is in force.
+     */
+    public function getForcedVersion(): ?ApiVersion
+    {
+        return $this->forcedVersion;
+    }
+
+    /**
+     * Whether `to` names more than one recipient.
+     *
+     * `POST /v2/sms` takes exactly one. Empty segments are ignored so a trailing
+     * comma or stray whitespace does not silently downgrade an otherwise-V2 send
+     * — a real hazard, because both are invisible in a config value or a database
+     * column.
+     */
+    protected function hasMultipleRecipients(): bool
+    {
+        if ($this->to === null) {
+            return false;
+        }
+
+        $recipients = array_filter(
+            array_map('trim', explode(',', $this->to)),
+            static fn (string $r): bool => $r !== '',
+        );
+
+        return count($recipients) > 1;
     }
 }

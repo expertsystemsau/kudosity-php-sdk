@@ -415,7 +415,29 @@ events, so filtering inbound by sender filters by your own number.
 
 `last_message` is best-effort: it is absent when Kudosity finds no recent
 outbound, so an unsolicited inbound has no ref and cannot be correlated *or*
-authenticated. `InboundEvent::isCorrelated()` is the check.
+authenticated. `InboundEvent::isCorrelated()` is the check. **A captured
+`MMS_INBOUND` had no `last_message` at all**, so an MMS reply cannot be routed
+this way — plan for that before migrating an MMS flow.
+
+### An inbound MMS carries its picture inline, not as a URL
+
+`content_urls` is the shape you *send*. A real `MMS_INBOUND` delivers the bytes
+themselves under `mo.media[]`, so `InboundEvent::$contentUrls` is empty and
+`$media` is where the attachment is:
+
+```php
+foreach ($event->media as $item) {
+    $item->name;           // "image000000.jpg" — from the sender, do not trust it
+    $item->mimeType();     // sniffed from the bytes; null if unrecognised
+    $item->sizeInBytes();
+    Storage::put($path, $item->bytes());   // null if the base64 will not decode
+}
+```
+
+**These deliveries get large.** One photo made a 204KB POST body, essentially all
+of it one base64 field — check `sizeInBytes()` before writing, and think twice
+before logging `$raw` on this event type. There is no content-type field in the
+payload, which is why the type is sniffed rather than read.
 
 ### Deliveries are not signed
 
@@ -423,6 +445,11 @@ There is no HMAC, signature or auth header of any kind. The complete observed
 header set is `accept-encoding`, `content-length`, `content-type`, `host`,
 `sentry-trace`, `traceparent` and `user-agent: Go-http-client/2.0`. **A receiver
 cannot verify a delivery came from Kudosity.**
+
+Kudosity confirmed this on 2026-08-06: the `x-transmitsms-signature` header is a
+V1 mechanism, it is unsupported on V2, and V2 signing is on their roadmap. Their
+recommended substitute is `message_ref` — which is what `SignedMessageRef` below
+signs.
 
 What you *can* verify is that a delivery refers to one of your own entities:
 
@@ -481,9 +508,14 @@ if (StatusPrecedence::supersedes($event->status, $recorded)) {
   fetches, so it is not an engagement metric.
 - `link_hit.url` is the original destination; the *shortened* link is in
   `source_message.message`.
-- **This SDK rejects an `http://` webhook URL even though the API accepts one.**
-  The docs require HTTPS, deliveries carry message content, and they are
-  unsigned. `WebhookData::isSecure()` reports on registrations that already exist.
+- **This SDK rejects an `http://` webhook URL by default even though the API
+  accepts one.** The docs require HTTPS, deliveries carry message content and
+  phone numbers, and they are unsigned. For local development pass
+  `allowInsecureUrl: true` — an explicit opt-in rather than something inferred
+  from the hostname, because the SDK cannot tell a laptop from production.
+  `kudosity:webhook:install` opts in automatically **only** when `APP_ENV=local`,
+  and warns when it does. `WebhookData::isSecure()` reports on registrations that
+  already exist.
 
 ## Senders
 

@@ -34,7 +34,7 @@ Framework-agnostic PHP client for the Kudosity API.
 [![Total Downloads](https://img.shields.io/packagist/dt/expertsystemsau/kudosity-laravel-client.svg?style=flat-square)](https://packagist.org/packages/expertsystemsau/kudosity-laravel-client)
 [![License](https://img.shields.io/packagist/l/expertsystemsau/kudosity-laravel-client.svg?style=flat-square)](https://packagist.org/packages/expertsystemsau/kudosity-laravel-client)
 
-Laravel notification channel integration (includes the core client).
+Laravel notification channel integration (includes the core client) — four channels, the V2 webhook receiver route, and `kudosity:webhook:*` commands.
 
 ## Installation
 

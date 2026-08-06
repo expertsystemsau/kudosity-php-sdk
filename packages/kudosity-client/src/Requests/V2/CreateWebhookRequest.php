@@ -7,6 +7,7 @@ namespace ExpertSystems\Kudosity\Requests\V2;
 use ExpertSystems\Kudosity\Data\V2\WebhookData;
 use ExpertSystems\Kudosity\Data\V2\WebhookFilter;
 use ExpertSystems\Kudosity\Exceptions\ValidationException;
+use ExpertSystems\Kudosity\Laravel\Console\Commands\WebhookInstallCommand;
 use ExpertSystems\Kudosity\Requests\KudosityV2BodyRequest;
 use Saloon\Enums\Method;
 use Saloon\Http\Response;
@@ -33,9 +34,16 @@ use Saloon\Http\Response;
  * years of quiet plaintext delivery.
  *
  * That makes this the one place the SDK is deliberately stricter than the
- * platform. If a caller has a genuine need for a plaintext receiver, this guard
- * is the thing to revisit — not something to work around by calling the endpoint
- * directly.
+ * platform. **A plaintext URL is still reachable, but only on purpose**: pass
+ * `allowInsecureUrl: true`. That exists for local development against a tunnel
+ * or a container, where TLS is often not available and the traffic never leaves
+ * the machine.
+ *
+ * It is an explicit parameter rather than something sniffed from the URL, because
+ * this class has no way to tell a developer's laptop from production — `localhost`
+ * is not a reliable signal, and neither is a hostname. The caller knows; the
+ * caller decides. {@see WebhookInstallCommand}
+ * opts in only when the Laravel environment is `local`.
  *
  * @see https://developers.kudosity.com/reference/post_v2-webhook
  */
@@ -60,9 +68,10 @@ class CreateWebhookRequest extends KudosityV2BodyRequest
         protected string $url,
         protected ?WebhookFilter $filter = null,
         protected ?int $rateLimit = null,
+        bool $allowInsecureUrl = false,
     ) {
         self::guardName($name);
-        self::guardUrl($url);
+        self::guardUrl($url, $allowInsecureUrl);
         self::guardRateLimit($rateLimit);
     }
 
@@ -96,8 +105,16 @@ class CreateWebhookRequest extends KudosityV2BodyRequest
     /**
      * @throws ValidationException
      */
-    public static function guardUrl(string $url): void
+    public static function guardUrl(string $url, bool $allowInsecure = false): void
     {
+        if ($allowInsecure && str_starts_with(strtolower($url), 'http://')) {
+            // Opt-in, never inferred here. This class cannot know whether it is
+            // running against a developer's machine or production — the caller
+            // can, so the caller decides. The Laravel install command opts in
+            // only for a local environment; see WebhookInstallCommand.
+            return;
+        }
+
         if (! str_starts_with(strtolower($url), 'https://')) {
             throw new ValidationException(
                 message: sprintf(

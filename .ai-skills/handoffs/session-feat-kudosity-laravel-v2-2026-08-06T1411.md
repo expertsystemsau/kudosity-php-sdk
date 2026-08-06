@@ -2,20 +2,20 @@
 handoff_version: "1"
 source: xsys-handoff
 mode: full
-generated_at: "2026-08-06T15:55+10:00"
-title: "Kudosity 2.0 — Phases 1-5 merged; Phase 6 is what remains"
+generated_at: "2026-08-06T14:11+10:00"
+title: "Kudosity 2.0 — Phase 5 code and docs complete; only the live receiver verification remains"
 status: in-progress
-branch: "main"
-head_sha: "12f26892"
+branch: "feat/kudosity-laravel-v2"
+head_sha: "01ecffed6d928dbb9108e3b375a579a1c3fde301"
 dirty_files: 0
 diff_digest: "clean"
 ticket_key: "none"
 repo: "transmitsms-php-sdk"
 submodules: []
-next_step: "Start Phase 6 — the standalone PHPUnit 11 suite for the client package on PHP 8.2/8.3/8.4, then the release checklist"
+next_step: "Run the live receiver verification with the ngrok rig (plan Task 6 Step 5), then merge feat/kudosity-laravel-v2 to main and push"
 ---
 
-# Handoff: Kudosity 2.0 — Phases 1-5 are on main
+# Handoff: Kudosity 2.0 — Phase 5 part-done on `feat/kudosity-laravel-v2`
 
 ## Goal
 
@@ -28,7 +28,7 @@ Upgrade this PHP SDK from the TransmitSMS V1 API to Kudosity's V2 API, shipping 
 
 Both hostnames are real; neither is a Kudosity domain — see Failed Approaches. Six phases, specced in `docs/superpowers/specs/2026-08-04-kudosity-v2-migration-design.md`.
 
-**Phases 1-5 are merged on `main`.** Phase 5 is complete, including the live receiver verification. Phase 6 — the standalone client-package test suite and the release — is all that remains.
+**Phase 5 is code- and docs-complete. One thing is left: the live receiver verification.** Phases 1–4 are merged and pushed on `main` (`a512f02`).
 
 ## Completed
 
@@ -43,16 +43,14 @@ Both hostnames are real; neither is a Kudosity domain — see Failed Approaches.
 - [x] **The two split-target repos now exist** — `expertsystemsau/kudosity-php-client` and `kudosity-laravel-client`, created public and empty on 2026-08-06. `Split Monorepo` should go green on the next push to `main`; **that has not been observed yet** — confirm it.
 - [x] **The `http://` question is settled.** HTTPS for any real environment; plaintext permitted only via an explicit `allowInsecureUrl` opt-in, which `kudosity:webhook:install` sets only when `APP_ENV=local`.
 - [x] **CI green on this branch at `e11fb86`** — `run-tests`, PHPStan and Pint all pass. `Split Monorepo` does not fire on branches.
-- [x] **Phase 5 Task 6 — live receiver verification, done 2026-08-06.** Seven real deliveries, seven typed events, no drops and no double-dispatch. See Verification.
-- [x] **Inbound MMS media fix (`12f2689`)**, which the live run found. `InboundEvent` read `mo.content_urls`; a real `MMS_INBOUND` puts the bytes inline under `mo.media[]`, so the picture was silently discarded. `Webhooks\InboundMedia` is the fix, with the real payload captured as `mms-inbound-with-media.json`.
 
 ## Not Yet Done
+
+- [ ] **Phase 5 Task 6 — live receiver verification. This is the step that proves the phase**; everything else is mocked. Same ngrok rig as Phase 4: local server + `ngrok http <port>`, install a webhook at the tunnel URL, send one tracked SMS, confirm the typed events fire, tear down, confirm the account is back to zero webhooks. **Skip `OPT_OUT`** — it opts the test handset out of receiving messages.
 - [ ] **Phase 6 — tests, CI, docs, release.** Standalone PHPUnit 11 suite for the client package on PHP 8.2/8.3/8.4, then release.
 - [ ] **`register()` and the sender SMS verification flow are still not live-verified.** Deliberate: completing one registers a personal mobile as a sender and sends a real code to it. Wants a human present.
 - [ ] **WhatsApp and RCS remain unverified end to end**, and Phase 4 established that the senders endpoint does **not** unblock this — it registers personal mobile numbers only. Needs Kudosity to provision a WhatsApp Business sender and an RCS agent.
 - [ ] **Rotate the API key and secret** — they were pasted into a chat transcript.
-- [ ] **`.env`'s `KUDOSITY_FROM` is the retired virtual number.** Kudosity replaced it (see Warnings), and `POST /v2/sms` answers `Sender not found` for the old value. The live run used the replacement explicitly. Update `.env` before the next live run, or every V2 send fails.
-- [ ] **Open with Kudosity: do they publish stable egress IP ranges for webhook deliveries?** Referred to their product team, unanswered. Until then `35.197.178.201` is one observation, not an allowlist.
 
 ## Failed Approaches (Don't Repeat These)
 
@@ -80,8 +78,6 @@ Both hostnames are real; neither is a Kudosity domain — see Failed Approaches.
 
 **Some invariants cannot be mutation-tested.** `hash_equals` → `===` in `SignedMessageRef` passes every test, because the difference is timing not result. Recorded as an invariant in that class's docblock instead. Do not add a test that pretends to cover it.
 
-**A DTO field written from the outbound docs described nothing that arrives.** `InboundEvent::$contentUrls` read `mo.content_urls` — the shape an outbound MMS *request* takes. A real `MMS_INBOUND` carries the bytes inline under `mo.media[]`, so the picture parsed cleanly, dispatched its typed event, and vanished. **A silence, not an error**, and the same defect class as the V1-callbacks trap. Mocked tests could never have caught it, because the mock was built from the same wrong assumption as the code. Fixed in `12f2689`; the general lesson is that a field mirrored from the request side needs a captured response before it is believed.
-
 **Do not invent a request body or DTO for an undocumented shape — ask the API instead.** Posting `{}` returns RFC 9457 `issues[]` naming every required field; posting an invalid enum returns the permitted set. That is how the whole senders schema was established without guessing a wire name.
 
 **Do not predict exact test counts in a plan.** Phase 3's plan double-counted a dataset's own `it()` block and every later prediction inherited the error.
@@ -107,57 +103,36 @@ Both hostnames are real; neither is a Kudosity domain — see Failed Approaches.
 
 ## Current State
 
-**Working.** `main` carries Phases 1-5. `feat/kudosity-laravel-v2` was merged with `--no-ff` and can be deleted. Everything above under Completed.
+**Working.** Branch `feat/kudosity-laravel-v2` at `e11fb86`, pushed, clean tree, 6 commits ahead of `main`. Everything above under Completed. CI green on the branch tip.
 
-**Broken.** Nothing known. `Split Monorepo` succeeded on `main` at `059650b` and both package repos are populated.
+**Broken.** Nothing known. `Split Monorepo` failed on `main` only because the two split-target repos were missing; they now exist, so the next push to `main` should be the first all-green run — unconfirmed.
 
 **Uncommitted changes.** None.
 
 ## Verification
 
-At `12f2689`, the last commit before the merge:
+At `e11fb86` on this branch:
 
 | Command | Result |
 |---|---|
-| `vendor/bin/pest --compact` | 844 passed (1660 assertions) |
+| `vendor/bin/pest --compact` | 826 passed (1629 assertions) |
 | `vendor/bin/phpstan analyse --no-progress` | `[OK] No errors` (level 6) |
 | `vendor/bin/pint --test` | passed |
 | `composer validate --strict` (root, client, laravel) | all three valid |
 | `php bin/kudosity-codemod packages` | 0 files would change |
 | `php bin/kudosity-codemod tests` | 1 file — `tests/Unit/CodemodTest.php`, old-brand fixtures by design; pre-existing, `main` reports the same |
 | branding sweep + hostname negative check | both clean; both real hostnames intact |
-| CI at `e11fb86` | `run-tests`, `PHPStan`, `Fix PHP code style issues` all SUCCESS. **Not yet run for the commits after it** — check before trusting. |
-| Live receiver verification | **passed, 2026-08-06** — see below |
+| CI at `e11fb86` | `run-tests`, `PHPStan`, `Fix PHP code style issues` all SUCCESS. **Not yet run for the two commits after it** — check before trusting. |
+| Live receiver verification | **not run — this is the outstanding Task 6 step** |
 | `composer test-coverage` | not run this session |
 
-### The live receiver verification, 2026-08-06
-
-Rig: a Testbench-booted Laravel app with **only** `KudosityServiceProvider` registered, served by `php -S` behind `ngrok http 8099`, so the route, the container bindings and the Artisan commands under test were the shipped ones. Webhook registered by `kudosity:webhook:install` (subscribed to all ten types) and every delivery arrived at the URL that command built.
-
-| Delivery | Typed event | What it proved |
-|---|---|---|
-| `SMS_STATUS` SENT | `KudosityStatusReceived` | `message_ref` correlated |
-| `SMS_STATUS` DELIVERED | `KudosityStatusReceived` | 2s later, upper-case as documented |
-| `LINK_HIT` `hits:1` | `KudosityLinkHitReceived` | 2s after DELIVERED — the "not a human tap" warning holds |
-| `LINK_HIT` `hits:2` | `KudosityLinkHitReceived` | `hits` cumulative, `isFirstHit()` false |
-| `SMS_INBOUND` | `KudosityInboundReceived` | `messageRef()` resolved through `last_message` |
-| `MMS_STATUS` DELIVERED | `KudosityStatusReceived` | carrier `description` present |
-| `MMS_INBOUND` | `KudosityInboundReceived` | **first ever captured** — and it found the media bug |
-
-Seven raw deliveries, seven typed events. An unsigned POST got 403 both locally and through the tunnel. `OPT_OUT` skipped by design. Torn down: webhook deleted, account confirmed back to zero through `WebhooksResource::all()` rather than the command that installed it, tunnel and server stopped.
-
-Two things worth knowing before repeating this. `.env`'s `KUDOSITY_FROM` is the **retired** number and fails with `Sender not found` — pass the replacement explicitly. And an MMS `content_urls` entry must serve a real image content type: Wikimedia answers Kudosity's fetcher with `text/plain` and the API rejects the URL before looking at the bytes, so the rig served the image off its own tunnel.
-
-Mutation testing ran on Phase 5 tasks 1-4 — 4 on the provider, 7 on the routing/contract, 7 on the channels, 5 on the receiver — plus 6 on `InboundMedia`. **Task 5 (the commands) was still not mutation-tested** — worth doing. All caught except three that were informative rather than gaps (see Failed Approaches), and two on `InboundMedia` that survived and now have tests.
-
-**A `perl -0pi -e` mutation whose pattern contains a PHP `$variable` silently no-ops.** `\Q…\E` stops perl treating it as a regex metacharacter but does *not* stop interpolation, so `$this` expands to nothing and the pattern never matches. Three mutations reported clean this way before the harness's own "did the file actually change?" check caught it. Patch with `php -r` and `str_replace` instead, and keep asserting the file changed.
+Mutation testing ran on Phase 5 tasks 1-4 — 4 on the provider, 7 on the routing/contract, 7 on the channels, 5 on the receiver. **Task 5 (the commands) was not mutation-tested** — worth doing. All caught except three that were informative rather than gaps (see Failed Approaches).
 
 ## Files to Know
 
 | File | Why It Matters |
 |---|---|
-| `docs/superpowers/plans/2026-08-06-kudosity-phase-5-laravel.md` | The plan, now fully executed. |
-| `packages/kudosity-client/src/Webhooks/InboundMedia.php` | Where an inbound MMS attachment actually lives, and why the media type is sniffed rather than read. |
+| `docs/superpowers/plans/2026-08-06-kudosity-phase-5-laravel.md` | **The plan being executed.** Task 5 and the rest of Task 6 are what remain. |
 | `packages/kudosity-laravel/src/Http/Controllers/WebhookController.php` | `events()` is the V2 receiver, including the stricter-than-parser signature check. The three V1 GET handlers are below it, unchanged. |
 | `packages/kudosity-laravel/src/Notifications/KudosityMessage.php` | `v1OnlyOptions()` is the routing table. Add to it if a new V1-only option appears. |
 | `packages/kudosity-laravel/src/KudosityServiceProvider.php` | `baseUrlFor()` holds the flat-`base_url` guard — the thing a too-broad codemod rule would silently disable. |
@@ -195,18 +170,18 @@ public function handle(KudosityStatusReceived $e): void
 
 ## Resume Instructions
 
-1. Confirm the baseline: `git checkout main && vendor/bin/pest --compact && vendor/bin/phpstan analyse --no-progress`
-   - Expected: `844 passed (1660 assertions)` and `[OK] No errors`.
+1. Confirm the baseline: `git checkout feat/kudosity-laravel-v2 && vendor/bin/pest --compact && vendor/bin/phpstan analyse --no-progress`
+   - Expected: `826 passed (1629 assertions)` and `[OK] No errors`.
    - If different: `git log --oneline -8` — something moved since this handoff.
-2. Confirm CI is green on `main`, including `Split Monorepo` — both target repos exist and were populated at `059650b`.
-3. Start Phase 6: the standalone PHPUnit 11 suite for the client package on PHP 8.2/8.3/8.4, then the release checklist under Warnings.
+2. Run the **live receiver verification** — the step that proves the phase. Rig recipe in the plan's Task 6 Step 5. Leave the account at zero webhooks.
+3. Re-run the full verification block from the plan, then merge to `main` and push. CI on `main` will show `Split Monorepo` failing; that is expected.
 
 ## Setup Required
 
 - PHP 8.3 or 8.4 for the dev toolchain (Pest 4 needs `^8.3.0`), though the packages declare `^8.2`.
 - `composer install` at the repo root. No services or ports; unit tests use Saloon's `MockClient` and Orchestra Testbench.
 - Live testing reads the gitignored `.env`. **No credential values are recorded here.** Note `parse_ini_file()` chokes on `#` comments containing parentheses, which is why that file's comments avoid them.
-- For the receiver verification: `ngrok` (installed, authtoken configured) plus a local HTTP server. Webhook URLs must be HTTPS. The 2026-08-06 rig booted Testbench directly — `Orchestra\Testbench\Foundation\Application::create(basePath: vendor/orchestra/testbench-core/laravel, options: ['extra' => ['providers' => [KudosityServiceProvider::class]]])`, config supplied through real env vars because the resolving callback runs *before* config is loaded, then `$app['events']->listen(...)` per typed event writing one JSON line per dispatch. `php -S` needs `return false` for existing static files or Laravel 404s them, which matters because an MMS `content_url` has to be served from somewhere.
+- For the receiver verification: `ngrok` (installed, authtoken configured) plus a local HTTP server. Webhook URLs must be HTTPS.
 
 ## Edge Cases & Error Handling
 
@@ -224,9 +199,6 @@ public function handle(KudosityStatusReceived $e): void
 - **A `LINK_HIT` is not evidence a human clicked.** The first hit routinely lands in the same second as `DELIVERED` — a link preview. `hits` counts machine fetches.
 - **`Saloon\PaginationPlugin\Paginator::items()` is annotated as yielding `Response|PromiseInterface`** when it yields rows. That is why `SendersResource::allRegistrations()` walks the paginator's *responses* — iterating `items()` cannot be type-checked at level 6.
 - **`ngrok`'s `x-forwarded-*` headers are the tunnel's, not Kudosity's.** Anything reading them is reading the test rig.
-- **Kudosity replaced the account's virtual number**, because the previous one could not receive MMS. Inbound MMS works on the replacement; a number that *sends* MMS does not necessarily *receive* it. `.env` still names the old one — see Not Yet Done.
-- **V2 deliveries are unsigned, now confirmed in writing** (Kudosity, 2026-08-06). `x-transmitsms-signature` is V1-only; V2 signing is roadmap. Their recommended substitute is `message_ref`, which is what `SignedMessageRef` already signs — so nothing in the SDK changes, but the design note is no longer an inference.
-- **An inbound MMS delivery can be hundreds of KB.** One photo made a 204KB POST body, essentially all of it one base64 field. A receiver that logs `$raw` on this event type will log all of it.
 - **PHP 8.2 is declared but untested.** Phase 6 closes this.
 - **`withRetry()` does not actually retry HTTP failures** on either connector. Docblocks were corrected; the mechanism predates 2.0 and is deliberately untouched.
 - **Release checklist before tagging** (dashboard work, in `UPGRADING.md`): rename the GitHub monorepo to `kudosity-php-sdk`, create the two split-target repos, register both on Packagist, mark `transmitsms-php-client` and `transmitsms-laravel-client` abandoned pointing at the replacements, then tag.

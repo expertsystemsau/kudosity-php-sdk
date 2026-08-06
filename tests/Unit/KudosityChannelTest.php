@@ -3,12 +3,14 @@
 declare(strict_types=1);
 
 use ExpertSystems\Kudosity\Data\SmsData;
+use ExpertSystems\Kudosity\Data\V2\SmsMessageData;
 use ExpertSystems\Kudosity\Exceptions\KudosityException;
 use ExpertSystems\Kudosity\KudosityClient;
 use ExpertSystems\Kudosity\Laravel\Notifications\KudosityChannel;
 use ExpertSystems\Kudosity\Laravel\Notifications\KudosityMessage;
 use ExpertSystems\Kudosity\Requests\SendSmsRequest;
 use ExpertSystems\Kudosity\Resources\BulkSmsResource;
+use ExpertSystems\Kudosity\Resources\SmsV2Resource;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\Config;
 
@@ -18,8 +20,13 @@ describe('KudosityChannel', function () {
         $this->bulkResource = Mockery::mock(BulkSmsResource::class);
         $this->channel = new KudosityChannel($this->client);
 
+        $this->smsResource = Mockery::mock(SmsV2Resource::class);
+
         $this->client->shouldReceive('bulk')
             ->andReturn($this->bulkResource);
+
+        $this->client->shouldReceive('sms')
+            ->andReturn($this->smsResource);
     });
 
     describe('send', function () {
@@ -37,7 +44,10 @@ describe('KudosityChannel', function () {
                 public function toKudosity($notifiable)
                 {
                     return (new KudosityMessage('Hello World'))
-                        ->from('MyBrand');
+                        ->from('MyBrand')
+                        // Pinned to V1: this test covers V1 send mechanics, not the
+                        // routing default, which is now V2.
+                        ->forceV1();
                 }
             };
 
@@ -78,21 +88,27 @@ describe('KudosityChannel', function () {
                 }
             };
 
-            $smsData = new SmsData(
-                messageId: 456,
-                sendAt: '2025-12-06 10:00:00',
-                recipients: 1,
-                cost: 0.10,
-                sms: 1
-            );
+            // A bare string sets no V1-only option, so it routes to V2 — the
+            // default since 2.0. This test's point is that a string is accepted
+            // at all; the routing assertion is what changed.
+            $sent = SmsMessageData::fromArray([
+                'id' => '953b88be-5b6f-4b6d-8fcb-3436ec21c0be',
+                'recipient' => '61400000000',
+                'sender' => 'MyBrand',
+                'message' => 'Hello from string',
+                'status' => 'queued',
+            ]);
 
-            $this->bulkResource->shouldReceive('sendRequest')
+            $this->smsResource->shouldReceive('send')
                 ->once()
-                ->andReturn($smsData);
+                ->withArgs(fn (string $message, string $to) => $message === 'Hello from string' && $to === '61400000000')
+                ->andReturn($sent);
 
             $result = $this->channel->send($notifiable, $notification);
 
-            expect($result)->toBe($smsData);
+            expect($result)->toBe($sent)
+                ->and($result->id())->toBe('953b88be-5b6f-4b6d-8fcb-3436ec21c0be')
+                ->and($result->recipientCount())->toBe(1);
         });
 
         it('uses recipient from message if set', function () {
@@ -109,7 +125,8 @@ describe('KudosityChannel', function () {
                 public function toKudosity($notifiable)
                 {
                     return (new KudosityMessage('Test'))
-                        ->to('61400000002'); // Should be used
+                        ->to('61400000002') // Should be used
+                        ->forceV1();
                 }
             };
 
@@ -187,7 +204,8 @@ describe('KudosityChannel', function () {
                 {
                     return (new KudosityMessage('Test'))
                         ->countryCode('AU')
-                        ->formatNumbers();
+                        ->formatNumbers()
+                        ->forceV1();
                 }
             };
 
@@ -229,7 +247,7 @@ describe('KudosityChannel', function () {
             {
                 public function toKudosity($notifiable)
                 {
-                    return new KudosityMessage('Test');
+                    return (new KudosityMessage('Test'))->forceV1();
                 }
             };
 
@@ -253,7 +271,7 @@ describe('KudosityChannel', function () {
             {
                 public function toKudosity($notifiable)
                 {
-                    return new KudosityMessage('Test'); // No from() set
+                    return (new KudosityMessage('Test'))->forceV1(); // No from() set
                 }
             };
 
@@ -363,7 +381,7 @@ describe('KudosityChannel', function () {
                 {
                     // Create a message with content that will trigger validation
                     // We need to trigger validation in the channel
-                    return new KudosityMessage(str_repeat('a', 613));
+                    return (new KudosityMessage(str_repeat('a', 613)))->forceV1();
                 }
             };
 
@@ -384,7 +402,7 @@ describe('KudosityChannel', function () {
             {
                 public function toKudosity($notifiable)
                 {
-                    return new KudosityMessage('Test');
+                    return (new KudosityMessage('Test'))->forceV1();
                 }
             };
 

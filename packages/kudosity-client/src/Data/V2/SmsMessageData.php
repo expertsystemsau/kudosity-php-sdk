@@ -6,6 +6,7 @@ namespace ExpertSystems\Kudosity\Data\V2;
 
 use DateTimeImmutable;
 use ExpertSystems\Kudosity\Concerns\ParsesV2Timestamps;
+use ExpertSystems\Kudosity\Contracts\SentMessage;
 use ExpertSystems\Kudosity\Enums\MessageStatus;
 
 /**
@@ -14,7 +15,7 @@ use ExpertSystems\Kudosity\Enums\MessageStatus;
  * The send response omits `is_sandbox`, so it is not represented here at all
  * rather than modelled as an always-null field.
  */
-final readonly class SmsMessageData
+final readonly class SmsMessageData implements SentMessage
 {
     use ParsesV2Timestamps;
 
@@ -60,5 +61,35 @@ final readonly class SmsMessageData
             createdAt: self::parseTimestamp($data['created_at'] ?? null),
             updatedAt: self::parseTimestamp($data['updated_at'] ?? null),
         );
+    }
+
+    public function id(): string
+    {
+        return $this->id;
+    }
+
+    /**
+     * Always 1: `POST /v2/sms` takes exactly one recipient.
+     *
+     * Not `smsCount`, which counts message *segments* — a 200-character message
+     * to one person is one recipient and two segments, and conflating them
+     * over-reports reach.
+     */
+    public function recipientCount(): int
+    {
+        return 1;
+    }
+
+    /**
+     * Narrower than {@see SentMessage::status()}'s `?MessageStatus`, deliberately.
+     *
+     * A V2 send response always carries a status, so this never returns null —
+     * and return types are covariant, so saying so costs nothing and tells a
+     * caller holding a concrete `SmsMessageData` that it need not null-check.
+     * The nullable signature exists on the interface for V1's sake alone.
+     */
+    public function status(): MessageStatus
+    {
+        return $this->status;
     }
 }

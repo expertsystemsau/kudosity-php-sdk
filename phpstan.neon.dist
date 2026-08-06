@@ -14,7 +14,11 @@ parameters:
         # Config files use env() and are published to the Laravel config directory
         - identifier: larastan.noEnvCallsOutsideOfConfig
           path: packages/kudosity-laravel/config/*
-        # toKudosity is a notification convention method
+        # toKudosity(), toKudosityMms(), toKudosityWhatsApp() and toKudosityRcs()
+        # are notification convention methods — Laravel resolves them off the
+        # user's own Notification subclass, so they cannot exist on the base
+        # class. Scoped to the channels directory rather than one file so the
+        # four channels are treated alike; anything else undefined still errors.
         -
             message: "#Call to an undefined method Illuminate\\\\Notifications\\\\Notification::toKudosity#"
-            path: packages/kudosity-laravel/src/Notifications/KudosityChannel.php
+            path: packages/kudosity-laravel/src/Notifications/*

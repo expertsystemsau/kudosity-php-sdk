@@ -55,6 +55,7 @@ class WebhooksResource extends V2Resource
         array $eventTypes = [],
         ?WebhookFilter $filter = null,
         ?int $rateLimit = null,
+        bool $allowInsecureUrl = false,
     ): WebhookData {
         /** @var WebhookData */
         return $this->sendAndDto(new CreateWebhookRequest(
@@ -62,6 +63,7 @@ class WebhooksResource extends V2Resource
             url: $url,
             filter: self::mergeEventTypes($filter, $eventTypes),
             rateLimit: $rateLimit,
+            allowInsecureUrl: $allowInsecureUrl,
         ));
     }
 
@@ -115,6 +117,7 @@ class WebhooksResource extends V2Resource
         array $eventTypes = [],
         ?WebhookFilter $filter = null,
         ?int $rateLimit = null,
+        bool $allowInsecureUrl = false,
     ): WebhookData {
         /** @var WebhookData */
         return $this->sendAndDto(new UpdateWebhookRequest(
@@ -123,6 +126,7 @@ class WebhooksResource extends V2Resource
             url: $url,
             filter: self::mergeEventTypes($filter, $eventTypes),
             rateLimit: $rateLimit,
+            allowInsecureUrl: $allowInsecureUrl,
         ));
     }
 

@@ -6,7 +6,7 @@ namespace ExpertSystems\Kudosity\Laravel\Notifications;
 
 use ExpertSystems\Kudosity\Callbacks\CallbackType;
 use ExpertSystems\Kudosity\Callbacks\CallbackUrlBuilder;
-use ExpertSystems\Kudosity\Data\SmsData;
+use ExpertSystems\Kudosity\Contracts\SentMessage;
 use ExpertSystems\Kudosity\Exceptions\KudosityException;
 use ExpertSystems\Kudosity\Exceptions\ValidationException;
 use ExpertSystems\Kudosity\KudosityClient;
@@ -24,12 +24,21 @@ class KudosityChannel
     /**
      * Send the given notification.
      *
+     * Routes to V2 by default and to V1 only when the message uses something V2
+     * cannot express — see {@see KudosityMessage::apiVersion()}, which also
+     * reports the decision and the reasons behind it.
+     *
+     * The return type is {@see SentMessage} rather than either concrete DTO,
+     * because the routing decision is made here rather than by the caller: a
+     * caller reading `->id` on a concrete type would break the first time
+     * somebody added `sendAt()` to a notification.
+     *
      * @param  mixed  $notifiable
-     * @return SmsData|null The SMS data response, or null if no recipient
+     * @return SentMessage|null The send response, or null if no recipient
      *
      * @throws KudosityException
      */
-    public function send($notifiable, Notification $notification): ?SmsData
+    public function send($notifiable, Notification $notification): ?SentMessage
     {
         /** @var KudosityMessage|string $message */
         $message = $notification->toKudosity($notifiable);
@@ -44,6 +53,22 @@ class KudosityChannel
         // A list send doesn't need a resolved recipient; a direct send does.
         if ($listId === null && ! $to) {
             return null;
+        }
+
+        try {
+            // apiVersion() throws when forceV2() cannot be honoured, so this sits
+            // inside the try and surfaces as a KudosityException like every other
+            // validation failure in this method.
+            if ($message->apiVersion() === ApiVersion::V2 && $to !== null) {
+                return $this->sendViaV2($message, $to);
+            }
+        } catch (ValidationException $e) {
+            throw new KudosityException(
+                $e->getMessage(),
+                $e->getCode(),
+                $e,
+                $e->getErrorCode()
+            );
         }
 
         try {
@@ -103,6 +128,29 @@ class KudosityChannel
 
         // Send the request and return the DTO
         return $this->client->bulk()->sendRequest($request);
+    }
+
+    /**
+     * Send over `POST /v2/sms`.
+     *
+     * Only reached for a message with no V1-only options, so nothing here needs to
+     * consider scheduling, lists, validity or callbacks — the routing decision has
+     * already established none are set. That is why this is short: the complexity
+     * lives in the decision, not the send.
+     *
+     * @throws KudosityException
+     */
+    protected function sendViaV2(KudosityMessage $message, string $to): SentMessage
+    {
+        $from = $message->getFrom() ?? Config::get('kudosity.from');
+
+        return $this->client->sms()->send(
+            message: $message->getContent(),
+            to: trim($to),
+            from: (string) $from,
+            messageRef: null,
+            trackLinks: $message->getTrackedLinkUrl() !== null,
+        );
     }
 
     /**
