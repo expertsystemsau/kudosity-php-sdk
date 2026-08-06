@@ -20,42 +20,19 @@ use PHPUnit\Framework\TestCase;
  * regressed by a redelivery. And deliveries are unsigned — confirmed in writing
  * by Kudosity on 2026-08-06 — so the only authenticity signal available is one
  * we generate ourselves.
+ *
+ * Four StatusPrecedence tests moved out in the Task 7b batch 5 port: each was
+ * a single-pair subset of V2StatusPrecedenceTest.php's data-provider tests (or,
+ * for the read-receipt test, a combination of one such pair and its own
+ * rank-comparison test). See that file's docblock and the task report for the
+ * full reconciliation. `test_it_reduces_the_captured_out_of_order_pair_to_delivered`
+ * stayed — it is a genuinely different call (reduce() over the two captured
+ * fixtures) from anything ported there.
  */
 #[CoversClass(StatusPrecedence::class)]
 #[CoversClass(SignedMessageRef::class)]
 final class WebhookGuardsTest extends TestCase
 {
-    public function test_a_late_sent_does_not_regress_a_recorded_delivered(): void
-    {
-        // Observed live: a SENT redelivered 60s later carrying its original
-        // timestamp, arriving 57s AFTER its own DELIVERED, byte-identical to
-        // the original. Nothing in the payload marks it as a duplicate.
-        $this->assertFalse(StatusPrecedence::supersedes(MessageStatus::Sent, MessageStatus::Delivered));
-    }
-
-    public function test_a_read_receipt_legitimately_follows_delivery(): void
-    {
-        // This is why it is a rank rather than a terminal-status check.
-        // MessageStatus::isTerminal() is true for BOTH Delivered and Read, so a
-        // "never overwrite a terminal status" rule silently drops RCS read
-        // receipts.
-        $this->assertTrue(StatusPrecedence::supersedes(MessageStatus::Read, MessageStatus::Delivered));
-        $this->assertTrue(MessageStatus::Delivered->isTerminal());
-        $this->assertTrue(MessageStatus::Read->isTerminal());
-    }
-
-    public function test_replaying_the_same_status_does_not_supersede_itself(): void
-    {
-        // At-least-once means the identical event arrives twice. Treating the
-        // second as a state change double-counts.
-        $this->assertFalse(StatusPrecedence::supersedes(MessageStatus::Delivered, MessageStatus::Delivered));
-    }
-
-    public function test_anything_supersedes_nothing_recorded(): void
-    {
-        $this->assertTrue(StatusPrecedence::supersedes(MessageStatus::Sent, MessageStatus::Unknown));
-    }
-
     public function test_it_reduces_the_captured_out_of_order_pair_to_delivered(): void
     {
         // The two captured fixtures are the real pair for one message, and
