@@ -101,12 +101,14 @@ package README's "V2 channels" section for the per-endpoint envelope table.
 
 ### Laravel Integration (kudosity-laravel)
 
-- **KudosityServiceProvider** - Registers singletons for `KudosityV1Connector` and `KudosityClient`, extends notification channel manager
+- **KudosityServiceProvider** - Registers singletons for both connectors and the client, extends the notification channel manager with four channels, and registers the Artisan commands. **`KudosityV2Connector` needs its explicit singleton — it cannot autowire**, because `$apiKey` has no default.
 - **Kudosity Facade** - Proxies to `KudosityClient`
-- **KudosityChannel** - Laravel notification channel (expects `toKudosity()` method on notifications)
-- **KudosityMessage** - Fluent message builder for notifications
+- **Four notification channels** — `kudosity` (`toKudosity()`), `kudosity-mms` (`toKudosityMms()`), `kudosity-whatsapp` (`toKudosityWhatsApp()`), `kudosity-rcs` (`toKudosityRcs()`), with `KudosityMessage`, `KudosityMmsMessage`, `KudosityWhatsAppMessage` and `KudosityRcsMessage` as builders.
+- **The SMS channel routes between APIs.** V2 by default; V1 only when the message uses something V2 cannot express — `toList()`, `sendAt()`, `validity()`, `repliesToEmail()`, any per-send callback **including the `onDlr()`/`onReply()`/`onLinkHit()` handler forms**, or more than one recipient. `KudosityMessage::apiVersion()` reports the decision, `v1Reasons()` explains it, and **`forceV2()` throws rather than dropping a V1-only option**. It returns `Contracts\SentMessage`, not a concrete DTO, so the type is stable across a decision the caller never made.
+- **`WebhookController::events()`** — the V2 receiver at `POST {prefix}/events`, dispatching `KudosityStatusReceived` / `KudosityInboundReceived` / `KudosityLinkHitReceived` / `KudosityOptOutReceived`. It is **stricter than `CallbackUrlParser`**: the parser skips verification when no handler is present, which is right for the V1 GET routes and wrong for a route whose only defence is an unguessable URL. The three V1 GET routes remain live for V1 sends.
+- **`kudosity:webhook:list` / `:install` / `:delete`** — `install` must build its URL through `CallbackUrlBuilder`, or the receiver refuses the very webhook it registered.
 
-Config file published to `config/kudosity.php` with keys: `api_key`, `api_secret`, `base_url`, `from`, `timeout`, `webhooks`
+Config published to `config/kudosity.php`. **`base_url` is keyed by API version** (`v1`/`v2`) as of 2.0 — a config still carrying the flat string throws on boot rather than sending V2 traffic to the V1 host. Other keys: `api_key`, `api_secret`, `from`, `country_code`, `timeout`, `mms.sender`, `whatsapp.sender`, `rcs.agent_id`, `webhooks`.
 
 ## Namespaces
 
