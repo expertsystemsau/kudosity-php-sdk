@@ -36,6 +36,13 @@ use StubV2SendRequest;
  * alone passes for a resource wired to the wrong connector — its type is
  * still correct even when it will only ever talk to the wrong host — so each
  * test sends through a mock and reads the URI back off the pending request.
+ *
+ * KudosityV1Connector and GetBalanceRequest are named here too:
+ * test_fails_a_v1_call_with_a_clear_message_when_no_secret_was_given is the
+ * only test anywhere in the client suite that drives
+ * KudosityV1Connector::defaultAuth()'s missing-secret branch, and the only
+ * one that ever calls GetBalanceRequest at all. Found via a union-coverage
+ * regression during Task 7b batch 3 — see that task's report.
  */
 #[CoversClass(KudosityClient::class)]
 #[CoversClass(BulkSmsResource::class)]
@@ -45,6 +52,8 @@ use StubV2SendRequest;
 #[CoversClass(RcsResource::class)]
 #[CoversClass(WebhooksResource::class)]
 #[CoversClass(SendersResource::class)]
+#[CoversClass(KudosityV1Connector::class)]
+#[CoversClass(GetBalanceRequest::class)]
 final class KudosityClientTest extends TestCase
 {
     public function test_exposes_both_connectors_each_on_its_own_host(): void

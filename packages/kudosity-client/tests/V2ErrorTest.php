@@ -8,6 +8,7 @@ use ExpertSystems\Kudosity\Exceptions\AccessDeniedException;
 use ExpertSystems\Kudosity\Exceptions\AuthenticationException;
 use ExpertSystems\Kudosity\Exceptions\KudosityException;
 use ExpertSystems\Kudosity\Exceptions\NotFoundException;
+use ExpertSystems\Kudosity\Exceptions\ProblemIssue;
 use ExpertSystems\Kudosity\Exceptions\RateLimitException;
 use ExpertSystems\Kudosity\Exceptions\ServerException;
 use ExpertSystems\Kudosity\Exceptions\ValidationException;
@@ -34,9 +35,19 @@ use StubV2SendRequest;
  * body shape, and (bar the shared 400/401/403/404/422/429/500 status
  * literals) mostly different literal values — not byte-for-byte duplicates,
  * so both stay per the batch brief rather than folding one away silently.
+ *
+ * ProblemIssue and RateLimitException are named here too: the rate-limited
+ * (429) row of the status-mapping dataset is the only place in the client
+ * suite that drives `RateLimitException::fromResponseWithMetadata()` (and
+ * its header-parsing helpers) rather than its constructor directly, and
+ * "extracts every failed field from issues[] at once" is the only place
+ * that drives `ProblemIssue::fromArray()`. Confirmed by a union-coverage
+ * regression during this task — see the task report.
  */
 #[CoversClass(KudosityException::class)]
 #[CoversClass(KudosityV2Connector::class)]
+#[CoversClass(RateLimitException::class)]
+#[CoversClass(ProblemIssue::class)]
 final class V2ErrorTest extends TestCase
 {
     /**
