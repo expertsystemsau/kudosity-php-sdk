@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use ExpertSystems\Kudosity\Requests\KudosityV2BodyRequest;
+use ExpertSystems\Kudosity\Tests\Fixtures\Fixtures;
 
 /**
  * A stand-in for the real V2 requests that arrive in Phase 3.
@@ -13,7 +14,7 @@ use ExpertSystems\Kudosity\Requests\KudosityV2BodyRequest;
  * the root Pest suite (also global-namespace) and this suite unchanged, and
  * why it is loaded via the `classmap` entry in composer.json's
  * `autoload-dev` rather than the ordinary PSR-4 rule that reaches
- * {@see \ExpertSystems\Kudosity\Tests\Fixtures\Fixtures} — PSR-4 has no rule
+ * {@see Fixtures} — PSR-4 has no rule
  * that can map a namespace-less class name.
  *
  * Ported from the root Pest suite's tests/Fixtures/StubV2SendRequest.php in
