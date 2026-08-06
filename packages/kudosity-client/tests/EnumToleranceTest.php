@@ -21,6 +21,18 @@ use PHPUnit\Framework\TestCase;
  * `Unknown` for anything undocumented instead of throwing. A client reading
  * its own message history must not break because Kudosity added a value
  * after this release.
+ *
+ * Task 7b batch 7 ported `V2SendersResourceTest.php`, which duplicated this
+ * file's `test_sender_status_verified_does_not_mean_ready_to_use` — the same
+ * two facts (`Verified->isReadyToUse()` false, `ReadyToUse->isReadyToUse()`
+ * true) fall out of the ported file's "treats READY_TO_USE as sendable and
+ * every other state as not, as a full allow-list" test as a strict subset of
+ * a full-case sweep, so the dominated original came out. The shared
+ * `test_every_tolerant_enum_resolves_an_unknown_value_rather_than_throwing`
+ * sweep below stays untouched: `V2RcsTest.php` and `V2SendersResourceTest.php`
+ * each duplicate one of its rows in the one fact that a single unrecognised
+ * value resolves to Unknown, but pulling a row out of this uniform per-enum
+ * table for that would cost more than either fold is worth.
  */
 #[CoversClass(MessageStatus::class)]
 #[CoversClass(WebhookEventType::class)]
@@ -52,13 +64,5 @@ final class EnumToleranceTest extends TestCase
         // A client reading its own message history must not break because
         // Kudosity added a value after this release.
         $this->assertSame($enum::Unknown, $enum::fromApi('SOMETHING_KUDOSITY_ADDED_LATER'));
-    }
-
-    public function test_sender_status_verified_does_not_mean_ready_to_use(): void
-    {
-        // VERIFIED means *provisioning*. Only READY_TO_USE can send, and treating
-        // VERIFIED as usable produces sends that fail at the API.
-        $this->assertFalse(SenderStatus::Verified->isReadyToUse());
-        $this->assertTrue(SenderStatus::ReadyToUse->isReadyToUse());
     }
 }

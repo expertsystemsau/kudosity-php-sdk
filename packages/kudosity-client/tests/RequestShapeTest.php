@@ -63,6 +63,10 @@ use Saloon\Http\Request;
  * the constructor through positional arguments and checks `resolveEndpoint()`,
  * a different construction path from the ported file's named-argument,
  * instanceof-only equivalent.
+ *
+ * The same batch's `V2SendersResourceTest.php` port duplicated
+ * `test_a_phone_number_in_a_path_segment_is_url_encoded` exactly — same
+ * class, same input, same expected output string — so that came out too.
  */
 final class RequestShapeTest extends TestCase
 {
@@ -142,15 +146,6 @@ final class RequestShapeTest extends TestCase
         foreach (self::endpoints() as $key => [$request]) {
             $this->assertSame($key, (new ReflectionClass($request))->getShortName());
         }
-    }
-
-    public function test_a_phone_number_in_a_path_segment_is_url_encoded(): void
-    {
-        // A `+`-prefixed E.164 number in a raw path segment is read as a space.
-        $this->assertSame(
-            '/v2/senders/phone-numbers/%2B61400000000',
-            (new DeleteSenderPhoneNumberRequest('+61400000000'))->resolveEndpoint(),
-        );
     }
 
     public function test_it_rejects_an_over_long_message_ref_before_sending(): void
