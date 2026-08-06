@@ -10,15 +10,14 @@ use ExpertSystems\Kudosity\Callbacks\CallbackUrlParser;
 use ExpertSystems\Kudosity\Data\V2\Content\CustomContent;
 use ExpertSystems\Kudosity\Data\V2\Content\TemplateContent;
 use ExpertSystems\Kudosity\Data\V2\Content\TextContent;
-use ExpertSystems\Kudosity\Data\V2\SmsFallback;
 use ExpertSystems\Kudosity\Exceptions\InvalidSignatureException;
 use ExpertSystems\Kudosity\Exceptions\ValidationException;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
 /**
- * The three WhatsAppContent variants, SmsFallback, and the
- * CallbackUrlBuilder/Parser signing contract.
+ * The three WhatsAppContent variants and the CallbackUrlBuilder/Parser
+ * signing contract.
  *
  * One of this task's brief examples does not match the shipped source and is
  * corrected here rather than followed verbatim (confirmed by a RED run
@@ -30,13 +29,14 @@ use PHPUnit\Framework\TestCase;
  *
  * The three `PhoneNumber`/`CountryCodes` tests this class used to hold moved
  * to `PhoneNumberTest.php` and `CountryCodesTest.php` in Task 7b batch 1's fix
- * round — one class, one owning test file, per `#[CoversClass]` coverage
- * attribution (see that task's report for why the attribution matters).
+ * round, and the eight `SmsFallback` tests it used to hold moved to
+ * `V2FoundationsTest.php` in Task 7b batch 3 — one class, one owning test
+ * file, per `#[CoversClass]` coverage attribution (see batch 1's task report
+ * for why the attribution matters).
  */
 #[CoversClass(TemplateContent::class)]
 #[CoversClass(TextContent::class)]
 #[CoversClass(CustomContent::class)]
-#[CoversClass(SmsFallback::class)]
 #[CoversClass(CallbackUrlBuilder::class)]
 #[CoversClass(CallbackUrlParser::class)]
 final class ValueObjectTest extends TestCase
@@ -135,73 +135,6 @@ final class ValueObjectTest extends TestCase
         $this->expectExceptionMessageMatches('/must be strings/');
 
         new TemplateContent('order_update', [123]);
-    }
-
-    // -----------------------------------------------------------------
-    // SmsFallback
-    // -----------------------------------------------------------------
-
-    public function test_sms_fallback_rejects_an_empty_message(): void
-    {
-        $this->expectException(ValidationException::class);
-
-        new SmsFallback('');
-    }
-
-    public function test_sms_fallback_payload_omits_sender_when_absent(): void
-    {
-        $this->assertSame(['message' => 'fallback'], (new SmsFallback('fallback'))->toArray());
-    }
-
-    public function test_sms_fallback_payload_includes_sender_when_present(): void
-    {
-        $this->assertSame(
-            ['message' => 'fallback', 'sender' => '61481074185'],
-            (new SmsFallback('fallback', '61481074185'))->toArray(),
-        );
-    }
-
-    public function test_from_array_rejects_a_payload_with_no_message(): void
-    {
-        // The request-side factory holds the constructor's invariant: a
-        // fallback with no usable message is a caller error to raise, not
-        // silently drop.
-        $this->expectException(ValidationException::class);
-
-        SmsFallback::fromArray(['sender' => '61481074185']);
-    }
-
-    public function test_from_array_builds_a_complete_fallback(): void
-    {
-        $fallback = SmsFallback::fromArray(['message' => 'fallback', 'sender' => '61481074185']);
-
-        $this->assertSame('fallback', $fallback->message);
-        $this->assertSame('61481074185', $fallback->sender);
-    }
-
-    public function test_from_response_returns_null_rather_than_throwing_for_a_missing_message(): void
-    {
-        // fromResponse() is the read path's whole reason to exist:
-        // fromArray() would throw on this exact payload, and a response is
-        // not ours to police.
-        $this->assertNull(SmsFallback::fromResponse(['sender' => '61481074185']));
-    }
-
-    public function test_from_response_returns_null_for_an_empty_message(): void
-    {
-        $this->assertNull(SmsFallback::fromResponse(['message' => '']));
-    }
-
-    public function test_from_response_builds_a_fallback_when_the_message_is_usable(): void
-    {
-        // The other side of null-on-the-way-out: a usable message must not
-        // be swallowed by the same tolerance that lets a bad one through as
-        // null.
-        $fallback = SmsFallback::fromResponse(['message' => 'fallback']);
-
-        $this->assertNotNull($fallback);
-        $this->assertSame('fallback', $fallback->message);
-        $this->assertNull($fallback->sender);
     }
 
     // -----------------------------------------------------------------
