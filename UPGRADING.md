@@ -438,6 +438,89 @@ so an account can send perfectly well and report zero registrations. Use
 `VERIFIED` does not mean sendable; it means provisioning. Check
 `isReadyToUse()`.
 
+## Laravel: config, channels and the receiver
+
+### `base_url` is now keyed by API version
+
+Kudosity runs two APIs on two hostnames, so one value cannot serve both:
+
+```php
+// config/kudosity.php — before
+'base_url' => env('KUDOSITY_BASE_URL', 'https://api.transmitsms.com'),
+
+// after
+'base_url' => [
+    'v1' => env('KUDOSITY_BASE_URL_V1', 'https://api.transmitsms.com'),
+    'v2' => env('KUDOSITY_BASE_URL_V2', 'https://api.transmitmessage.com'),
+],
+```
+
+**A published config still carrying the flat string now throws on boot**, naming
+both replacement keys and echoing your value. That is deliberate: a published
+config file is not re-published on upgrade, and a stale `base_url` points at the
+V1 host — silently ignoring it would send every V2 request to the wrong API. The
+codemod rewrites `TRANSMITSMS_BASE_URL` to `KUDOSITY_BASE_URL_V1` and
+`config('kudosity.base_url')` to `config('kudosity.base_url.v1')`.
+
+New keys, all optional: `country_code`, `mms.sender`, `whatsapp.sender`,
+`rcs.agent_id`, and `webhooks.events.{enabled,path}`. Each channel needs its own
+sender because they are not the same kind of value — an alphanumeric sender that
+works for SMS is not a valid MMS sender, and an RCS sender is an *agent ID*
+rather than a number at all.
+
+### `KudosityChannel::send()` returns `SentMessage`
+
+It used to return `?SmsData`. It now returns `?SentMessage`, which both `SmsData`
+(V1) and `Data\V2\SmsMessageData` implement, because the channel decides which
+API to use and the return type must not change with that decision.
+
+If you type-hinted the concrete class, widen it:
+
+```php
+- public function handle(?SmsData $sent) { … }
++ public function handle(?SentMessage $sent) { … }
+```
+
+`SentMessage` gives you `id(): string`, `recipientCount(): int` and
+`status(): ?MessageStatus`. **`status()` is null for every V1 send** — the V1 send
+response carries no status, and inventing one would be indistinguishable from a
+real one. Read it back with `reporting()` or `sms()->get()`.
+
+### The SMS channel now sends over V2 by default
+
+A notification routes to V2 unless it uses something V2 cannot express:
+`toList()`, `sendAt()`, `validity()`, `repliesToEmail()`, any of the three
+per-send callbacks — **including the `onDlr()` / `onReply()` / `onLinkHit()`
+handler forms** — or more than one recipient in `to()`.
+
+`apiVersion()` reports the decision and `v1Reasons()` names what drove it, so it
+is inspectable rather than magic. `forceV1()` and `forceV2()` override, and
+**`forceV2()` throws if the message uses a V1-only option** rather than dropping
+it: silently ignoring a `sendAt()` turns a scheduled send into an immediate one.
+
+### Three new channels
+
+`kudosity-mms`, `kudosity-whatsapp` and `kudosity-rcs`, expecting
+`toKudosityMms()`, `toKudosityWhatsApp()` and `toKudosityRcs()` on the
+notification. All three are V2-only, so none has a routing decision.
+
+### The V2 events receiver
+
+A new `POST {prefix}/events` route handles all ten V2 event types and dispatches
+`KudosityStatusReceived`, `KudosityInboundReceived`, `KudosityLinkHitReceived` or
+`KudosityOptOutReceived`. **The three V1 GET routes are unchanged and still
+handle V1 callbacks** — see "Your V1 callbacks do not fire for V2 sends" above.
+
+Two things worth knowing before you write a listener:
+
+- **Handle status events idempotently on `status.id`.** They are unordered *and*
+  at-least-once. Use `Webhooks\StatusPrecedence::supersedes()`; a listener that
+  writes unconditionally will corrupt its own delivery reporting.
+- **The route is authenticated by its unguessable URL only**, because V2
+  deliveries carry no signature. Register it with
+  `kudosity:webhook:install`, or build the URL through `CallbackUrlBuilder` —
+  a request without a valid signature gets a 403.
+
 ## For maintainers
 
 Release checklist:

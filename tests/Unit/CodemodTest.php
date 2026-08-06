@@ -288,3 +288,40 @@ it('flags KudosityClient::sms() call sites for manual review without false-posit
     $flagCount = substr_count($output, 'uses sms() — see UPGRADING.md');
     expect($flagCount)->toBe(1);
 });
+
+it('rewrites TRANSMITSMS_BASE_URL to the V1-specific key, not the generic prefix', function () {
+    // Ordering regression test. The env group carries a generic TRANSMITSMS_ ->
+    // KUDOSITY_ prefix rule, which consumes TRANSMITSMS_BASE_URL before a later
+    // specific rule can see it — so the specific entry has to come FIRST in
+    // rename-map.json. This caught it once already: the key came out as
+    // KUDOSITY_BASE_URL, which no longer exists, so a consumer's V1 base URL
+    // would have been silently ignored.
+    file_put_contents($this->project.'/.env', <<<'ENV'
+        TRANSMITSMS_API_KEY=abc
+        TRANSMITSMS_BASE_URL=https://api.transmitsms.com
+        TRANSMITSMS_FROM=MyBrand
+        ENV);
+
+    runCodemod($this->project);
+
+    expect(file_get_contents($this->project.'/.env'))
+        ->toContain('KUDOSITY_BASE_URL_V1=https://api.transmitsms.com')
+        ->and(file_get_contents($this->project.'/.env'))
+        ->not->toContain('KUDOSITY_BASE_URL=')
+        // The other keys still go through the prefix rule.
+        ->and(file_get_contents($this->project.'/.env'))->toContain('KUDOSITY_API_KEY=abc')
+        ->and(file_get_contents($this->project.'/.env'))->toContain('KUDOSITY_FROM=MyBrand');
+});
+
+it('rewrites the config base_url accessor to its versioned key, idempotently', function () {
+    file_put_contents($this->project.'/config/services.php', "<?php\n\n\$url = config('kudosity.base_url');\n");
+
+    runCodemod($this->project);
+    $once = file_get_contents($this->project.'/config/services.php');
+
+    runCodemod($this->project);
+
+    expect($once)->toContain("config('kudosity.base_url.v1')")
+        // Running twice must not produce base_url.v1.v1.
+        ->and(file_get_contents($this->project.'/config/services.php'))->toBe($once);
+});
