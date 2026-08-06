@@ -10,6 +10,9 @@ use ExpertSystems\Kudosity\KudosityClient;
 use ExpertSystems\Kudosity\KudosityV1Connector;
 use ExpertSystems\Kudosity\KudosityV2Connector;
 use ExpertSystems\Kudosity\Laravel\Notifications\KudosityChannel;
+use ExpertSystems\Kudosity\Laravel\Notifications\KudosityMmsChannel;
+use ExpertSystems\Kudosity\Laravel\Notifications\KudosityRcsChannel;
+use ExpertSystems\Kudosity\Laravel\Notifications\KudosityWhatsAppChannel;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Notifications\ChannelManager;
 use Illuminate\Support\Facades\Notification;
@@ -100,6 +103,14 @@ class KudosityServiceProvider extends ServiceProvider
             );
         });
 
+        // The three V2-only channels. No CallbackUrlBuilder: V2 has no per-send
+        // callback URL, so there is nothing for them to sign.
+        foreach ([KudosityMmsChannel::class, KudosityWhatsAppChannel::class, KudosityRcsChannel::class] as $channel) {
+            $this->app->singleton($channel, function ($app) use ($channel) {
+                return new $channel($app->make(KudosityClient::class));
+            });
+        }
+
         // Create aliases for easier resolution
         $this->app->alias(KudosityClient::class, 'kudosity');
         $this->app->alias(KudosityV1Connector::class, 'kudosity.connector');
@@ -117,11 +128,18 @@ class KudosityServiceProvider extends ServiceProvider
             ], 'kudosity-config');
         }
 
-        // Register the notification channel
+        // Register the notification channels
         Notification::resolved(function (ChannelManager $service) {
-            $service->extend('kudosity', function ($app) {
-                return $app->make(KudosityChannel::class);
-            });
+            foreach ([
+                'kudosity' => KudosityChannel::class,
+                'kudosity-mms' => KudosityMmsChannel::class,
+                'kudosity-whatsapp' => KudosityWhatsAppChannel::class,
+                'kudosity-rcs' => KudosityRcsChannel::class,
+            ] as $name => $channel) {
+                $service->extend($name, function ($app) use ($channel) {
+                    return $app->make($channel);
+                });
+            }
         });
 
         // Register webhook routes if enabled
@@ -230,6 +248,9 @@ class KudosityServiceProvider extends ServiceProvider
             KudosityV1Connector::class,
             KudosityV2Connector::class,
             KudosityChannel::class,
+            KudosityMmsChannel::class,
+            KudosityWhatsAppChannel::class,
+            KudosityRcsChannel::class,
             CallbackUrlBuilder::class,
             CallbackUrlParser::class,
             'kudosity',
