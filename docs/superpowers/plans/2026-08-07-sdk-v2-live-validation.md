@@ -1209,7 +1209,7 @@ use OrderNotifier\Check;
 final class MmsV2Scenario extends BaseScenario
 {
     /** A small, stable, publicly reachable image. */
-    private const MEDIA = 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/Australia_location_map.svg/320px-Australia_location_map.svg.png';
+    private const MEDIA = 'https://upload.wikimedia.org/wikipedia/commons/a/a9/Example.jpg';
 
     public function name(): string
     {
@@ -1248,8 +1248,12 @@ final class MmsV2Scenario extends BaseScenario
             ? Check::pass('mms()->get()', 'GET /v2/mms/{id} returns the same message', sprintf('status now %s', $fetched->status->value), ['status' => $fetched->status->value])
             : Check::fail('mms()->get()', 'GET /v2/mms/{id} returns the same message', sprintf('asked for %s, got %s', $sent->id, $fetched->id));
 
-        // Two media files. The vendored skill says one attachment per MMS; this
-        // records what the API actually does rather than assuming the limit.
+        // Two media files. This does NOT reach the API and cannot: the
+        // SendMmsRequest constructor enforces MAX_CONTENT_URLS = 1 and throws a
+        // client-side ValidationException before any HTTP call. So this checks
+        // the SDK's own guard, and the API's real behaviour with two
+        // attachments is NOT COVERED by this exercise. Do not bypass the
+        // constructor to reach it.
         try {
             $two = $client->mms()->send(
                 to: $boot->recipient(),
@@ -1259,14 +1263,14 @@ final class MmsV2Scenario extends BaseScenario
             );
             $this->checks[] = Check::finding(
                 'mms()->send()',
-                'the API rejects more than one media file, per the vendored skill',
+                'the SDK rejects a second media file before any request leaves the process',
                 sprintf('Accepted two content_urls and returned id=%s with %d url(s)', $two->id, count($two->contentUrls)),
                 ['id' => $two->id, 'content_urls' => $two->contentUrls],
             );
         } catch (KudosityException $e) {
             $this->checks[] = Check::pass(
                 'mms()->send()',
-                'the API rejects more than one media file, per the vendored skill',
+                'the SDK rejects a second media file before any request leaves the process',
                 'Rejected: '.$e->getMessage(),
             );
         }
@@ -2585,7 +2589,7 @@ final class LiveCallbackScenario extends BaseScenario
         $mms = $client->mms()->send(
             to: $boot->recipient(),
             from: $boot->sender(),
-            contentUrls: ['https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/Australia_location_map.svg/320px-Australia_location_map.svg.png'],
+            contentUrls: ['https://upload.wikimedia.org/wikipedia/commons/a/a9/Example.jpg'],
             subject: 'Order 9931',
             message: 'Reply with a photo of the parcel.',
             messageRef: 'order-9931:mms-live',
@@ -3674,7 +3678,7 @@ use Illuminate\Notifications\Notification;
 
 class OrderPhoto extends Notification
 {
-    public const MEDIA = 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/Australia_location_map.svg/320px-Australia_location_map.svg.png';
+    public const MEDIA = 'https://upload.wikimedia.org/wikipedia/commons/a/a9/Example.jpg';
 
     public function __construct(public bool $withoutMedia = false) {}
 
