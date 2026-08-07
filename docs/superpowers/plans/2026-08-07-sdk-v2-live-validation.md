@@ -27,8 +27,17 @@
   `foreach ($paginator as $response) { $response->json('<itemsKey>'); }` when you
   need per-page counts. **`items()` yields raw arrays, not DTOs** — index with
   `$row['id']`, never `$row->id`. V1 items keys vary per endpoint (`numbers`,
-  `lists`, `keywords`, `messages`, `recipients`, `responses`); V2 SMS is `data`
-  and sender registrations are `data.registrations`. V1 `number` fields arrive as
+  `lists`, `keywords`, `messages`, `recipients`, `responses`); **V2 SMS is
+  `smses`** (confirmed against `ListSmsV2Request::paginationItemsKey()` — an
+  earlier draft of this plan said `data`, which yields nothing and reads as a
+  false FAIL) and sender registrations are `data.registrations`.
+- **`GET /v2/sms` returns oldest-first, and a just-sent message is read-after-write
+  lagged.** Observed live 2026-08-07: `sms()->get($id)` 404'd for roughly two
+  minutes after a successful `send()`, and the list is ascending by `created_at`,
+  so a newly-sent message is on the LAST page, not the first. Any check that looks
+  for a just-sent message within the first N pages of an ascending list is
+  asserting nothing and will misreport as "indexing lag". Read it by id with a
+  retry, not by scanning the head of the list. V1 `number` fields arrive as
   JSON integers — cast before string use.
 - **Failure handling:** a failing check never stops the run. Triage into `FAIL` (SDK defect), `FINDING` (upstream API behaviour), or `BLOCKED` (environment/account), record it, and continue. See "Fix Protocol" below.
 
