@@ -23,8 +23,10 @@ The run succeeds when all of the following hold:
 
 1. Both packages install from a Composer artifact built the way `splitsh`
    publishes them, with no path repositories and no reference to the monorepo.
-2. A vanilla PHP application, on the declared `^8.2` floor, completes every V1
-   and V2 surface listed in "Coverage" below against the live API.
+2. A vanilla PHP application completes every V1 and V2 surface listed in
+   "Coverage" below against the live API, and its offline surfaces run
+   additionally on the declared `^8.2` floor. Live scenarios run once only, so
+   the floor is exercised without doubling the spend.
 3. A fresh Laravel 12 application sends via all in-scope notification channels,
    receives real webhook deliveries over a public tunnel, and persists every
    decoded event to a database table.
@@ -91,9 +93,10 @@ process in the repository has ever evaluated.
 ## Project A — `order-notifier` (vanilla PHP, client package only)
 
 A CLI application modelling an order-notification service. No framework, no
-Laravel, no Testbench. It runs twice: on local PHP 8.4, and inside
-`php:8.2-cli` to prove the declared floor holds for a real consumer and not only
-for the package's own suite.
+Laravel, no Testbench. The live scenarios run once, on local PHP 8.4. The offline
+scenarios run again inside `php:8.2-cli`, proving the declared floor holds for a
+real consumer and not only for the package's own suite — the root Pest suite can
+never show this, because Pest 4 requires 8.3.
 
 Structure: a thin `bin/notify` dispatcher over one class per scenario, each
 returning a structured result the report generator consumes. Each scenario knows
@@ -124,11 +127,15 @@ one surface, states what it asserts, and can run alone.
 
 **V1 reporting and account**
 - delivery stats, message report, sent counts, replies, inbound
-- `account()->balance()`
+- `account()->getBalance()`
 
 **Senders**
-- list registrations, paging on `meta.pagination.total_count`
-- the SMS verification flow, to the point of receiving the verification code
+- list registrations, paging on `meta.pagination.total_count`; `allRegistrations()`
+  collecting every page; `readyToUse()` filtering to the usable ones
+- the item shape decoded field by field, since only the read path is verifiable:
+  `register()` needs a number the account does not already own, and
+  `confirmVerification()` needs a code read off that handset, so the write path is
+  recorded as not covered rather than faked
 
 **Webhooks CRUD**
 - `create` → `get` → `update` (a full-shape replace, since `PUT` is not a patch)
@@ -175,7 +182,9 @@ arrived and was understood" is answered by a row, not by a log line.
   `KudosityStatusReceived` / `KudosityInboundReceived` /
   `KudosityLinkHitReceived` / `KudosityOptOutReceived`, each landing in
   `message_events`
-- an unrecognised event type produces `UnknownEvent` and a stored row, not a 500
+- an unrecognised event type is logged and accepted with a 200, not a 500 — it
+  resolves to `UnknownEvent`, which the controller does not dispatch to a typed
+  listener, so no row is written
 - the three V1 GET routes with genuinely signed URLs, plus a tampered signature
   rejected — the receiver is stricter than `CallbackUrlParser` by design
 
