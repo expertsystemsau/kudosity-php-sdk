@@ -73,7 +73,7 @@ Both hostnames are real; neither is a Kudosity domain. Spec:
       then tag `v2.0.0`.
 - [ ] **Rotate the API key and secret** — they were pasted into a chat transcript.
 - [ ] **`.env`'s `KUDOSITY_FROM` is the retired virtual number.** Kudosity replaced it with
-      `61437130145`; `POST /v2/sms` answers `Sender not found` for the old value.
+      `61491570023`; `POST /v2/sms` answers `Sender not found` for the old value.
 - [ ] **`register()` and the sender SMS verification flow are still not live-verified.**
       Completing one registers a personal mobile and sends a real code to it.
 - [ ] **WhatsApp and RCS remain unverified end to end.** Needs Kudosity to provision a
@@ -294,7 +294,7 @@ run_mut () {
   push*. Do not "fix the drift".
 - **Release tags must be `v`-prefixed** (`v2.0.0`). Tag `1.7.0` was cut without it and never
   released.
-- **Kudosity replaced the account's virtual number** with `61437130145`, because the old one
+- **Kudosity replaced the account's virtual number** with `61491570023`, because the old one
   could not receive MMS. A number that *sends* MMS does not necessarily *receive* it.
 - **V2 deliveries are unsigned — confirmed in writing by Kudosity, 2026-08-06.**
   `x-transmitsms-signature` is V1-only; V2 signing is roadmap. Their recommended substitute

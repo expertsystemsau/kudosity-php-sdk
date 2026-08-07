@@ -163,8 +163,8 @@ it('builds an sms_fallback body with the sender omitted when absent', function (
 });
 
 it('includes the sender when given', function () {
-    expect((new SmsFallback('Body', '61481074185'))->toArray())
-        ->toBe(['message' => 'Body', 'sender' => '61481074185']);
+    expect((new SmsFallback('Body', '61491570017'))->toArray())
+        ->toBe(['message' => 'Body', 'sender' => '61491570017']);
 });
 
 it('rejects an empty fallback message, which the API requires', function () {
@@ -466,9 +466,9 @@ function smsSendBody(array $overrides = []): array
 {
     return array_merge([
         'id' => '2d2c8fb6-e514-4f5f-9706-0672b0259218',
-        'recipient' => '61478038915',
+        'recipient' => '61491570018',
         'recipient_country' => 'AU',
-        'sender' => '61481074185',
+        'sender' => '61491570017',
         'sender_country' => 'AU',
         'message_ref' => 'ncc1701d',
         'message' => 'Report to the ready room!',
@@ -496,7 +496,7 @@ it('sends a single-recipient SMS and returns a typed DTO', function () {
     $connector = new KudosityV2Connector('key');
     $connector->withMockClient($mock);
 
-    $sms = (new SmsV2Resource($connector))->send('Report to the ready room!', '61478038915', '61481074185');
+    $sms = (new SmsV2Resource($connector))->send('Report to the ready room!', '61491570018', '61491570017');
 
     expect($sms)->toBeInstanceOf(SmsMessageData::class)
         ->and($sms->id)->toBe('2d2c8fb6-e514-4f5f-9706-0672b0259218')
@@ -507,8 +507,8 @@ it('sends a single-recipient SMS and returns a typed DTO', function () {
 
     expect($body)->toBe([
         'message' => 'Report to the ready room!',
-        'sender' => '61481074185',
-        'recipient' => '61478038915',
+        'sender' => '61491570017',
+        'recipient' => '61491570018',
     ]);
 });
 
@@ -516,7 +516,7 @@ it('casts the string sms_count to an int', function () {
     // The API returns "1", not 1. Arithmetic on the raw value silently
     // concatenates — "1" + 1 gives "11".
     $sms = smsResource([SendSmsV2Request::class => MockResponse::make(smsSendBody(['sms_count' => '3']), 200)])
-        ->send('Hi', '61478038915', '61481074185');
+        ->send('Hi', '61491570018', '61491570017');
 
     expect($sms->smsCount)->toBe(3)->and($sms->smsCount)->toBeInt();
 });
@@ -526,7 +526,7 @@ it('omits optional fields from the body rather than sending nulls', function () 
     $connector = new KudosityV2Connector('key');
     $connector->withMockClient($mock);
 
-    (new SmsV2Resource($connector))->send('Hi', '61478038915', '61481074185');
+    (new SmsV2Resource($connector))->send('Hi', '61491570018', '61491570017');
 
     expect($mock->getLastPendingRequest()->body()->all())
         ->not->toHaveKey('message_ref')
@@ -538,7 +538,7 @@ it('sends message_ref and track_links when given', function () {
     $connector = new KudosityV2Connector('key');
     $connector->withMockClient($mock);
 
-    (new SmsV2Resource($connector))->send('Hi', '61478038915', '61481074185', messageRef: 'order-1', trackLinks: true);
+    (new SmsV2Resource($connector))->send('Hi', '61491570018', '61491570017', messageRef: 'order-1', trackLinks: true);
 
     $body = $mock->getLastPendingRequest()->body()->all();
 
@@ -546,7 +546,7 @@ it('sends message_ref and track_links when given', function () {
 });
 
 it('rejects a message_ref longer than the documented 500 characters', function () {
-    new SendSmsV2Request('Hi', '61478038915', '61481074185', messageRef: str_repeat('a', 501));
+    new SendSmsV2Request('Hi', '61491570018', '61491570017', messageRef: str_repeat('a', 501));
 })->throws(ValidationException::class, '500');
 
 it('reads one SMS by id', function () {
@@ -602,12 +602,12 @@ it('passes list filters through as query parameters', function () {
     $connector = new KudosityV2Connector('key');
     $connector->withMockClient($mock);
 
-    iterator_to_array((new SmsV2Resource($connector))->list(status: MessageStatus::Delivered, recipient: '61478038915')->items());
+    iterator_to_array((new SmsV2Resource($connector))->list(status: MessageStatus::Delivered, recipient: '61491570018')->items());
 
     $query = $mock->getLastPendingRequest()->query();
 
     expect($query->get('status'))->toBe('DELIVERED')
-        ->and($query->get('recipient'))->toBe('61478038915');
+        ->and($query->get('recipient'))->toBe('61491570018');
 });
 
 it('declares itself paged so the connector picks the right paginator', function () {

@@ -152,7 +152,7 @@ Casts confirmed live: `sms_count` arrives as the string `"1"` and casts to `int`
 $k = new KudosityClient(apiKey: '…', apiSecret: '…');  // secret optional — omit for V2-only
 
 // V2 channels (Phase 3)
-$k->sms()->send('Hi', to: '61478038915', from: '61481074185');   // exactly ONE recipient
+$k->sms()->send('Hi', to: '61491570018', from: '61491570017');   // exactly ONE recipient
 $k->sms()->get($id);
 $k->sms()->list(status: MessageStatus::Delivered);                // V2PagedPaginator
 $k->mms()->send(to: '614…', from: '614…', contentUrls: ['https://…/i.png'], subject: 'Max 20 ASCII');

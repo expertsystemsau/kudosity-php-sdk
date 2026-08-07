@@ -236,7 +236,7 @@ it('keeps the customer as sender and your own number as recipient on an inbound 
     $inbound = WebhookEvent::fromArray(webhookFixture('sms-inbound-with-last-message'));
 
     expect($inbound->sender)->toBe('61400000000')
-        ->and($inbound->recipient)->toBe('61481074185');
+        ->and($inbound->recipient)->toBe('61491570017');
 });
 
 it('leaves lastMessage null when Kudosity found no recent outbound to attach', function () {
@@ -262,7 +262,7 @@ it('resolves an event type Kudosity has not published yet to Unknown rather than
 Then add `LINK_HIT` against its **captured fixtures** — `link-hit-sms.json` (`hits: 1`) and `link-hit-sms-repeat.json` (`hits: 2`), both real deliveries from 2026-08-05:
 
 - `hits` cast to `int`, and the two fixtures asserted together to pin that it is **cumulative for the tracked link, not a unique-recipient count**.
-- **`url` is the original destination; `source_message.message` carries the SHORTENED link.** The fixture holds `https://tapth.at/qK.LnvtM` in the message and `https://www.example.com/abc` in `url`. Assert both, from the same fixture — code that expects the original URL in the message text is a real and easy mistake.
+- **`url` is the original destination; `source_message.message` carries the SHORTENED link.** The fixture holds `https://clkth.test/mK.ptRq7` in the message and `https://www.example.com/abc` in `url`. Assert both, from the same fixture — code that expects the original URL in the message text is a real and easy mistake.
 - `messageRef()` reads `link_hit.source_message.message_ref`, and the fixture's ref is composite (`linkhit-8842:cust-4471`).
 - **A docblock on `LinkHitEvent` stating that a link hit is not evidence a human clicked.** In the captured run, `hits: 1` fired in the same second as `DELIVERED`, ~2s after the send — a machine prefetch, not a tap; the human tap was `hits: 2`, sixteen seconds later. Treating `LINK_HIT` as engagement over-reports it in exactly the shape that treating `ACCEPTED` as `DELIVERED` does. This belongs in the type, not in a README nobody reads at 2am.
 

@@ -497,10 +497,10 @@ There are **22** request classes under `packages/kudosity-client/src/Requests/V2
 public static function endpoints(): array
 {
     return [
-        'send sms' => [new SendSmsV2Request('m', '61400000000', '61481074185'), 'POST', '/v2/sms'],
+        'send sms' => [new SendSmsV2Request('m', '61400000000', '61491570017'), 'POST', '/v2/sms'],
         'get sms' => [new GetSmsV2Request('abc'), 'GET', '/v2/sms/abc'],
         'list sms' => [new ListSmsV2Request, 'GET', '/v2/sms'],
-        'send mms' => [new SendMmsRequest('61400000000', '61481074185', ['https://e.com/a.jpg']), 'POST', '/v2/mms'],
+        'send mms' => [new SendMmsRequest('61400000000', '61491570017', ['https://e.com/a.jpg']), 'POST', '/v2/mms'],
         // ... one row per class. All 22.
     ];
 }
@@ -524,7 +524,7 @@ public function test_it_rejects_an_over_long_message_ref_before_sending(): void
     $this->expectException(ValidationException::class);
     $this->expectExceptionMessageMatches('/message_ref/');
 
-    new SendSmsV2Request('m', '61400000000', '61481074185', str_repeat('a', 501));
+    new SendSmsV2Request('m', '61400000000', '61491570017', str_repeat('a', 501));
 }
 
 public function test_it_rejects_an_mms_subject_over_twenty_characters(): void
@@ -534,7 +534,7 @@ public function test_it_rejects_an_mms_subject_over_twenty_characters(): void
     $this->expectException(ValidationException::class);
     $this->expectExceptionMessageMatches('/subject length \(21\)/');
 
-    new SendMmsRequest('61400000000', '61481074185', ['https://e.com/a.jpg'], str_repeat('a', 21));
+    new SendMmsRequest('61400000000', '61491570017', ['https://e.com/a.jpg'], str_repeat('a', 21));
 }
 
 public function test_rcs_rejects_a_phone_number_where_an_agent_id_belongs(): void
@@ -545,7 +545,7 @@ public function test_rcs_rejects_a_phone_number_where_an_agent_id_belongs(): voi
     $this->expectException(ValidationException::class);
     $this->expectExceptionMessageMatches('/agent/i');
 
-    new SendRcsRequest('m', '61400000000', '61481074185');
+    new SendRcsRequest('m', '61400000000', '61491570017');
 }
 ```
 
@@ -1056,7 +1056,7 @@ Registering on Packagist **before** the split repos have content publishes an em
 
 - [ ] **Step 3: Rotate the API key and secret**
 
-They were pasted into a chat transcript. Also update `.env`'s `KUDOSITY_FROM` to `61437130145` — the value there is the number Kudosity retired, and `POST /v2/sms` answers `Sender not found` for it.
+They were pasted into a chat transcript. Also update `.env`'s `KUDOSITY_FROM` to `61491570023` — the value there is the number Kudosity retired, and `POST /v2/sms` answers `Sender not found` for it.
 
 - [ ] **Step 4: Tag**
 
