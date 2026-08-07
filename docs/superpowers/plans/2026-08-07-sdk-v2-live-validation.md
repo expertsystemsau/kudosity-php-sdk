@@ -44,6 +44,14 @@
 
 ## Fix Protocol
 
+**The client package's test suite is flat.** `packages/kudosity-client/tests/` contains
+files directly — `V2SmsTest.php`, `V2MmsTest.php`, `PaginatorTest.php`,
+`V2PaginationTest.php`, `V2WebhookEventTest.php` and so on. There is **no
+`tests/Unit/` subdirectory**, so any path of that shape in an older note is stale.
+Run `ls packages/kudosity-client/tests/` and add to the file that already covers the
+class, rather than creating a parallel one.
+
+
 When a check reveals an SDK defect, the fix happens in the monorepo, not in the scratch project:
 
 1. Write a test in the appropriate suite that reproduces it — `packages/kudosity-client/tests/` for client defects, root `tests/` for Laravel defects.
@@ -1164,9 +1172,9 @@ Spend: 1 message.
 - [ ] **Step 4: Triage any FAIL**
 
 For each `FAIL`, follow the Fix Protocol. The likely candidates and where their tests live:
-- envelope decoding → `packages/kudosity-client/tests/Unit/Data/V2/SmsMessageDataTest.php`
-- pagination → `packages/kudosity-client/tests/Unit/Http/Paginators/`
-- `messageRef` handling → `packages/kudosity-client/tests/Unit/Resources/SmsV2ResourceTest.php`
+- envelope decoding → `packages/kudosity-client/tests/V2SmsTest.php`
+- pagination → `packages/kudosity-client/tests/PaginatorTest.php`, `V2PaginationTest.php` or `V1PaginationTest.php`
+- `messageRef` handling → `packages/kudosity-client/tests/V2SmsTest.php`
 
 Confirm the file names with `ls` before writing — do not create a parallel test file next to an existing one.
 
@@ -1315,7 +1323,7 @@ If the send fails with a sender error, the confirmed sender cannot do MMS — th
 
 - [ ] **Step 4: Triage and commit**
 
-Per the Fix Protocol. MMS DTO tests live under `packages/kudosity-client/tests/` — locate the existing `MmsMessageData` test with `ls packages/kudosity-client/tests/Unit/Data/V2/` before adding one.
+Per the Fix Protocol. MMS DTO tests live under `packages/kudosity-client/tests/` — locate the existing `MmsMessageData` test with `ls packages/kudosity-client/tests/` — the MMS DTO tests are in `V2MmsTest.php` before adding one.
 
 ---
 
@@ -1509,7 +1517,7 @@ Expected: an integer. Task 6 needs it.
 
 - [ ] **Step 5: Triage and commit any fixes**
 
-Per the Fix Protocol. `ContactData` and `ListData` tests live under `packages/kudosity-client/tests/` — locate them with `ls packages/kudosity-client/tests/Unit/Data/` first.
+Per the Fix Protocol. `ContactData` and `ListData` tests live under `packages/kudosity-client/tests/` — locate them with `ls packages/kudosity-client/tests/` — V1 DTO tests are in `V1DtoTest.php` first.
 
 ---
 
@@ -3086,7 +3094,7 @@ Any `live-only` key is a field the API added since the fixtures were captured �
 
 - [ ] **Step 4: Triage and commit**
 
-Per the Fix Protocol. Client-side webhook tests live under `packages/kudosity-client/tests/` — find the existing ones with `ls packages/kudosity-client/tests/Unit/Webhooks/`.
+Per the Fix Protocol. Client-side webhook tests live under `packages/kudosity-client/tests/` — find the existing ones with `ls packages/kudosity-client/tests/` — webhook tests are `V2WebhookEventTest.php`, `V2StatusPrecedenceTest.php`, `WebhookPayloadTest.php`, `WebhookGuardsTest.php`.
 
 ---
 
