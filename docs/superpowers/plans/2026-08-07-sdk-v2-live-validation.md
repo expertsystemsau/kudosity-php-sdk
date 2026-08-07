@@ -380,7 +380,14 @@ final class Redactor
     /** @param array<string, string> $secrets literal => replacement */
     public function __construct(private array $secrets) {}
 
-    public static function for(string $apiKey, string $apiSecret, string $handset, string $sender): self
+    /**
+     * $altSender covers the case pre-flight exists to detect: a fallback away
+     * from the declared sender leaves the declared number as live evidence
+     * (KUDOSITY_FROM checks report it in `detail`/`evidence`) unless it is
+     * redacted too. Both aliases map to the same replacement — either one is
+     * "our sender" depending on which stage produced the evidence.
+     */
+    public static function for(string $apiKey, string $apiSecret, string $handset, string $sender, ?string $altSender = null): self
     {
         $map = [];
         foreach ([$apiKey, $apiSecret] as $s) {
@@ -389,7 +396,14 @@ final class Redactor
             }
         }
         // Match with and without a leading +, and the 0-prefixed local form.
-        foreach ([$handset => '61491570006', $sender => '61491570017'] as $num => $to) {
+        // Pairs, not [$num => $to] literals: a fully-numeric $num (any real
+        // handset/sender is) gets silently cast to an int array key by PHP,
+        // which then breaks ltrim() below on the coerced int.
+        $numbers = [[$handset, '61491570006'], [$sender, '61491570017']];
+        if ($altSender !== null && $altSender !== '' && $altSender !== $sender) {
+            $numbers[] = [$altSender, '61491570017'];
+        }
+        foreach ($numbers as [$num, $to]) {
             if ($num === '') {
                 continue;
             }
@@ -412,7 +426,10 @@ final class Redactor
         if (is_array($value)) {
             $out = [];
             foreach ($value as $k => $v) {
-                $out[is_string($k) ? strtr($k, $this->secrets) : $k] = $this->scrub($v);
+                // Cast unconditionally: PHP casts a canonical-integer string
+                // key (e.g. a phone number) to int on the way into the array,
+                // so an is_string() guard here would silently skip it.
+                $out[strtr((string) $k, $this->secrets)] = $this->scrub($v);
             }
 
             return $out;
@@ -517,11 +534,19 @@ final class Bootstrap
 
     public function redactor(): Redactor
     {
+        // Both the confirmed sender and the declared one need to be in the
+        // map: whenever pre-flight falls back away from KUDOSITY_FROM, the
+        // declared number still appears as evidence on the KUDOSITY_FROM
+        // check itself, and would otherwise leak unredacted.
+        $sender = $this->confirmedSender ?? $this->declaredSender();
+        $declared = $this->declaredSender();
+
         return Redactor::for(
             $this->env['KUDOSITY_API_KEY'],
             $this->env['KUDOSITY_API_SECRET'] ?? '',
             $this->recipient(),
-            $this->confirmedSender ?? $this->declaredSender(),
+            $sender,
+            $declared !== $sender ? $declared : null,
         );
     }
 }
@@ -553,11 +578,20 @@ declare(strict_types=1);
 namespace OrderNotifier;
 
 use OrderNotifier\Scenario\Scenario;
+use RuntimeException;
 use Throwable;
 
 final class CheckRunner
 {
-    public function __construct(private string $resultsDir) {}
+    public function __construct(private string $resultsDir)
+    {
+        // A missing directory would otherwise fail file_put_contents() silently
+        // (its return value was previously ignored) while the run still exited
+        // 0 — every later task writes a result file through this constructor.
+        if (! is_dir($this->resultsDir)) {
+            throw new RuntimeException("Results directory does not exist: {$this->resultsDir}");
+        }
+    }
 
     public function run(Scenario $scenario, Bootstrap $boot): void
     {
@@ -580,14 +614,22 @@ final class CheckRunner
         $redactor = $boot->redactor();
         $rows = [];
         foreach ($checks as $check) {
-            $rows[] = $redactor->scrub($check->toArray());
-            fwrite(STDOUT, sprintf("  [%-7s] %s — %s\n", $check->result, $check->surface, $check->detail));
+            // Print from the already-scrubbed row, not $check->detail — the
+            // unredacted original — so STDOUT carries the same guarantee as
+            // the results file.
+            $row = $redactor->scrub($check->toArray());
+            $rows[] = $row;
+            fwrite(STDOUT, sprintf("  [%-7s] %s — %s\n", $row['result'], $row['surface'], $row['detail']));
         }
 
-        file_put_contents(
-            sprintf('%s/A-%s.json', $this->resultsDir, $scenario->name()),
+        $path = sprintf('%s/A-%s.json', $this->resultsDir, $scenario->name());
+        $written = file_put_contents(
+            $path,
             json_encode(['scenario' => $scenario->name(), 'checks' => $rows], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)."\n",
         );
+        if ($written === false) {
+            throw new RuntimeException("Failed to write results file: {$path}");
+        }
     }
 }
 ```
