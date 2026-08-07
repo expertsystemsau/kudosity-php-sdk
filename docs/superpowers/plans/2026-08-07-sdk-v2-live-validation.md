@@ -602,7 +602,16 @@ final class CheckRunner
         }
     }
 
-    public function run(Scenario $scenario, Bootstrap $boot): void
+    /**
+     * $provenance is optional and additive: most scenarios run cleanly and
+     * need no explanation of where their results came from. It exists for
+     * the exceptional case — a scenario whose live run partially failed and
+     * whose results file had to be reconstructed from a mix of that run's
+     * real side effects and a later read-only pass — so the fact that
+     * reconstruction happened lives in the artifact itself, not only in a
+     * report a future reader may never see.
+     */
+    public function run(Scenario $scenario, Bootstrap $boot, ?string $provenance = null): void
     {
         fwrite(STDOUT, "\n=== {$scenario->name()} ===\n");
 
@@ -631,10 +640,16 @@ final class CheckRunner
             fwrite(STDOUT, sprintf("  [%-7s] %s — %s\n", $row['result'], $row['surface'], $row['detail']));
         }
 
+        $document = ['scenario' => $scenario->name()];
+        if ($provenance !== null) {
+            $document['provenance'] = $provenance;
+        }
+        $document['checks'] = $rows;
+
         $path = sprintf('%s/A-%s.json', $this->resultsDir, $scenario->name());
         $written = file_put_contents(
             $path,
-            json_encode(['scenario' => $scenario->name(), 'checks' => $rows], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)."\n",
+            json_encode($document, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)."\n",
         );
         if ($written === false) {
             throw new RuntimeException("Failed to write results file: {$path}");
@@ -865,6 +880,12 @@ final class SmsV2Scenario implements Scenario
     /** Signing secret for the correlation ref. Not an API credential. */
     private const REF_SECRET = 'order-notifier-validation-secret';
 
+    /** How many times to retry GET /v2/sms/{id} against read-after-write lag. */
+    private const GET_RETRY_ATTEMPTS = 10;
+
+    /** Seconds to wait between GET retries. */
+    private const GET_RETRY_DELAY_SECONDS = 15;
+
     public function name(): string
     {
         return '02-sms-v2';
@@ -890,12 +911,29 @@ final class SmsV2Scenario implements Scenario
         file_put_contents(__DIR__.'/../../.last-sms-id', $sent->id);
         file_put_contents(__DIR__.'/../../.last-sms-ref', $ref);
 
-        $checks[] = Check::pass(
-            'sms()->send()',
-            'POST /v2/sms returns a flat envelope decoded into SmsMessageData',
-            sprintf('id=%s status=%s segments=%d gsm=%s', $sent->id, $sent->status->value, $sent->smsCount, $sent->isGsm ? 'yes' : 'no'),
-            ['id' => $sent->id, 'status' => $sent->status->value, 'recipient' => $sent->recipient, 'sender' => $sent->sender, 'message_ref' => $sent->messageRef],
-        );
+        // Was previously an unconditional Check::pass() — it compared nothing.
+        // Now genuinely falsifiable: the decoded envelope must actually carry
+        // the id, recipient and sender this call sent, and a real status.
+        $envelopeLooksRight = $sent->id !== ''
+            && $sent->recipient === $boot->recipient()
+            && $sent->sender === $boot->sender()
+            && $sent->status !== MessageStatus::Unknown;
+
+        $checks[] = $envelopeLooksRight
+            ? Check::pass(
+                'sms()->send()',
+                'POST /v2/sms returns a flat envelope decoded into SmsMessageData',
+                sprintf('id=%s status=%s segments=%d gsm=%s', $sent->id, $sent->status->value, $sent->smsCount, $sent->isGsm ? 'yes' : 'no'),
+                ['id' => $sent->id, 'status' => $sent->status->value, 'recipient' => $sent->recipient, 'sender' => $sent->sender, 'message_ref' => $sent->messageRef],
+            )
+            : Check::fail(
+                'sms()->send()',
+                'POST /v2/sms returns a flat envelope decoded into SmsMessageData',
+                sprintf(
+                    'id=%s recipient=%s (sent to %s) sender=%s (sent from %s) status=%s',
+                    $sent->id, $sent->recipient, $boot->recipient(), $sent->sender, $boot->sender(), $sent->status->value,
+                ),
+            );
 
         $checks[] = $sent->messageRef === $ref
             ? Check::pass('sms()->send()', 'the message_ref round-trips on the send response', 'ref echoed intact')
@@ -905,9 +943,14 @@ final class SmsV2Scenario implements Scenario
             ? Check::pass('sms()->send()', 'trackLinks: true is reflected in the response', 'track_links true')
             : Check::finding('sms()->send()', 'trackLinks: true is reflected in the response', 'Sent with trackLinks: true but the response reports false');
 
+        // recipientCount() is a hardcoded `return 1` in SmsMessageData, not
+        // derived from any response field — this is a regression guard
+        // against a future edit conflating it with smsCount (segment count),
+        // not a live assertion about the API. Kept for that reason; expectation
+        // worded to say so rather than imply it reads something from the wire.
         $checks[] = $sent->recipientCount() === 1
-            ? Check::pass('SentMessage::recipientCount()', 'a V2 SMS reports exactly one recipient, not its segment count', '1')
-            : Check::fail('SentMessage::recipientCount()', 'a V2 SMS reports exactly one recipient', (string) $sent->recipientCount());
+            ? Check::pass('SentMessage::recipientCount()', 'is hardcoded to 1 for a V2 SMS (regression guard, not a live API assertion)', '1')
+            : Check::fail('SentMessage::recipientCount()', 'is hardcoded to 1 for a V2 SMS (regression guard, not a live API assertion)', (string) $sent->recipientCount());
 
         // GET /v2/sms/{id}. Observed live: an immediate GET for a message id
         // just returned by POST can 404 for a read-after-write window — over
@@ -915,31 +958,50 @@ final class SmsV2Scenario implements Scenario
         // attempt. Retried here, rather than left to throw, so a transient
         // indexing lag doesn't take the independent list checks below down
         // with it — a scenario-wide throw loses every check not yet returned.
+        //
+        // Unconditionally appends exactly two checks, regardless of outcome:
+        // one for whether the first attempt succeeded (the lag observation
+        // itself — a real, interesting finding, not an SDK defect either way),
+        // and one for whether the id returned matches once something comes
+        // back at all. An earlier version used an if/else that appended only
+        // one check total, which meant a results file claiming to record both
+        // could never actually be produced by running this method.
         $fetched = null;
+        $succeededOnFirstAttempt = false;
         $lastNotFound = null;
-        for ($attempt = 1; $attempt <= 10; $attempt++) {
+        for ($attempt = 1; $attempt <= self::GET_RETRY_ATTEMPTS; $attempt++) {
             try {
                 $fetched = $client->sms()->get($sent->id);
+                $succeededOnFirstAttempt = ($attempt === 1);
                 break;
             } catch (NotFoundException $e) {
                 $lastNotFound = $e;
-                if ($attempt < 10) {
-                    sleep(15);
+                if ($attempt < self::GET_RETRY_ATTEMPTS) {
+                    sleep(self::GET_RETRY_DELAY_SECONDS);
                 }
             }
         }
 
-        if ($fetched !== null) {
-            $checks[] = $fetched->id === $sent->id
-                ? Check::pass('sms()->get()', 'GET /v2/sms/{id} returns the same message', sprintf('status now %s', $fetched->status->value), ['status' => $fetched->status->value])
-                : Check::fail('sms()->get()', 'GET /v2/sms/{id} returns the same message', sprintf('asked for %s, got %s', $sent->id, $fetched->id));
-        } else {
-            $checks[] = Check::finding(
+        $checks[] = $succeededOnFirstAttempt
+            ? Check::pass('sms()->get()', 'a GET for a just-sent message id succeeds immediately', 'no read-after-write lag observed')
+            : Check::finding(
                 'sms()->get()',
-                'GET /v2/sms/{id} returns the same message',
-                sprintf('Still 404 after 10 retries (~135s): %s — read-after-write lag exceeded the retry budget', $lastNotFound?->getMessage() ?? 'unknown error'),
+                'a GET for a just-sent message id succeeds immediately',
+                $fetched !== null
+                    ? sprintf('First attempt raised NotFoundException; a retry succeeded — read-after-write lag, not an SDK defect (%s)', $lastNotFound?->getMessage() ?? 'unknown error')
+                    : sprintf(
+                        'Still 404 after %d retries (~%ds): %s — read-after-write lag exceeded the retry budget',
+                        self::GET_RETRY_ATTEMPTS,
+                        (self::GET_RETRY_ATTEMPTS - 1) * self::GET_RETRY_DELAY_SECONDS,
+                        $lastNotFound?->getMessage() ?? 'unknown error',
+                    ),
             );
-        }
+
+        $checks[] = $fetched !== null
+            ? ($fetched->id === $sent->id
+                ? Check::pass('sms()->get()', 'GET /v2/sms/{id} returns the same message', sprintf('status now %s', $fetched->status->value), ['status' => $fetched->status->value])
+                : Check::fail('sms()->get()', 'GET /v2/sms/{id} returns the same message', sprintf('asked for %s, got %s', $sent->id, $fetched->id)))
+            : Check::finding('sms()->get()', 'GET /v2/sms/{id} returns the same message', 'Never became available within the retry budget — see the lag finding above');
 
         // Paginated list, filtered to this recipient. The point is crossing a
         // page boundary: V2PagedPaginator must read `limit` from the response
@@ -985,19 +1047,50 @@ final class SmsV2Scenario implements Scenario
 
         $checks[] = in_array($sent->id, $ids, true)
             ? Check::pass('sms()->list()', 'the message just sent appears in the filtered list', $sent->id)
-            : Check::finding('sms()->list()', 'the message just sent appears in the filtered list', 'Not present within the first 3 pages — likely indexing lag, not an SDK fault');
+            : Check::finding(
+                'sms()->list()',
+                'the message just sent appears in the filtered list',
+                'Not present within the pages scanned. GET /v2/sms returns ascending order by created_at, so '
+                .'a just-sent message is always on the LAST page — once this recipient has more history than '
+                .'the pages scanned can cover, scanning from the front will not find it. This is not evidence '
+                .'of indexing lag.',
+            );
 
         // Status filter, exercising the enum on the query side. The list filter
         // is UPPERCASE while send responses are lowercase; MessageStatus is
         // case-insensitive for exactly this reason.
+        //
+        // `$firstPage !== null` used to be the whole check, but `?? []` means
+        // it can never actually be null — that assertion could not fail even
+        // if the API silently ignored the filter and returned every status.
+        // Now checks the thing the filter is actually for: every returned row
+        // must carry the filtered status.
         $firstPage = null;
         foreach ($client->sms()->list(status: MessageStatus::Delivered, recipient: $boot->recipient()) as $response) {
             $firstPage = $response->json('smses') ?? [];
             break;
         }
-        $checks[] = $firstPage !== null
-            ? Check::pass('sms()->list(status:)', 'a MessageStatus enum is accepted as a filter', sprintf('%d delivered on page 1', count($firstPage)))
-            : Check::finding('sms()->list(status:)', 'a MessageStatus enum is accepted as a filter', 'The filtered request returned no page at all');
+
+        if ($firstPage === null) {
+            $checks[] = Check::finding('sms()->list(status:)', 'every row returned by the status filter actually carries that status', 'The filtered request returned no page at all');
+        } elseif ($firstPage === []) {
+            $checks[] = Check::finding('sms()->list(status:)', 'every row returned by the status filter actually carries that status', 'Filtered page was empty — nothing delivered yet for this recipient, so this run cannot confirm the filter either way');
+        } else {
+            // Row status arrives lowercase ("delivered"), same convention as
+            // the send endpoints — MessageStatus::fromApi() is case-insensitive
+            // for exactly this reason; comparing the raw string against the
+            // uppercase filter value would false-fail on every real row.
+            $allMatch = true;
+            foreach ($firstPage as $row) {
+                if (MessageStatus::fromApi(is_string($row['status'] ?? null) ? $row['status'] : null) !== MessageStatus::Delivered) {
+                    $allMatch = false;
+                    break;
+                }
+            }
+            $checks[] = $allMatch
+                ? Check::pass('sms()->list(status:)', 'every row returned by the status filter actually carries that status', sprintf('%d/%d rows are %s', count($firstPage), count($firstPage), MessageStatus::Delivered->value))
+                : Check::fail('sms()->list(status:)', 'every row returned by the status filter actually carries that status', 'At least one returned row does not carry the filtered status — the API silently ignored the filter');
+        }
 
         return $checks;
     }
