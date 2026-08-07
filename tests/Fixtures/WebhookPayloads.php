@@ -5,10 +5,13 @@ declare(strict_types=1);
 /**
  * Loaders for the captured V2 webhook payloads.
  *
- * Shared by V2WebhookEventTest.php, V2StatusPrecedenceTest.php and the webhook
- * resource spec. Lives here rather than being declared in one spec and
- * `require_once`'d by the others — this file is loaded once, up front, by
- * tests/Pest.php, so running a single spec file in isolation still works.
+ * The sole remaining consumer is tests/Unit/V2WebhookReceiverTest.php — a
+ * Laravel-package test that stays at root permanently. (V2WebhookEventTest.php,
+ * V2StatusPrecedenceTest.php and the webhook resource spec were the other
+ * consumers; all three were ported into the client package.) Lives here
+ * rather than being declared in the one remaining spec and `require_once`'d
+ * — this file is loaded once, up front, by tests/Pest.php, so running a
+ * single spec file in isolation still works.
  *
  * (Root `StubV2SendRequest.php` used to be loaded the same way and served as
  * the other example of this pattern; it moved to

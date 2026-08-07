@@ -107,9 +107,11 @@ omit. Likewise `packages/kudosity-client/tests/Fixtures/V2Senders/README.md` for
 verified about the sender item shape.
 
 Phase 5 (Laravel channels, the webhook receiver route, `kudosity:webhook:*`
-commands) and Phase 6 (standalone suite, docs, release) remain. See "Two APIs,
-two auth schemes" below for how the two APIs fit together, and the client
-package README's "V2 channels" section for the per-endpoint envelope table.
+commands) and Phase 6 (the client package's standalone suite, docs, release)
+are both done — see the "Laravel Integration" section below for what Phase 5
+shipped. See "Two APIs, two auth schemes" below for how the two APIs fit
+together, and the client package README's "V2 channels" section for the
+per-endpoint envelope table.
 
 ### Laravel Integration (kudosity-laravel)
 

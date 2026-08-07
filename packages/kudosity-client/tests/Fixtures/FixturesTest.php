@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace ExpertSystems\Kudosity\Tests\Fixtures;
 
 use InvalidArgumentException;
-use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\TestCase;
 
-#[CoversClass(Fixtures::class)]
+#[CoversNothing]
 final class FixturesTest extends TestCase
 {
     public function test_it_loads_a_captured_webhook_delivery(): void
