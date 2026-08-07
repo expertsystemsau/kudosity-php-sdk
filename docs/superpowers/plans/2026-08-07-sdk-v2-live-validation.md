@@ -19,6 +19,17 @@
 - **Budget:** roughly twelve billable messages for the whole run. If a scenario would exceed that, stop and report rather than spending.
 - **Branch:** `validate/v2-live-consumer-run`, already created and checked out in the monorepo. All monorepo commits go there. Never commit to `main`.
 - **`/docs` is gitignored but specs and plans are tracked** — commit them with `git add -f`.
+- **Pagination — read this before writing any list iteration.** A Saloon
+  paginator yields `Saloon\Http\Response` objects when iterated directly. A
+  `Response` is neither `Traversable` nor `Countable`, so `foreach ($page as $item)`
+  silently yields **nothing** and `count($page)` throws a `TypeError`. Two correct
+  forms: `foreach ($paginator->items() as $row)` for rows, or
+  `foreach ($paginator as $response) { $response->json('<itemsKey>'); }` when you
+  need per-page counts. **`items()` yields raw arrays, not DTOs** — index with
+  `$row['id']`, never `$row->id`. V1 items keys vary per endpoint (`numbers`,
+  `lists`, `keywords`, `messages`, `recipients`, `responses`); V2 SMS is `data`
+  and sender registrations are `data.registrations`. V1 `number` fields arrive as
+  JSON integers — cast before string use.
 - **Failure handling:** a failing check never stops the run. Triage into `FAIL` (SDK defect), `FINDING` (upstream API behaviour), or `BLOCKED` (environment/account), record it, and continue. See "Fix Protocol" below.
 
 ## Fix Protocol
@@ -628,8 +639,23 @@ final class PreflightScenario implements Scenario
         }
 
         // V2 auth, and the sender question.
-        $ready = $client->senders()->readyToUse();
+        //
+        // Two independent sources, because neither alone is sufficient:
+        //
+        //   senders()->readyToUse()  — V2 self-service SENDER REGISTRATIONS.
+        //                              Covers a registered personal mobile. A
+        //                              leased virtual number never appears here.
+        //   numbers()->all()         — V1 LEASED VIRTUAL NUMBERS. This is where
+        //                              a dedicated VMN lives, and a VMN is the
+        //                              only sender that does MMS and two-way.
+        //
+        // Confirmed live 2026-08-07: an account owning one active VMN answers
+        // /v2/senders/registrations with an empty list and get-numbers.json with
+        // that number. Consulting registrations alone reports "no sender" on an
+        // account that has one, which blocks every send scenario for no reason.
         $usable = [];
+
+        $ready = $client->senders()->readyToUse();
         foreach ($ready as $reg) {
             /** @var SenderRegistrationData $reg */
             if ($reg->sender !== null) {
@@ -639,10 +665,30 @@ final class PreflightScenario implements Scenario
 
         $checks[] = Check::pass(
             'senders()->readyToUse()',
-            'V2 x-api-key auth works and returns usable senders',
-            sprintf('%d ready: %s', count($usable), implode(', ', $usable) ?: 'none'),
-            ['senders' => $usable],
+            'V2 x-api-key auth works and returns any registered senders',
+            sprintf('%d registration(s) ready: %s', count($usable), implode(', ', $usable) ?: 'none'),
+            ['registrations' => $usable],
         );
+
+        // Leased numbers. `number` is a JSON integer here, so cast it.
+        $leased = [];
+        foreach ($client->numbers()->all()->items() as $row) {
+            $number = isset($row['number']) ? (string) $row['number'] : '';
+            if ($number !== '' && ($row['status'] ?? null) === 'active') {
+                $leased[] = $number;
+            }
+        }
+
+        $checks[] = Check::pass(
+            'numbers()->all()',
+            'V1 auth works and the account\'s leased virtual numbers are listed',
+            sprintf('%d active leased number(s): %s', count($leased), implode(', ', $leased) ?: 'none'),
+            ['leased' => $leased],
+        );
+
+        // A leased VMN is preferred over a registered mobile: it is the only
+        // sender that can send MMS and receive the replies Task 9 needs.
+        $usable = array_values(array_unique([...$leased, ...$usable]));
 
         $declared = $boot->declaredSender();
         if (in_array($declared, $usable, true)) {
@@ -658,8 +704,9 @@ final class PreflightScenario implements Scenario
                 'KUDOSITY_FROM',
                 'the declared sender is registered and usable',
                 sprintf(
-                    'Declared sender %s is not in readyToUse(); falling back to %s. '
-                    .'The notes record KUDOSITY_FROM as stale — this confirms it.',
+                    'Declared sender %s is not usable on this account; falling back to %s. '
+                    .'The notes record KUDOSITY_FROM as stale — this confirms it. The '
+                    .'monorepo .env is NOT edited; the fallback is discovered at runtime.',
                     $declared,
                     $usable[0],
                 ),
@@ -669,7 +716,9 @@ final class PreflightScenario implements Scenario
             $checks[] = Check::blocked(
                 'KUDOSITY_FROM',
                 'at least one usable sender exists',
-                'No sender is ready to use; every send scenario is blocked',
+                'Neither a leased virtual number nor a ready sender registration exists on '
+                .'this account. Every send scenario is blocked until one is provisioned — '
+                .'this is an account state, not an SDK defect.',
             );
         }
 
@@ -817,15 +866,19 @@ final class SmsV2Scenario implements Scenario
         // Paginated list, filtered to this recipient. The point is crossing a
         // page boundary: V2PagedPaginator must read `limit` from the response
         // rather than assuming one, or it walks off the end of the results.
-        $paginator = $client->sms()->list(recipient: $boot->recipient());
+        // NOTE: iterate ->items(), never the paginator directly. A Saloon
+        // paginator yields Response objects, which are neither Traversable nor
+        // Countable — `foreach ($page as $item)` over one silently yields
+        // nothing and `count($page)` throws. ->items() yields the rows, and the
+        // rows are RAW ARRAYS, not DTOs, so index them with ['key'].
         $seen = 0;
         $pages = 0;
         $ids = [];
-        foreach ($paginator as $page) {
+        foreach ($client->sms()->list(recipient: $boot->recipient()) as $response) {
             $pages++;
-            foreach ($page as $item) {
+            foreach (($response->json('data') ?? []) as $row) {
                 $seen++;
-                $ids[] = $item->id;
+                $ids[] = (string) ($row['id'] ?? '');
             }
             if ($pages >= 3) {
                 break; // enough to prove the boundary without paging the account
@@ -847,15 +900,14 @@ final class SmsV2Scenario implements Scenario
         // Status filter, exercising the enum on the query side. The list filter
         // is UPPERCASE while send responses are lowercase; MessageStatus is
         // case-insensitive for exactly this reason.
-        $delivered = $client->sms()->list(status: MessageStatus::Delivered, recipient: $boot->recipient());
         $firstPage = null;
-        foreach ($delivered as $page) {
-            $firstPage = $page;
+        foreach ($client->sms()->list(status: MessageStatus::Delivered, recipient: $boot->recipient()) as $response) {
+            $firstPage = $response->json('data') ?? [];
             break;
         }
         $checks[] = $firstPage !== null
             ? Check::pass('sms()->list(status:)', 'a MessageStatus enum is accepted as a filter', sprintf('%d delivered on page 1', count($firstPage)))
-            : Check::finding('sms()->list(status:)', 'a MessageStatus enum is accepted as a filter', 'Empty first page — no delivered messages to this recipient yet');
+            : Check::finding('sms()->list(status:)', 'a MessageStatus enum is accepted as a filter', 'The filtered request returned no page at all');
 
         return $checks;
     }
@@ -1125,9 +1177,8 @@ final class ListsScenario implements Scenario
 
         // Paginated members.
         $seen = 0;
-        foreach ($client->lists()->getContacts($list->id) as $page) {
-            $seen += count($page);
-            break; // one page is enough for a list of one
+        foreach ($client->lists()->getContacts($list->id)->items() as $row) {
+            $seen++;
         }
         $checks[] = $seen >= 1
             ? Check::pass('lists()->getContacts()', 'members paginate', sprintf('%d on page 1', $seen))
@@ -1449,9 +1500,8 @@ final class ReportingScenario implements Scenario
 
         // Paginated recipients of one message.
         $recipients = 0;
-        foreach ($client->reporting()->getSent($messageId) as $page) {
-            $recipients += count($page);
-            break;
+        foreach ($client->reporting()->getSent($messageId)->items() as $row) {
+            $recipients++;
         }
         $checks[] = $recipients >= 1
             ? Check::pass('reporting()->getSent()', 'the recipients of a send paginate', sprintf('%d on page 1', $recipients))
@@ -1461,9 +1511,9 @@ final class ReportingScenario implements Scenario
         // multi-page dataset rather than a one-row list.
         $pages = 0;
         $rows = 0;
-        foreach ($client->reporting()->getUserSent() as $page) {
+        foreach ($client->reporting()->getUserSent() as $response) {
             $pages++;
-            $rows += count($page);
+            $rows += count($response->json('messages') ?? $response->json('recipients') ?? []);
             if ($pages >= 2) {
                 break;
             }
@@ -1495,9 +1545,8 @@ final class ReportingScenario implements Scenario
         // result here is expected, not a failure.
         try {
             $responses = 0;
-            foreach ($client->reporting()->getAllResponses() as $page) {
-                $responses += count($page);
-                break;
+            foreach ($client->reporting()->getAllResponses()->items() as $row) {
+                $responses++;
             }
             $checks[] = Check::pass(
                 'reporting()->getAllResponses()',
@@ -1592,13 +1641,20 @@ final class SendersScenario implements Scenario
         // the one V2 shape that differs from every other list endpoint.
         $pages = 0;
         $items = 0;
-        foreach ($client->senders()->registrations() as $page) {
+        foreach ($client->senders()->registrations() as $response) {
             $pages++;
-            $items += count($page);
+            $items += count($response->json('data.registrations') ?? []);
             if ($pages >= 2) {
                 break;
             }
         }
+
+        // A leased virtual number is NOT a sender registration, so this endpoint
+        // is legitimately empty on an account whose only sender is a leased VMN.
+        // Confirmed live: /v2/senders/registrations answers
+        // {"data":{"registrations":[]},"meta":{...,"total_count":0}}. Do not read
+        // an empty result here as a defect.
+
         $checks[] = Check::pass(
             'senders()->registrations()',
             'registrations paginate from data.registrations with meta.pagination.total_count',
@@ -1831,12 +1887,11 @@ final class MiscV1Scenario implements Scenario
         $checks = [];
 
         // --- Numbers (read-only; leasing is excluded) ---
+        // Rows are raw arrays and `number` arrives as a JSON INTEGER, not a
+        // string — cast before any string operation on it.
         $owned = [];
-        foreach ($client->numbers()->all() as $page) {
-            foreach ($page as $n) {
-                $owned[] = $n;
-            }
-            break;
+        foreach ($client->numbers()->all()->items() as $row) {
+            $owned[] = $row;
         }
         $checks[] = Check::pass(
             'numbers()->all()',
@@ -1857,9 +1912,8 @@ final class MiscV1Scenario implements Scenario
 
         // --- Keywords (read-only) ---
         $keywords = 0;
-        foreach ($client->keywords()->all() as $page) {
-            $keywords += count($page);
-            break;
+        foreach ($client->keywords()->all()->items() as $row) {
+            $keywords++;
         }
         $checks[] = Check::pass(
             'keywords()->all()',
@@ -1868,12 +1922,11 @@ final class MiscV1Scenario implements Scenario
         );
 
         if ($owned !== []) {
-            $number = $owned[0]->number ?? null;
-            if (is_string($number) && $number !== '') {
+            $number = isset($owned[0]['number']) ? (string) $owned[0]['number'] : '';
+            if ($number !== '') {
                 $forNumber = 0;
-                foreach ($client->keywords()->forNumber($number) as $page) {
-                    $forNumber += count($page);
-                    break;
+                foreach ($client->keywords()->forNumber($number)->items() as $row) {
+                    $forNumber++;
                 }
                 $checks[] = Check::pass(
                     'keywords()->forNumber()',
@@ -4456,11 +4509,9 @@ echo "--- contact lists ---"
 php -r '
 require "vendor/autoload.php";
 $b = OrderNotifier\Bootstrap::load();
-foreach ($b->client()->lists()->all() as $page) {
-  foreach ($page as $l) {
-    if (str_starts_with((string) $l->name, "sdk-validation-")) {
-      echo "deleting list ", $l->id, " ", $l->name, " => ", var_export($b->client()->lists()->delete($l->id), true), PHP_EOL;
-    }
+foreach ($b->client()->lists()->all()->items() as $l) {
+  if (str_starts_with((string) ($l["name"] ?? ""), "sdk-validation-")) {
+    echo "deleting list ", $l["id"], " ", $l["name"], " => ", var_export($b->client()->lists()->delete((int) $l["id"]), true), PHP_EOL;
   }
 }
 '
