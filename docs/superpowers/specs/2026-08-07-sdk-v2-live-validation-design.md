@@ -79,11 +79,21 @@ consumer receives. Before packaging, each archived tree is checked for:
 - `LICENSE.md` present
 - `composer validate --strict` clean
 
-**One deliberate deviation.** Packagist derives a package version from its git
-tag. No `v2.0.1` tag exists, so a `"version": "2.0.1"` field is injected into
-each archived `composer.json` before zipping. That field is the only difference
-between these artifacts and a real publish, and it is not present in the
-repository.
+**One deliberate deviation, and a correction discovered mid-run.** Packagist
+derives a package version from its git tag, so a `"version": "2.0.1"` field is
+injected into each archived `composer.json` before zipping. That injection is the
+only difference in *mechanism* between these artifacts and a real publish, and it
+is not present in the repository.
+
+**Correction, 2026-08-07:** this document originally asserted that no `v2.0.1`
+tag existed and that the packages were unreleased. Both claims were wrong.
+`v2.0.0` is tagged at `fafac1d` and pushed, and **Packagist carries both packages
+at `v2.0.0` and `v2.0.1`** (latest published 2026-08-07T03:39:25Z). So this is
+post-release validation of shipped code, not pre-release validation — every defect
+found is live for anyone who has installed it. The artifacts under test are built
+from `HEAD` and therefore **diverge from the real published `2.0.1`**, deliberately,
+because `HEAD` carries fixes that are not published. The report must state that
+explicitly so nobody reads "2.0.1" as "what is on Packagist".
 
 The two projects each declare the artifact repository and `composer require` by
 name. `kudosity-laravel-client`'s dependency on `kudosity-php-client: ^2.0`
