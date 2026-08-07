@@ -7,6 +7,7 @@ namespace ExpertSystems\Kudosity\Requests\V2;
 use ExpertSystems\Kudosity\Data\V2\RcsCapabilityData;
 use ExpertSystems\Kudosity\Exceptions\ValidationException;
 use ExpertSystems\Kudosity\Requests\KudosityV2BodyRequest;
+use ExpertSystems\Kudosity\Support\PhoneNumber;
 use Saloon\Http\Response;
 
 /**
@@ -41,6 +42,27 @@ class CheckRcsCapabilitiesRequest extends KudosityV2BodyRequest
         protected array $phoneNumbers,
         protected string $sender,
     ) {
+        // The same trap SendRcsRequest closes, and it was open here. A phone
+        // number in the agent slot returns "sender is not owned by this
+        // account" from the live API — which is true, and tells the caller
+        // nothing about the actual mistake. A rule enforced on the send path
+        // and not this one is worse than no rule, because the first success
+        // teaches the caller the wrong lesson.
+        //
+        // Deliberately identical to SendRcsRequest's: reuses
+        // PhoneNumber::isValid() rather than inventing a second notion of what
+        // a phone number looks like, and so accepts a short numeric agent ID
+        // such as "12345", which the docs explicitly permit.
+        if (PhoneNumber::isValid($sender)) {
+            throw new ValidationException(
+                message: sprintf(
+                    'sender must be a registered RCS agent ID, not a phone number — "%s" looks like one.',
+                    $sender,
+                ),
+                errorCode: 'FIELD_INVALID',
+            );
+        }
+
         if ($phoneNumbers === []) {
             throw new ValidationException(
                 message: 'phone_numbers cannot be empty',

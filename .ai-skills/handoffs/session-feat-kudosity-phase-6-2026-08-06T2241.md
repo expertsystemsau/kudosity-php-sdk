@@ -4,9 +4,7 @@ source: xsys-handoff
 mode: full
 generated_at: "2026-08-06T22:41+10:00"
 title: "Kudosity 2.0 — Phase 6 in flight: client test suite on the 8.2 floor"
-status: resumed
-resumed_at: "2026-08-06T22:34+10:00"
-resumed_from_sha: "d61b1b84cecf05f54ac25b5b89986545390fd978"
+status: in-progress
 branch: "feat/kudosity-phase-6"
 head_sha: "5c7ca0f"
 dirty_files: 0

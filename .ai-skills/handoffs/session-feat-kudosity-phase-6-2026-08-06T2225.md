@@ -2,19 +2,17 @@
 handoff_version: "1"
 source: xsys-handoff
 mode: full
-generated_at: "2026-08-06T22:41+10:00"
+generated_at: "2026-08-06T22:25+10:00"
 title: "Kudosity 2.0 — Phase 6 in flight: client test suite on the 8.2 floor"
-status: resumed
-resumed_at: "2026-08-06T22:34+10:00"
-resumed_from_sha: "d61b1b84cecf05f54ac25b5b89986545390fd978"
+status: in-progress
 branch: "feat/kudosity-phase-6"
-head_sha: "5c7ca0f"
+head_sha: "6d46a1a26307085895b66abea5dc7df40002e3f9"
 dirty_files: 0
 diff_digest: "clean"
 ticket_key: "none"
 repo: "transmitsms-php-sdk"
 submodules: []
-next_step: "Invoke superpowers:subagent-driven-development and execute Task 5 of docs/superpowers/plans/2026-08-06-kudosity-phase-6-tests-ci-release.md — paginators and enum tolerance"
+next_step: "Execute Task 5 of docs/superpowers/plans/2026-08-06-kudosity-phase-6-tests-ci-release.md — paginators and enum tolerance"
 ---
 
 # Handoff: Kudosity 2.0 — Phase 6, tasks 1-4 of 9 done
@@ -166,18 +164,13 @@ Posting `{}` returns RFC 9457 `issues[]` naming every required field.
 
 ## Current State
 
-**Working.** Branch `feat/kudosity-phase-6` at `5c7ca0f`, pushed, clean tree, 5 commits ahead
-of `main`. Tasks 1–4 of 9 complete. CI green at `6d46a1a` (the last code commit; `5c7ca0f` is
-this handoff), including all three `Client standalone` jobs.
+**Working.** Branch `feat/kudosity-phase-6` at `6d46a1a`, pushed, clean tree, 4 commits ahead
+of `main`. Tasks 1–4 of 9 complete. CI green on the branch tip, including all three
+`Client standalone` jobs.
 
 **Broken.** Nothing known.
 
 **Uncommitted changes.** None.
-
-**A Task 5 subagent was dispatched and then stopped before it wrote anything.** The working
-tree was verified clean and `packages/kudosity-client/tests/` still contains only the six
-files from Tasks 1–4 — no `PaginatorTest.php`, no `EnumToleranceTest.php`. **Task 5 starts
-from scratch.** Nothing to salvage and nothing to clean up.
 
 ## Verification
 
@@ -261,42 +254,15 @@ run_mut () {
 
 ## Resume Instructions
 
-**The user wants this finished with subagent-driven execution.** The plan is already written
-and reviewed, so the skill to invoke is **`superpowers:subagent-driven-development`**, one
-fresh subagent per task with a review between tasks. *Not* `superpowers:brainstorming` —
-brainstorming explores requirements before a plan exists, and this plan is done; running it
-now would re-litigate settled decisions.
-
-1. Confirm the baseline before dispatching anything:
-   - `vendor/bin/pest --compact` → `844 passed (1660 assertions)`
-   - `cd packages/kudosity-client && vendor/bin/phpunit` → `130 tests, 259 assertions`
-   - `git status --short` → empty, at `5c7ca0f`
-   - If any differ: `git log --oneline -8`. Something moved since this handoff.
-2. **Dispatch Tasks 5, 6, 7, 8 one at a time, in order — never two at once.** See Warnings
-   for why parallelism is unsafe here; it is not a preference.
-3. Each subagent prompt must carry, because a fresh subagent has none of this:
-   - Repo path and branch (`feat/kudosity-phase-6`, already checked out — do not branch).
-   - "Read the plan's Global Constraints, Reference section, and your task in full, then read
-     `HANDOFF.md`'s Failed Approaches, then two existing tests
-     (`packages/kudosity-client/tests/WebhookPayloadTest.php`, `DtoTest.php`) to match style."
-   - The five verification commands from Verification above, with the current baselines.
-   - The mutation harness from Code Context **verbatim**, and the `php -r` rule.
-   - "PHPUnit 11 attributes, not Pest. Confirm every signature against the source — do not
-     trust docblocks or the plan's prose; two expectations in earlier tasks were wrong until
-     checked."
-   - "If a test fails against shipped code, stop and decide whether the test or the code is
-     wrong before changing either. Report a suspected production bug rather than silently
-     fixing it."
-   - One commit per task, no push.
-4. Review each subagent's diff before dispatching the next: assertions actually assert, the
-   mutation table is real, both suites green, and `git diff -U0 main -- packages | grep -E
-   '^-\s*(public|protected|const)'` is still empty.
-5. Task 7 needs `composer test-coverage` **before and after** its deletions — a coverage drop
-   means a deletion was wrong, and that is the only way to know.
-6. After Task 8: merge to `main`, push, confirm all four workflows including the three
-   `Client standalone` jobs.
-7. **Task 9 is the user's** — the repo rename, Packagist, marking the old packages abandoned,
-   and rotating credentials. Do the `v2.0.0` tag only after they confirm the dashboard steps.
+1. Execute **Task 5** of `docs/superpowers/plans/2026-08-06-kudosity-phase-6-tests-ci-release.md` — paginators and enum tolerance.
+   - Confirm the baseline first: `vendor/bin/pest --compact` → `844 passed`, and
+     `cd packages/kudosity-client && vendor/bin/phpunit` → `130 tests, 259 assertions`.
+   - If different: `git log --oneline -8`. Something moved since this handoff.
+2. Then Tasks 6, 7, 8 in order. Task 7 needs `composer test-coverage` before and after its
+   deletions — a coverage drop means a deletion was wrong.
+3. Every task: mutation-test the new tests, run the client suite on 8.2 in Docker, and keep
+   both suites green.
+4. **Task 9 is the user's** — Packagist, the repo rename, and credential rotation.
 
 ## Setup Required
 
@@ -321,13 +287,6 @@ now would re-litigate settled decisions.
 
 ## Warnings
 
-- **Do not run two of these task subagents at once.** Every task mutation-tests by
-  temporarily editing files under `src/` and restoring them. Two agents doing that in the
-  same working tree see each other's mutations, so a mutation that *was* caught reports as
-  surviving and vice versa — and the runs would fight over `.phpunit.cache` too. The tasks
-  look independent because they touch different test files; they are not, because they share
-  a working tree. A git worktree does not rescue this either: `vendor/` would be absent, and
-  symlinking it back is already a recorded failure (see Failed Approaches). **Sequential.**
 - **`.github/workflows/split.yml` must keep `actions/checkout@v4`.**
   `claudiodekker/splitsh-action@v1.0.0` runs `git config --local --unset-all
   http.https://github.com/.extraheader` under `set -e`; checkout v5+ stores the token via an

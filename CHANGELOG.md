@@ -2,7 +2,7 @@
 
 All notable changes to `kudosity-php-client` will be documented in this file.
 
-## Unreleased
+## 2.0.0 - 2026-08-07
 
 ### Breaking
 
@@ -45,7 +45,9 @@ All notable changes to `kudosity-php-client` will be documented in this file.
 - Laravel: `POST {prefix}/events` receives all ten V2 webhook event types and dispatches `KudosityStatusReceived`, `KudosityInboundReceived`, `KudosityLinkHitReceived` or `KudosityOptOutReceived`. Authenticated by unguessable URL, since V2 deliveries are unsigned; an unsigned request is refused with 403 even though the V1 parser would allow it. A plaintext `http://` webhook URL is refused unless `allowInsecureUrl: true` is passed; `kudosity:webhook:install` opts in only when `APP_ENV=local`. The three V1 GET callback routes are unchanged.
 - `Contracts\SentMessage`, implemented by `Data\SmsData` and `Data\V2\SmsMessageData`, so the SMS channel's return type is stable across its routing decision.
 - `V2PagedPaginator` now also reads a total from `meta.pagination.total_count` and prefers the `limit` a response reports. `GET /v2/senders/registrations` is page-based but names its total differently from `GET /v2/sms` and defaults to 25 per page rather than 100.
-- `Webhooks\InboundMedia` and `InboundEvent::$media` — an inbound MMS delivers its attachment as **inline base64** under `mo.media[]`, not as URLs. `InboundEvent::$contentUrls` reads `mo.content_urls`, which is the *outbound* request shape and is absent from a real `MMS_INBOUND`, so the picture parsed cleanly and was silently discarded. Captured live on 2026-08-06; see `tests/Fixtures/V2Webhooks/README.md`. `InboundMedia::mimeType()` sniffs the decoded bytes because the payload carries no content type at all, and `bytes()` returns null rather than throwing on content that will not decode.
+- `Webhooks\InboundMedia` and `InboundEvent::$media` — an inbound MMS delivers its attachment as **inline base64** under `mo.media[]`, not as URLs. `InboundEvent::$contentUrls` reads `mo.content_urls`, which is the *outbound* request shape and is absent from a real `MMS_INBOUND`, so the picture parsed cleanly and was silently discarded. Captured live on 2026-08-06; see `packages/kudosity-client/tests/Fixtures/V2Webhooks/README.md`. `InboundMedia::mimeType()` sniffs the decoded bytes because the payload carries no content type at all, and `bytes()` returns null rather than throwing on content that will not decode.
+- The client package ships its own PHPUnit 11 suite, installed and run standalone on PHP 8.2, 8.3 and 8.4. Previously nothing executed the declared `^8.2` floor — Pest 4 requires 8.3 — and nothing proved the package installs without Laravel. PHPStan now analyses the whole declared range, so 8.3-only syntax fails review rather than a consumer's runtime.
+- `Requests\V2\CheckRcsCapabilitiesRequest` now throws `ValidationException` (`FIELD_INVALID`) from its constructor when `$sender` looks like a phone number, matching the guard `SendRcsRequest` already had — `rcs()->capabilities()` takes a registered agent ID, never a number. Previously such a call reached the live API and failed with the accurate but unhelpful `"sender is not owned by this account"`.
 
 ### Notes
 

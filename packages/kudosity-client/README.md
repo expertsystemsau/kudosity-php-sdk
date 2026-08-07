@@ -550,6 +550,20 @@ Two scope limits worth knowing before reaching for `register()`:
 `meta.pagination.total_count` and defaults to 25 per page, where `GET /v2/sms`
 reports `total_records` and defaults to 100. `V2PagedPaginator` handles both.
 
+## Testing
+
+This package ships its own PHPUnit 11 suite and installs standalone — no
+Laravel, no Orchestra Testbench:
+
+```bash
+composer install
+vendor/bin/phpunit
+```
+
+785 tests, 1470 assertions. CI runs this suite on PHP 8.2 (the floor this
+package declares), 8.3 and 8.4. It's PHPUnit 11 rather than 12, because 12
+requires PHP >= 8.3.
+
 ## Laravel Integration
 
 For Laravel projects, use [expertsystemsau/kudosity-laravel-client](https://packagist.org/packages/expertsystemsau/kudosity-laravel-client) which provides:

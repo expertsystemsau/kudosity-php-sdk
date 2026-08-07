@@ -5,11 +5,19 @@ declare(strict_types=1);
 /**
  * Loaders for the captured V2 webhook payloads.
  *
- * Shared by V2WebhookEventTest.php, V2StatusPrecedenceTest.php and the webhook
- * resource spec. Lives here rather than being declared in one spec and
- * `require_once`'d by the others, for the same reason as
- * {@see StubV2SendRequest} — this file is loaded once, up front, by
- * tests/Pest.php, so running a single spec file in isolation still works.
+ * The sole remaining consumer is tests/Unit/V2WebhookReceiverTest.php — a
+ * Laravel-package test that stays at root permanently. (V2WebhookEventTest.php,
+ * V2StatusPrecedenceTest.php and the webhook resource spec were the other
+ * consumers; all three were ported into the client package.) Lives here
+ * rather than being declared in the one remaining spec and `require_once`'d
+ * — this file is loaded once, up front, by tests/Pest.php, so running a
+ * single spec file in isolation still works.
+ *
+ * (Root `StubV2SendRequest.php` used to be loaded the same way and served as
+ * the other example of this pattern; it moved to
+ * packages/kudosity-client/tests/Fixtures/ in Task 7b batch 3, once the last
+ * root spec depending on it was ported, and is loaded there via a composer
+ * classmap entry instead.)
  */
 
 /**
@@ -17,13 +25,25 @@ declare(strict_types=1);
  *
  * Read from disk rather than inlined: the fixture is the evidence, and a pasted
  * copy stops tracking it the moment either drifts. See
- * tests/Fixtures/V2Webhooks/README.md for what each one pins.
+ * packages/kudosity-client/tests/Fixtures/V2Webhooks/README.md for what each
+ * one pins.
+ *
+ * **The files live in the client package**, which is the package whose API
+ * produced them and the only one published to a consumer. This function reads
+ * through to that single copy rather than keeping a second one here, so the two
+ * suites can never disagree about what the API actually sent.
  *
  * @return array<string, mixed>
  */
 function webhookFixture(string $name): array
 {
-    $path = __DIR__.'/V2Webhooks/'.$name.'.json';
+    $path = __DIR__.'/../../packages/kudosity-client/tests/Fixtures/V2Webhooks/'.$name.'.json';
+
+    if (! is_file($path)) {
+        // Named rather than silently decoding null: a typo'd fixture that
+        // yields [] makes every assertion against it pass vacuously.
+        throw new InvalidArgumentException("No such webhook fixture: {$name} (looked in {$path})");
+    }
 
     return json_decode((string) file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
 }

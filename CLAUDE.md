@@ -15,14 +15,14 @@ This is a PHP monorepo containing two packages for the Kudosity API:
 # Install dependencies
 composer install
 
-# Run tests
+# Run tests — the Laravel integration suite (Pest, PHP 8.3+)
 composer test
 
 # Run tests with coverage
 composer test-coverage
 
 # Run a single test file
-vendor/bin/pest tests/ExampleTest.php
+vendor/bin/pest tests/Unit/KudosityChannelTest.php
 
 # Run a specific test
 vendor/bin/pest --filter="test name pattern"
@@ -32,6 +32,12 @@ composer analyse
 
 # Code formatting (Laravel Pint)
 composer format
+
+# The client package's own suite, standalone on the declared floor
+cd packages/kudosity-client && composer install && vendor/bin/phpunit
+
+# The same on PHP 8.2, which no local toolchain provides
+cd packages/kudosity-client && docker run --rm -v "$PWD":/app -w /app php:8.2-cli php vendor/bin/phpunit
 ```
 
 ## Architecture
@@ -95,15 +101,17 @@ webhook transport needs:
   arrive with no `last_message` — so an MMS reply has no correlation key.
 
 **When writing anything that reads a webhook payload, read
-`tests/Fixtures/V2Webhooks/README.md` first.** The fixtures are real captured
+`packages/kudosity-client/tests/Fixtures/V2Webhooks/README.md` first.** The fixtures are real captured
 deliveries and they record several behaviours the upstream docs contradict or
-omit. Likewise `tests/Fixtures/V2Senders/README.md` for what is and is not
+omit. Likewise `packages/kudosity-client/tests/Fixtures/V2Senders/README.md` for what is and is not
 verified about the sender item shape.
 
 Phase 5 (Laravel channels, the webhook receiver route, `kudosity:webhook:*`
-commands) and Phase 6 (standalone suite, docs, release) remain. See "Two APIs,
-two auth schemes" below for how the two APIs fit together, and the client
-package README's "V2 channels" section for the per-endpoint envelope table.
+commands) and Phase 6 (the client package's standalone suite, docs, release)
+are both done — see the "Laravel Integration" section below for what Phase 5
+shipped. See "Two APIs, two auth schemes" below for how the two APIs fit
+together, and the client package README's "V2 channels" section for the
+per-endpoint envelope table.
 
 ### Laravel Integration (kudosity-laravel)
 
@@ -124,7 +132,7 @@ Config published to `config/kudosity.php`. **`base_url` is keyed by API version*
 
 ## Testing
 
-Tests use Pest v4 with Orchestra Testbench for Laravel integration testing. The base `TestCase` class auto-registers the service provider and sets default config values.
+Two independent suites, split by what they can run on. The root suite (Pest v4 with Orchestra Testbench) covers the Laravel integration, plus `CodemodTest` and `ArchTest` — nothing else lives here now. The base `TestCase` class auto-registers the service provider and sets default config values. `packages/kudosity-client` owns its own PHPUnit 11 suite and installs standalone (no Laravel, no Testbench) — see the client suite commands above. It's PHPUnit 11 rather than 12, because 12 requires PHP >= 8.3 and the packages declare `^8.2`; Pest 4 has the same >= 8.3 floor, which is why the root suite alone never exercises PHP 8.2 and the client suite exists.
 
 ## Kudosity API Skills
 
