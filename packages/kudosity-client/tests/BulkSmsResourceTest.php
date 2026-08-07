@@ -66,12 +66,12 @@ final class BulkSmsResourceTest extends TestCase
         $connector = new KudosityV1Connector('key', 'secret');
         $connector->withMockClient($mock);
 
-        $result = (new BulkSmsResource($connector))->send('Sale starts tomorrow', '61400000000,61400000001');
+        $result = (new BulkSmsResource($connector))->send('Sale starts tomorrow', '61491570006,61491570007');
 
         $this->assertInstanceOf(SmsData::class, $result);
         $this->assertSame(7788, $result->messageId);
         $this->assertSame(2, $result->recipients);
-        $this->assertSame('61400000000,61400000001', $mock->getLastPendingRequest()->body()->all()['to']);
+        $this->assertSame('61491570006,61491570007', $mock->getLastPendingRequest()->body()->all()['to']);
     }
 
     public function test_sends_to_a_contact_list(): void
@@ -91,7 +91,7 @@ final class BulkSmsResourceTest extends TestCase
         $connector = new KudosityV1Connector('key', 'secret');
         $connector->withMockClient($mock);
 
-        (new BulkSmsResource($connector))->schedule('Reminder', '61400000000', '2026-09-01 09:00:00');
+        (new BulkSmsResource($connector))->schedule('Reminder', '61491570006', '2026-09-01 09:00:00');
 
         $this->assertSame('2026-09-01 09:00:00', $mock->getLastPendingRequest()->body()->all()['send_at']);
     }
@@ -103,7 +103,7 @@ final class BulkSmsResourceTest extends TestCase
         $connector->setDefaultFrom('MyBrand')->setDefaultCountryCode('AU');
         $connector->withMockClient($mock);
 
-        (new BulkSmsResource($connector))->send('Hi', '0400000000');
+        (new BulkSmsResource($connector))->send('Hi', '0491570006');
 
         $body = $mock->getLastPendingRequest()->body()->all();
 
@@ -118,7 +118,7 @@ final class BulkSmsResourceTest extends TestCase
         $connector->setDefaultFrom('MyBrand');
         $connector->withMockClient($mock);
 
-        (new BulkSmsResource($connector))->send('Hi', '61400000000', from: 'Override');
+        (new BulkSmsResource($connector))->send('Hi', '61491570006', from: 'Override');
 
         $this->assertSame('Override', $mock->getLastPendingRequest()->body()->all()['from']);
     }
@@ -132,7 +132,7 @@ final class BulkSmsResourceTest extends TestCase
 
         (new BulkSmsResource($connector))->send(
             'Hi',
-            '61400000000',
+            '61491570006',
             configure: fn (SendSmsRequest $r) => $r->from('Override')->validity(60)
         );
 
@@ -157,8 +157,8 @@ final class BulkSmsResourceTest extends TestCase
     {
         $resource = self::bulkResource([]);
 
-        $this->assertTrue($resource->isValidNumber('61400000000'));
+        $this->assertTrue($resource->isValidNumber('61491570006'));
         $this->assertTrue($resource->isValidSenderId('MyBrand'));
-        $this->assertSame('61400000000', $resource->formatNumberLocal('0400000000', 'AU'));
+        $this->assertSame('61491570006', $resource->formatNumberLocal('0491570006', 'AU'));
     }
 }

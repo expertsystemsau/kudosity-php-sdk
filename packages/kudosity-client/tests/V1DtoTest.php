@@ -103,7 +103,7 @@ final class V1DtoTest extends TestCase
     {
         $dto = ContactData::fromResponse([
             'contact' => [
-                'mobile' => '61400000000',
+                'mobile' => '61491570006',
                 'firstname' => 'John',
                 'lastname' => 'Doe',
                 'status' => 'active',
@@ -111,7 +111,7 @@ final class V1DtoTest extends TestCase
             ],
         ]);
 
-        $this->assertSame('61400000000', $dto->mobile);
+        $this->assertSame('61491570006', $dto->mobile);
         $this->assertSame('John', $dto->firstName);
         $this->assertSame('Doe', $dto->lastName);
         $this->assertSame('active', $dto->status);
@@ -122,7 +122,7 @@ final class V1DtoTest extends TestCase
     public function test_contact_data_extracts_custom_fields(): void
     {
         $dto = ContactData::fromResponse([
-            'mobile' => '61400000000',
+            'mobile' => '61491570006',
             'firstname' => '',
             'lastname' => '',
             'status' => 'active',
@@ -140,13 +140,13 @@ final class V1DtoTest extends TestCase
     public function test_contact_data_handles_msisdn_field_alias(): void
     {
         $dto = ContactData::fromResponse([
-            'msisdn' => '61400000000',
+            'msisdn' => '61491570006',
             'firstname' => 'Jane',
             'lastname' => 'Smith',
             'status' => 'optout',
         ]);
 
-        $this->assertSame('61400000000', $dto->mobile);
+        $this->assertSame('61491570006', $dto->mobile);
         $this->assertTrue($dto->isOptedOut());
     }
 

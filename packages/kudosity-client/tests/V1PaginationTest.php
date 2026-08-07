@@ -91,15 +91,15 @@ final class V1PaginationTest extends TestCase
     {
         $client = self::mockedSmsClient([
             GetNumbersRequest::class => MockResponse::make(self::smsPage('numbers', [
-                ['number' => '+61400000001'],
-                ['number' => '+61400000002'],
+                ['number' => '+61491570007'],
+                ['number' => '+61491570008'],
             ])),
         ]);
 
         $items = iterator_to_array($client->numbers()->all()->items(), false);
 
         $this->assertCount(2, $items);
-        $this->assertSame('+61400000001', $items[0]['number']);
+        $this->assertSame('+61491570007', $items[0]['number']);
     }
 
     public function test_reads_lists_from_the_lists_key(): void
@@ -135,8 +135,8 @@ final class V1PaginationTest extends TestCase
     {
         $client = self::mockedSmsClient([
             GetSmsSentRequest::class => MockResponse::make(self::smsPage('recipients', [
-                ['msisdn' => '+61400000001', 'delivery_status' => 'delivered'],
-                ['msisdn' => '+61400000002', 'delivery_status' => 'pending'],
+                ['msisdn' => '+61491570007', 'delivery_status' => 'delivered'],
+                ['msisdn' => '+61491570008', 'delivery_status' => 'pending'],
             ])),
         ]);
 
@@ -165,7 +165,7 @@ final class V1PaginationTest extends TestCase
     {
         $client = self::mockedSmsClient([
             GetListRequest::class => MockResponse::make(self::smsPage('members', [
-                ['msisdn' => '+61400000001', 'first_name' => 'Ada'],
+                ['msisdn' => '+61491570007', 'first_name' => 'Ada'],
             ])),
         ]);
 

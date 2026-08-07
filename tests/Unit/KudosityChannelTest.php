@@ -35,7 +35,7 @@ describe('KudosityChannel', function () {
             {
                 public function routeNotificationFor($channel, $notification)
                 {
-                    return '61400000000';
+                    return '61491570006';
                 }
             };
 
@@ -76,7 +76,7 @@ describe('KudosityChannel', function () {
             {
                 public function routeNotificationFor($channel, $notification)
                 {
-                    return '61400000000';
+                    return '61491570006';
                 }
             };
 
@@ -93,7 +93,7 @@ describe('KudosityChannel', function () {
             // at all; the routing assertion is what changed.
             $sent = SmsMessageData::fromArray([
                 'id' => '953b88be-5b6f-4b6d-8fcb-3436ec21c0be',
-                'recipient' => '61400000000',
+                'recipient' => '61491570006',
                 'sender' => 'MyBrand',
                 'message' => 'Hello from string',
                 'status' => 'queued',
@@ -101,7 +101,7 @@ describe('KudosityChannel', function () {
 
             $this->smsResource->shouldReceive('send')
                 ->once()
-                ->withArgs(fn (string $message, string $to) => $message === 'Hello from string' && $to === '61400000000')
+                ->withArgs(fn (string $message, string $to) => $message === 'Hello from string' && $to === '61491570006')
                 ->andReturn($sent);
 
             $result = $this->channel->send($notifiable, $notification);
@@ -116,7 +116,7 @@ describe('KudosityChannel', function () {
             {
                 public function routeNotificationFor($channel, $notification)
                 {
-                    return '61400000001'; // Should NOT be used
+                    return '61491570007'; // Should NOT be used
                 }
             };
 
@@ -125,7 +125,7 @@ describe('KudosityChannel', function () {
                 public function toKudosity($notifiable)
                 {
                     return (new KudosityMessage('Test'))
-                        ->to('61400000002') // Should be used
+                        ->to('61491570008') // Should be used
                         ->forceV1();
                 }
             };
@@ -194,7 +194,7 @@ describe('KudosityChannel', function () {
             {
                 public function routeNotificationFor($channel, $notification)
                 {
-                    return '0400000000';
+                    return '0491570006';
                 }
             };
 
@@ -224,7 +224,7 @@ describe('KudosityChannel', function () {
 
                     // formatNumbers => local formatting applied, countrycode omitted
                     return $request instanceof SendSmsRequest
-                        && ($body['to'] ?? null) === '61400000000'
+                        && ($body['to'] ?? null) === '61491570006'
                         && ! array_key_exists('countrycode', $body);
                 })
                 ->andReturn($smsData);
@@ -263,7 +263,7 @@ describe('KudosityChannel', function () {
             {
                 public function routeNotificationFor($channel, $notification)
                 {
-                    return '61400000000';
+                    return '61491570006';
                 }
             };
 
@@ -297,7 +297,7 @@ describe('KudosityChannel', function () {
             {
                 public function routeNotificationFor($channel, $notification)
                 {
-                    return '61400000000';
+                    return '61491570006';
                 }
             };
 
@@ -332,7 +332,7 @@ describe('KudosityChannel', function () {
             {
                 public function routeNotificationFor($channel, $notification)
                 {
-                    return '61400000000';
+                    return '61491570006';
                 }
             };
 
@@ -371,7 +371,7 @@ describe('KudosityChannel', function () {
             {
                 public function routeNotificationFor($channel, $notification)
                 {
-                    return '61400000000';
+                    return '61491570006';
                 }
             };
 
@@ -394,7 +394,7 @@ describe('KudosityChannel', function () {
             {
                 public function routeNotificationFor($channel, $notification)
                 {
-                    return '61400000000';
+                    return '61491570006';
                 }
             };
 

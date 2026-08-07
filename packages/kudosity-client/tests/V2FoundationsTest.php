@@ -128,8 +128,8 @@ final class V2FoundationsTest extends TestCase
     public function test_includes_the_sender_when_given(): void
     {
         $this->assertSame(
-            ['message' => 'Body', 'sender' => '61481074185'],
-            (new SmsFallback('Body', '61481074185'))->toArray(),
+            ['message' => 'Body', 'sender' => '61491570017'],
+            (new SmsFallback('Body', '61491570017'))->toArray(),
         );
     }
 

@@ -48,8 +48,8 @@ final class V2MmsTest extends TestCase
         // Verbatim from .agents/skills/kudosity-mms/SKILL.md — note the FLAT envelope.
         return array_merge([
             'id' => '6fdae71c-dad7-4c36-9734-a69693ec2318',
-            'recipient' => '61435795809',
-            'sender' => '61481074185',
+            'recipient' => '61491570019',
+            'sender' => '61491570017',
             'country' => 'AU',
             'subject' => 'USS Enterprise',
             'message' => 'Check out this amazing specimen.',
@@ -77,7 +77,7 @@ final class V2MmsTest extends TestCase
         $connector = new KudosityV2Connector('key');
         $connector->withMockClient($mock);
 
-        $mms = (new MmsResource($connector))->send('61435795809', '61481074185', ['https://example.com/product.jpg']);
+        $mms = (new MmsResource($connector))->send('61491570019', '61491570017', ['https://example.com/product.jpg']);
 
         $this->assertInstanceOf(MmsMessageData::class, $mms);
         $this->assertSame('6fdae71c-dad7-4c36-9734-a69693ec2318', $mms->id);
@@ -85,8 +85,8 @@ final class V2MmsTest extends TestCase
         $this->assertSame(['https://example.com/product.jpg'], $mms->contentUrls);
 
         $this->assertSame([
-            'sender' => '61481074185',
-            'recipient' => '61435795809',
+            'sender' => '61491570017',
+            'recipient' => '61491570019',
             'content_urls' => ['https://example.com/product.jpg'],
         ], $mock->getLastPendingRequest()->body()->all());
     }
@@ -96,7 +96,7 @@ final class V2MmsTest extends TestCase
         // MMS is flat like SMS (unlike WhatsApp/RCS), but still routes through
         // payload() so all four V2 channels stay identical regardless of shape.
         $mms = self::mmsResource([SendMmsRequest::class => MockResponse::make(self::mmsSendBody(), 200)])
-            ->send('61435795809', '61481074185', ['https://example.com/product.jpg']);
+            ->send('61491570019', '61491570017', ['https://example.com/product.jpg']);
 
         $this->assertSame('6fdae71c-dad7-4c36-9734-a69693ec2318', $mms->id);
     }
@@ -107,7 +107,7 @@ final class V2MmsTest extends TestCase
         // MMS response must resolve successfully to MessageStatus::Pending, not
         // throw.
         $mms = self::mmsResource([SendMmsRequest::class => MockResponse::make(self::mmsSendBody(['status' => 'pending']), 200)])
-            ->send('61435795809', '61481074185', ['https://example.com/product.jpg']);
+            ->send('61491570019', '61491570017', ['https://example.com/product.jpg']);
 
         $this->assertSame(MessageStatus::Pending, $mms->status);
     }
@@ -119,8 +119,8 @@ final class V2MmsTest extends TestCase
         $connector->withMockClient($mock);
 
         (new MmsResource($connector))->send(
-            '61435795809',
-            '61481074185',
+            '61491570019',
+            '61491570017',
             ['https://example.com/product.jpg'],
             subject: 'New Arrival',
             message: 'Check out our latest product!',
@@ -142,7 +142,7 @@ final class V2MmsTest extends TestCase
         $connector = new KudosityV2Connector('key');
         $connector->withMockClient($mock);
 
-        (new MmsResource($connector))->send('61435795809', '61481074185', ['https://example.com/product.jpg']);
+        (new MmsResource($connector))->send('61491570019', '61491570017', ['https://example.com/product.jpg']);
 
         $body = $mock->getLastPendingRequest()->body()->all();
 
@@ -156,7 +156,7 @@ final class V2MmsTest extends TestCase
     {
         $this->expectException(ValidationException::class);
 
-        new SendMmsRequest('61435795809', '61481074185', []);
+        new SendMmsRequest('61491570019', '61491570017', []);
     }
 
     public function test_rejects_more_than_one_content_url_naming_the_one_file_limit(): void
@@ -164,7 +164,7 @@ final class V2MmsTest extends TestCase
         $this->expectException(ValidationException::class);
         $this->expectExceptionMessageMatches('/one/');
 
-        new SendMmsRequest('61435795809', '61481074185', [
+        new SendMmsRequest('61491570019', '61491570017', [
             'https://example.com/product.jpg',
             'https://example.com/other.jpg',
         ]);
@@ -174,7 +174,7 @@ final class V2MmsTest extends TestCase
     {
         $this->expectException(ValidationException::class);
 
-        new SendMmsRequest('61435795809', '61481074185', ['/relative/path.jpg']);
+        new SendMmsRequest('61491570019', '61491570017', ['/relative/path.jpg']);
     }
 
     // A "rejects a subject longer than 20 characters" test is deliberately
@@ -188,8 +188,8 @@ final class V2MmsTest extends TestCase
         $this->expectExceptionMessageMatches('/ASCII/');
 
         new SendMmsRequest(
-            '61435795809',
-            '61481074185',
+            '61491570019',
+            '61491570017',
             ['https://example.com/product.jpg'],
             subject: 'Café Launch',
         );
@@ -201,8 +201,8 @@ final class V2MmsTest extends TestCase
         $this->expectExceptionMessageMatches('/1000/');
 
         new SendMmsRequest(
-            '61435795809',
-            '61481074185',
+            '61491570019',
+            '61491570017',
             ['https://example.com/product.jpg'],
             message: str_repeat('a', 1001),
         );
@@ -214,8 +214,8 @@ final class V2MmsTest extends TestCase
         $this->expectExceptionMessageMatches('/500/');
 
         new SendMmsRequest(
-            '61435795809',
-            '61481074185',
+            '61491570019',
+            '61491570017',
             ['https://example.com/product.jpg'],
             messageRef: str_repeat('a', 501),
         );
@@ -230,7 +230,7 @@ final class V2MmsTest extends TestCase
         $connector = new KudosityV2Connector('key');
         $connector->withMockClient($mock);
 
-        $mms = (new MmsResource($connector))->send('14155552671', '61481074185', ['https://example.com/product.jpg']);
+        $mms = (new MmsResource($connector))->send('14155552671', '61491570017', ['https://example.com/product.jpg']);
 
         $this->assertInstanceOf(MmsMessageData::class, $mms);
         $this->assertSame('14155552671', $mms->recipient);

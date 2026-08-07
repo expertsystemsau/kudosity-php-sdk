@@ -95,7 +95,7 @@ final class V2WhatsAppTest extends TestCase
             'id' => '6fdae71c-dad7-4c36-9734-a69693ecf3b4',
             'message_ref' => 'order-12345',
             'sender' => '14155238886',
-            'recipient' => '61411122211',
+            'recipient' => '61491570010',
             'content_type' => 'template',
             'created_at' => '2026-07-29T00:00:00Z',
         ], $overrides);
@@ -151,7 +151,7 @@ final class V2WhatsAppTest extends TestCase
         $connector = new KudosityV2Connector('key');
         $connector->withMockClient($mock);
 
-        (new WhatsAppResource($connector))->template('order_update', ['#12345', 'shipped'], '61411122211');
+        (new WhatsAppResource($connector))->template('order_update', ['#12345', 'shipped'], '61491570010');
 
         $body = $mock->getLastPendingRequest()->body()->all();
 
@@ -173,7 +173,7 @@ final class V2WhatsAppTest extends TestCase
         $connector = new KudosityV2Connector('key');
         $connector->withMockClient($mock);
 
-        (new WhatsAppResource($connector))->template('order_update', ['#12345'], '61411122211');
+        (new WhatsAppResource($connector))->template('order_update', ['#12345'], '61491570010');
 
         $body = $mock->getLastPendingRequest()->body()->all();
 
@@ -191,7 +191,7 @@ final class V2WhatsAppTest extends TestCase
         $connector = new KudosityV2Connector('key');
         $connector->withMockClient($mock);
 
-        (new WhatsAppResource($connector))->text('Thanks — your refund is on its way.', '61411122211');
+        (new WhatsAppResource($connector))->text('Thanks — your refund is on its way.', '61491570010');
 
         $body = $mock->getLastPendingRequest()->body()->all();
 
@@ -223,7 +223,7 @@ final class V2WhatsAppTest extends TestCase
         $connector = new KudosityV2Connector('key');
         $connector->withMockClient($mock);
 
-        (new WhatsAppResource($connector))->custom($payload, '61411122211');
+        (new WhatsAppResource($connector))->custom($payload, '61491570010');
 
         $body = $mock->getLastPendingRequest()->body()->all();
 
@@ -237,7 +237,7 @@ final class V2WhatsAppTest extends TestCase
         $connector = new KudosityV2Connector('key');
         $connector->withMockClient($mock);
 
-        (new WhatsAppResource($connector))->send(new TextContent('Hi'), '61411122211');
+        (new WhatsAppResource($connector))->send(new TextContent('Hi'), '61491570010');
 
         $body = $mock->getLastPendingRequest()->body()->all();
 
@@ -402,20 +402,20 @@ final class V2WhatsAppTest extends TestCase
         $wa = (new WhatsAppResource($connector))->template(
             'order_update',
             ['#12345', 'shipped'],
-            '61411122211',
+            '61491570010',
             from: '14155238886',
             messageRef: 'order-12345',
         );
 
         $this->assertInstanceOf(WhatsAppMessageData::class, $wa);
         $this->assertSame('6fdae71c-dad7-4c36-9734-a69693ecf3b4', $wa->id);
-        $this->assertSame('61411122211', $wa->recipient);
+        $this->assertSame('61491570010', $wa->recipient);
         $this->assertSame('14155238886', $wa->sender);
         $this->assertSame('template', $wa->contentType);
         $this->assertSame('order-12345', $wa->messageRef);
 
         $this->assertSame([
-            'recipient' => '61411122211',
+            'recipient' => '61491570010',
             'content_type' => 'template',
             'content' => ['template' => ['name' => 'order_update', 'parameters' => ['#12345', 'shipped']]],
             'sender' => '14155238886',
@@ -429,7 +429,7 @@ final class V2WhatsAppTest extends TestCase
         $connector = new KudosityV2Connector('key');
         $connector->withMockClient($mock);
 
-        (new WhatsAppResource($connector))->text('Hi', '61411122211');
+        (new WhatsAppResource($connector))->text('Hi', '61491570010');
 
         $body = $mock->getLastPendingRequest()->body()->all();
 
@@ -444,9 +444,9 @@ final class V2WhatsAppTest extends TestCase
         $connector = new KudosityV2Connector('key');
         $connector->withMockClient($mock);
 
-        (new WhatsAppResource($connector))->text('Hi', '+61 411 122 211');
+        (new WhatsAppResource($connector))->text('Hi', '+61 491 570 010');
 
-        $this->assertSame('61411122211', $mock->getLastPendingRequest()->body()->all()['recipient']);
+        $this->assertSame('61491570010', $mock->getLastPendingRequest()->body()->all()['recipient']);
     }
 
     public function test_strips_punctuation_from_a_local_recipient_without_guessing_a_country(): void
@@ -459,9 +459,9 @@ final class V2WhatsAppTest extends TestCase
         $connector = new KudosityV2Connector('key');
         $connector->withMockClient($mock);
 
-        (new WhatsAppResource($connector))->text('Hi', '0411 122 211');
+        (new WhatsAppResource($connector))->text('Hi', '0491 570 010');
 
-        $this->assertSame('0411122211', $mock->getLastPendingRequest()->body()->all()['recipient']);
+        $this->assertSame('0491570010', $mock->getLastPendingRequest()->body()->all()['recipient']);
     }
 
     public function test_serialises_sms_fallback_through_sms_fallback_to_array(): void
@@ -473,12 +473,12 @@ final class V2WhatsAppTest extends TestCase
         (new WhatsAppResource($connector))->template(
             'order_update',
             ['#12345'],
-            '61411122211',
-            fallback: new SmsFallback('Order #12345 has shipped.', '61481074185'),
+            '61491570010',
+            fallback: new SmsFallback('Order #12345 has shipped.', '61491570017'),
         );
 
         $this->assertSame(
-            ['message' => 'Order #12345 has shipped.', 'sender' => '61481074185'],
+            ['message' => 'Order #12345 has shipped.', 'sender' => '61491570017'],
             $mock->getLastPendingRequest()->body()->all()['sms_fallback'],
         );
     }
@@ -488,7 +488,7 @@ final class V2WhatsAppTest extends TestCase
         $this->expectException(ValidationException::class);
         $this->expectExceptionMessageMatches('/500/');
 
-        new SendWhatsAppRequest(new TextContent('Hi'), '61411122211', messageRef: str_repeat('a', 501));
+        new SendWhatsAppRequest(new TextContent('Hi'), '61491570010', messageRef: str_repeat('a', 501));
     }
 
     // ---------------------------------------------------------------------------
@@ -505,7 +505,7 @@ final class V2WhatsAppTest extends TestCase
                 'id' => 'top-level-decoy',
                 'data' => self::whatsAppMessage(),
             ], 200),
-        ])->text('Hi', '61411122211');
+        ])->text('Hi', '61491570010');
 
         $this->assertSame('6fdae71c-dad7-4c36-9734-a69693ecf3b4', $wa->id);
     }
@@ -655,12 +655,12 @@ final class V2WhatsAppTest extends TestCase
     public function test_parses_sms_fallback_off_a_response_into_an_sms_fallback(): void
     {
         $wa = WhatsAppMessageData::fromArray(self::whatsAppMessage([
-            'sms_fallback' => ['sender' => '61481074185', 'message' => 'Order #12345 has shipped.'],
+            'sms_fallback' => ['sender' => '61491570017', 'message' => 'Order #12345 has shipped.'],
         ]));
 
         $this->assertInstanceOf(SmsFallback::class, $wa->smsFallback);
         $this->assertSame('Order #12345 has shipped.', $wa->smsFallback?->message);
-        $this->assertSame('61481074185', $wa->smsFallback?->sender);
+        $this->assertSame('61491570017', $wa->smsFallback?->sender);
     }
 
     public function test_leaves_sms_fallback_null_when_the_response_omits_it(): void
@@ -674,7 +674,7 @@ final class V2WhatsAppTest extends TestCase
         // request-shaped object, wrong to impose on a response we do not control.
         // The invariant stays; the DTO only builds a fallback when the response
         // actually carries a non-empty message.
-        $wa = WhatsAppMessageData::fromArray(self::whatsAppMessage(['sms_fallback' => ['sender' => '61481074185']]));
+        $wa = WhatsAppMessageData::fromArray(self::whatsAppMessage(['sms_fallback' => ['sender' => '61491570017']]));
 
         $this->assertNull($wa->smsFallback);
     }

@@ -68,7 +68,7 @@ return [
     | per-message. Valid values:
     |
     |   - A dedicated virtual number (VMN) in international format, e.g.
-    |     "61412345678" — supports two-way messaging (replies).
+    |     "61491570012" — supports two-way messaging (replies).
     |   - An alphanumeric sender ID ("alpha tag"), e.g. "MyBrand" — max 11
     |     characters, letters and digits only, no spaces. One-way only.
     |   - Empty — Kudosity falls back to a shared number for the

@@ -23,16 +23,16 @@ final class PhoneNumberTest extends TestCase
 
     public function test_to_international_formats_australian_local_numbers(): void
     {
-        $this->assertSame('61400000000', PhoneNumber::toInternational('0400000000', 'AU'));
-        $this->assertSame('61412345678', PhoneNumber::toInternational('0412345678', 'AU'));
-        $this->assertSame('61438333061', PhoneNumber::toInternational('0438333061', 'AU'));
+        $this->assertSame('61491570006', PhoneNumber::toInternational('0491570006', 'AU'));
+        $this->assertSame('61491570012', PhoneNumber::toInternational('0491570012', 'AU'));
+        $this->assertSame('61491570014', PhoneNumber::toInternational('0491570014', 'AU'));
     }
 
     public function test_to_international_formats_australian_numbers_with_various_formats(): void
     {
-        $this->assertSame('61400000000', PhoneNumber::toInternational('0400 000 000', 'AU'));
-        $this->assertSame('61412345678', PhoneNumber::toInternational('(04) 1234 5678', 'AU'));
-        $this->assertSame('61400000000', PhoneNumber::toInternational('+61 400 000 000', 'AU'));
+        $this->assertSame('61491570006', PhoneNumber::toInternational('0491 570 006', 'AU'));
+        $this->assertSame('61491570012', PhoneNumber::toInternational('(04) 9157 0012', 'AU'));
+        $this->assertSame('61491570006', PhoneNumber::toInternational('+61 491 570 006', 'AU'));
     }
 
     public function test_to_international_formats_new_zealand_local_numbers(): void
@@ -54,13 +54,13 @@ final class PhoneNumberTest extends TestCase
 
     public function test_to_international_returns_already_international_numbers_unchanged(): void
     {
-        $this->assertSame('61400000000', PhoneNumber::toInternational('61400000000', 'AU'));
+        $this->assertSame('61491570006', PhoneNumber::toInternational('61491570006', 'AU'));
         $this->assertSame('6596112234', PhoneNumber::toInternational('6596112234', 'SG'));
     }
 
     public function test_to_international_works_with_country_names(): void
     {
-        $this->assertSame('61400000000', PhoneNumber::toInternational('0400000000', 'Australia'));
+        $this->assertSame('61491570006', PhoneNumber::toInternational('0491570006', 'Australia'));
         $this->assertSame('64212172782', PhoneNumber::toInternational('0212172782', 'New Zealand'));
     }
 
@@ -68,7 +68,7 @@ final class PhoneNumberTest extends TestCase
     {
         $this->expectException(InvalidArgumentException::class);
 
-        PhoneNumber::toInternational('0400000000', 'XX');
+        PhoneNumber::toInternational('0491570006', 'XX');
     }
 
     public function test_a_country_name_resolves_the_same_dialing_code_as_its_iso_alias(): void
@@ -79,8 +79,8 @@ final class PhoneNumberTest extends TestCase
         // from ValueObjectTest.php in Task 7b batch 1's fix round: this
         // class now owns Support\PhoneNumber.
         $this->assertSame(
-            PhoneNumber::toInternational('0400000000', 'AU'),
-            PhoneNumber::toInternational('0400000000', 'Australia'),
+            PhoneNumber::toInternational('0491570006', 'AU'),
+            PhoneNumber::toInternational('0491570006', 'Australia'),
         );
     }
 
@@ -92,12 +92,12 @@ final class PhoneNumberTest extends TestCase
         // in Task 7b batch 1's fix round rather than folded into the other.
         $this->expectException(InvalidArgumentException::class);
 
-        PhoneNumber::toInternational('0400000000', 'ZZ');
+        PhoneNumber::toInternational('0491570006', 'ZZ');
     }
 
     public function test_to_international_returns_number_as_is_when_no_country_code_provided(): void
     {
-        $this->assertSame('0400000000', PhoneNumber::toInternational('0400000000'));
+        $this->assertSame('0491570006', PhoneNumber::toInternational('0491570006'));
     }
 
     // -----------------------------------------------------------------
@@ -106,21 +106,21 @@ final class PhoneNumberTest extends TestCase
 
     public function test_format_multiple_formats_comma_separated_numbers(): void
     {
-        $result = PhoneNumber::formatMultiple('0400000000, 0411111111, 0422222222', 'AU');
+        $result = PhoneNumber::formatMultiple('0491570006, 0491570011, 0491570013', 'AU');
 
-        $this->assertSame('61400000000,61411111111,61422222222', $result);
+        $this->assertSame('61491570006,61491570011,61491570013', $result);
     }
 
     public function test_format_multiple_handles_mixed_formats(): void
     {
-        $result = PhoneNumber::formatMultiple('0400000000, 61411111111', 'AU');
+        $result = PhoneNumber::formatMultiple('0491570006, 61491570011', 'AU');
 
-        $this->assertSame('61400000000,61411111111', $result);
+        $this->assertSame('61491570006,61491570011', $result);
     }
 
     public function test_format_multiple_throws_when_exceeding_max_recipients(): void
     {
-        $numbers = implode(',', array_fill(0, 501, '0400000000'));
+        $numbers = implode(',', array_fill(0, 501, '0491570006'));
 
         $this->expectException(InvalidArgumentException::class);
 
@@ -133,14 +133,14 @@ final class PhoneNumberTest extends TestCase
 
     public function test_is_valid_validates_e164_format_numbers(): void
     {
-        $this->assertTrue(PhoneNumber::isValid('61400000000'));
+        $this->assertTrue(PhoneNumber::isValid('61491570006'));
         $this->assertTrue(PhoneNumber::isValid('6596112234'));
         $this->assertTrue(PhoneNumber::isValid('12818691226'));
     }
 
     public function test_is_valid_rejects_numbers_starting_with_zero(): void
     {
-        $this->assertFalse(PhoneNumber::isValid('0400000000'));
+        $this->assertFalse(PhoneNumber::isValid('0491570006'));
     }
 
     public function test_is_valid_rejects_too_short_numbers(): void
@@ -164,10 +164,10 @@ final class PhoneNumberTest extends TestCase
 
     public function test_validate_multiple_separates_valid_and_invalid_numbers(): void
     {
-        $result = PhoneNumber::validateMultiple('61400000000, 0400000000, 61411111111');
+        $result = PhoneNumber::validateMultiple('61491570006, 0491570006, 61491570011');
 
-        $this->assertSame(['61400000000', '61411111111'], $result['valid']);
-        $this->assertSame(['0400000000'], $result['invalid']);
+        $this->assertSame(['61491570006', '61491570011'], $result['valid']);
+        $this->assertSame(['0491570006'], $result['invalid']);
     }
 
     // -----------------------------------------------------------------
@@ -176,13 +176,13 @@ final class PhoneNumberTest extends TestCase
 
     public function test_is_international_identifies_international_format(): void
     {
-        $this->assertTrue(PhoneNumber::isInternational('61400000000'));
+        $this->assertTrue(PhoneNumber::isInternational('61491570006'));
         $this->assertTrue(PhoneNumber::isInternational('6596112234'));
     }
 
     public function test_is_international_identifies_local_format(): void
     {
-        $this->assertFalse(PhoneNumber::isInternational('0400000000'));
+        $this->assertFalse(PhoneNumber::isInternational('0491570006'));
         $this->assertFalse(PhoneNumber::isInternational('0212172782'));
     }
 
@@ -192,7 +192,7 @@ final class PhoneNumberTest extends TestCase
 
     public function test_is_valid_sender_id_validates_phone_number_sender_ids(): void
     {
-        $this->assertTrue(PhoneNumber::isValidSenderId('61400000000'));
+        $this->assertTrue(PhoneNumber::isValidSenderId('61491570006'));
     }
 
     public function test_is_valid_sender_id_validates_alphanumeric_sender_ids(): void
@@ -227,7 +227,7 @@ final class PhoneNumberTest extends TestCase
         // drops that branch through to the same regex.
         $this->assertFalse(PhoneNumber::isValidSenderId("MyBrand\n"));
         $this->assertFalse(PhoneNumber::isValidAlphanumericSenderId("MyBrand\n"));
-        $this->assertFalse(PhoneNumber::isValidSenderId("61400000000\n"));
+        $this->assertFalse(PhoneNumber::isValidSenderId("61491570006\n"));
     }
 
     public function test_is_valid_sender_id_rejects_a_leading_newline(): void
@@ -242,16 +242,16 @@ final class PhoneNumberTest extends TestCase
 
     public function test_count_recipients_counts_single_recipient(): void
     {
-        $this->assertSame(1, PhoneNumber::countRecipients('61400000000'));
+        $this->assertSame(1, PhoneNumber::countRecipients('61491570006'));
     }
 
     public function test_count_recipients_counts_multiple_recipients(): void
     {
-        $this->assertSame(3, PhoneNumber::countRecipients('61400000000,61411111111,61422222222'));
+        $this->assertSame(3, PhoneNumber::countRecipients('61491570006,61491570011,61491570013'));
     }
 
     public function test_count_recipients_ignores_empty_strings(): void
     {
-        $this->assertSame(2, PhoneNumber::countRecipients('61400000000, , 61411111111'));
+        $this->assertSame(2, PhoneNumber::countRecipients('61491570006, , 61491570011'));
     }
 }

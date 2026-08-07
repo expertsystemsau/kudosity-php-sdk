@@ -134,7 +134,7 @@ final class KudosityClientTest extends TestCase
         $this->assertInstanceOf(SmsV2Resource::class, $client->sms());
         $this->assertSame($client->sms(), $client->sms());
 
-        $client->sms()->send('hi', '61400000000', '61400000001');
+        $client->sms()->send('hi', '61491570006', '61491570007');
 
         $this->assertStringStartsWith(
             'https://api.transmitmessage.com',
@@ -151,7 +151,7 @@ final class KudosityClientTest extends TestCase
         $this->assertInstanceOf(MmsResource::class, $client->mms());
         $this->assertSame($client->mms(), $client->mms());
 
-        $client->mms()->send('61400000000', '61400000001', ['https://example.com/product.jpg']);
+        $client->mms()->send('61491570006', '61491570007', ['https://example.com/product.jpg']);
 
         $this->assertStringStartsWith(
             'https://api.transmitmessage.com',
@@ -168,7 +168,7 @@ final class KudosityClientTest extends TestCase
         $this->assertInstanceOf(WhatsAppResource::class, $client->whatsapp());
         $this->assertSame($client->whatsapp(), $client->whatsapp());
 
-        $client->whatsapp()->text('hi', '61411122211');
+        $client->whatsapp()->text('hi', '61491570010');
 
         $this->assertStringStartsWith(
             'https://api.transmitmessage.com',
@@ -185,7 +185,7 @@ final class KudosityClientTest extends TestCase
         $this->assertInstanceOf(RcsResource::class, $client->rcs());
         $this->assertSame($client->rcs(), $client->rcs());
 
-        $client->rcs()->send('hi', '61411122211', 'DemoSender');
+        $client->rcs()->send('hi', '61491570010', 'DemoSender');
 
         $this->assertStringStartsWith(
             'https://api.transmitmessage.com',

@@ -111,7 +111,7 @@ final class CountryCodesTest extends TestCase
 
     public function test_match_dialing_code_returns_the_matched_code_for_a_known_prefix(): void
     {
-        $this->assertSame('61', CountryCodes::matchDialingCode('61400000000'));
+        $this->assertSame('61', CountryCodes::matchDialingCode('61491570006'));
         $this->assertSame('1', CountryCodes::matchDialingCode('12818691226'));
     }
 
@@ -120,13 +120,13 @@ final class CountryCodesTest extends TestCase
         // No known dialing code starts with '0', so a number that starts
         // with a leading zero (a local-format number, never itself a valid
         // dialing-code prefix) cannot match anything.
-        $this->assertNull(CountryCodes::matchDialingCode('0400000000'));
+        $this->assertNull(CountryCodes::matchDialingCode('0491570006'));
     }
 
     public function test_starts_with_known_dialing_code_wraps_match_dialing_code(): void
     {
-        $this->assertTrue(CountryCodes::startsWithKnownDialingCode('61400000000'));
-        $this->assertFalse(CountryCodes::startsWithKnownDialingCode('0400000000'));
+        $this->assertTrue(CountryCodes::startsWithKnownDialingCode('61491570006'));
+        $this->assertFalse(CountryCodes::startsWithKnownDialingCode('0491570006'));
     }
 
     // Not asserted: that the longest matching code wins over a shorter one

@@ -72,9 +72,9 @@ final class V2SmsTest extends TestCase
         // Verbatim from .agents/skills/kudosity-sms/SKILL.md — note the FLAT envelope.
         return array_merge([
             'id' => '2d2c8fb6-e514-4f5f-9706-0672b0259218',
-            'recipient' => '61478038915',
+            'recipient' => '61491570018',
             'recipient_country' => 'AU',
-            'sender' => '61481074185',
+            'sender' => '61491570017',
             'sender_country' => 'AU',
             'message_ref' => 'ncc1701d',
             'message' => 'Report to the ready room!',
@@ -104,7 +104,7 @@ final class V2SmsTest extends TestCase
         $connector = new KudosityV2Connector('key');
         $connector->withMockClient($mock);
 
-        $sms = (new SmsV2Resource($connector))->send('Report to the ready room!', '61478038915', '61481074185');
+        $sms = (new SmsV2Resource($connector))->send('Report to the ready room!', '61491570018', '61491570017');
 
         $this->assertInstanceOf(SmsMessageData::class, $sms);
         $this->assertSame('2d2c8fb6-e514-4f5f-9706-0672b0259218', $sms->id);
@@ -113,8 +113,8 @@ final class V2SmsTest extends TestCase
 
         $this->assertSame([
             'message' => 'Report to the ready room!',
-            'sender' => '61481074185',
-            'recipient' => '61478038915',
+            'sender' => '61491570017',
+            'recipient' => '61491570018',
         ], $mock->getLastPendingRequest()->body()->all());
     }
 
@@ -126,7 +126,7 @@ final class V2SmsTest extends TestCase
         // identical fact directly against SmsMessageData::fromArray(); this
         // version additionally drives SmsV2Resource::send().
         $sms = self::smsResource([SendSmsV2Request::class => MockResponse::make(self::smsSendBody(['sms_count' => '3']), 200)])
-            ->send('Hi', '61478038915', '61481074185');
+            ->send('Hi', '61491570018', '61491570017');
 
         $this->assertSame(3, $sms->smsCount);
         $this->assertIsInt($sms->smsCount);
@@ -142,7 +142,7 @@ final class V2SmsTest extends TestCase
         $connector = new KudosityV2Connector('key');
         $connector->withMockClient($mock);
 
-        (new SmsV2Resource($connector))->send('Hi', '61478038915', '61481074185');
+        (new SmsV2Resource($connector))->send('Hi', '61491570018', '61491570017');
 
         $body = $mock->getLastPendingRequest()->body()->all();
 
@@ -156,7 +156,7 @@ final class V2SmsTest extends TestCase
         $connector = new KudosityV2Connector('key');
         $connector->withMockClient($mock);
 
-        (new SmsV2Resource($connector))->send('Hi', '61478038915', '61481074185', messageRef: 'order-1', trackLinks: true);
+        (new SmsV2Resource($connector))->send('Hi', '61491570018', '61491570017', messageRef: 'order-1', trackLinks: true);
 
         $body = $mock->getLastPendingRequest()->body()->all();
 
@@ -263,8 +263,8 @@ final class V2SmsTest extends TestCase
 
         iterator_to_array((new SmsV2Resource($connector))->list(
             status: MessageStatus::Delivered,
-            recipient: '61478038915',
-            sender: '61481074185',
+            recipient: '61491570018',
+            sender: '61491570017',
             messageRef: 'order-1',
             direction: 'OUT',
         )->items());
@@ -272,8 +272,8 @@ final class V2SmsTest extends TestCase
         $query = $mock->getLastPendingRequest()->query();
 
         $this->assertSame('DELIVERED', $query->get('status'));
-        $this->assertSame('61478038915', $query->get('recipient'));
-        $this->assertSame('61481074185', $query->get('sender'));
+        $this->assertSame('61491570018', $query->get('recipient'));
+        $this->assertSame('61491570017', $query->get('sender'));
         $this->assertSame('order-1', $query->get('message_ref'));
         $this->assertSame('OUT', $query->get('direction'));
     }
@@ -365,8 +365,8 @@ final class V2SmsTest extends TestCase
     public function test_keeps_a_real_routed_via_value(): void
     {
         // Folded from DtoTest.php's test_a_populated_routed_via_survives.
-        $sms = SmsMessageData::fromArray(self::smsSendBody(['routed_via' => '61481074185']));
+        $sms = SmsMessageData::fromArray(self::smsSendBody(['routed_via' => '61491570017']));
 
-        $this->assertSame('61481074185', $sms->routedVia);
+        $this->assertSame('61491570017', $sms->routedVia);
     }
 }

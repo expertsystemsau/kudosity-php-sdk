@@ -16,7 +16,7 @@ use ExpertSystems\Kudosity\Laravel\Notifications\KudosityMessage;
 
 it('routes a plain message to V2', function () {
     // V2 is the default surface. Nothing about a simple send needs V1.
-    expect((new KudosityMessage('Hi'))->to('61400000000')->apiVersion())
+    expect((new KudosityMessage('Hi'))->to('61491570006')->apiVersion())
         ->toBe(ApiVersion::V2);
 });
 
@@ -33,43 +33,43 @@ it('routes to V1 for each option V2 cannot express', function (callable $configu
         'V2 has no list send endpoint',
     ],
     'scheduling' => [
-        fn (KudosityMessage $m) => $m->to('61400000000')->sendAt('2026-09-01 09:00:00'),
+        fn (KudosityMessage $m) => $m->to('61491570006')->sendAt('2026-09-01 09:00:00'),
         'POST /v2/sms cannot schedule',
     ],
     'a validity window' => [
-        fn (KudosityMessage $m) => $m->to('61400000000')->validity(60),
+        fn (KudosityMessage $m) => $m->to('61491570006')->validity(60),
         'V1-only option',
     ],
     'replies to email' => [
-        fn (KudosityMessage $m) => $m->to('61400000000')->repliesToEmail('inbox@example.com'),
+        fn (KudosityMessage $m) => $m->to('61491570006')->repliesToEmail('inbox@example.com'),
         'V1-only option',
     ],
     'a dlr callback' => [
-        fn (KudosityMessage $m) => $m->to('61400000000')->dlrCallback('https://e.com/dlr'),
+        fn (KudosityMessage $m) => $m->to('61491570006')->dlrCallback('https://e.com/dlr'),
         'V2 has no per-send callback URL at all',
     ],
     'a reply callback' => [
-        fn (KudosityMessage $m) => $m->to('61400000000')->replyCallback('https://e.com/reply'),
+        fn (KudosityMessage $m) => $m->to('61491570006')->replyCallback('https://e.com/reply'),
         'V2 has no per-send callback URL at all',
     ],
     'a link-hits callback' => [
-        fn (KudosityMessage $m) => $m->to('61400000000')->linkHitsCallback('https://e.com/hits'),
+        fn (KudosityMessage $m) => $m->to('61491570006')->linkHitsCallback('https://e.com/hits'),
         'V2 has no per-send callback URL at all',
     ],
     'a dlr handler' => [
-        fn (KudosityMessage $m) => $m->to('61400000000')->onDlr('App\\Handlers\\Dlr'),
+        fn (KudosityMessage $m) => $m->to('61491570006')->onDlr('App\\Handlers\\Dlr'),
         'onDlr() becomes a per-send dlr_callback, which V2 has no room for',
     ],
     'a reply handler' => [
-        fn (KudosityMessage $m) => $m->to('61400000000')->onReply('App\\Handlers\\Reply'),
+        fn (KudosityMessage $m) => $m->to('61491570006')->onReply('App\\Handlers\\Reply'),
         'onReply() becomes a per-send reply_callback',
     ],
     'a link-hit handler' => [
-        fn (KudosityMessage $m) => $m->to('61400000000')->onLinkHit('App\\Handlers\\LinkHit'),
+        fn (KudosityMessage $m) => $m->to('61491570006')->onLinkHit('App\\Handlers\\LinkHit'),
         'onLinkHit() becomes a per-send link_hits_callback',
     ],
     'multiple recipients' => [
-        fn (KudosityMessage $m) => $m->to('61400000000,61400000001'),
+        fn (KudosityMessage $m) => $m->to('61491570006,61491570007'),
         'POST /v2/sms takes exactly one recipient',
     ],
 ]);
@@ -80,8 +80,8 @@ it('routes the handler form to V1 as surely as the raw callback URL', function (
     // a dlr_callback on the request. A message using it that routed to V2 would
     // send perfectly and never call the handler, which is a silence, not an
     // error. Asserted against the raw form so the two cannot diverge.
-    $viaHandler = (new KudosityMessage('Hi'))->to('61400000000')->onDlr('App\\Handlers\\Dlr');
-    $viaUrl = (new KudosityMessage('Hi'))->to('61400000000')->dlrCallback('https://e.com/dlr');
+    $viaHandler = (new KudosityMessage('Hi'))->to('61491570006')->onDlr('App\\Handlers\\Dlr');
+    $viaUrl = (new KudosityMessage('Hi'))->to('61491570006')->dlrCallback('https://e.com/dlr');
 
     expect($viaHandler->apiVersion())->toBe(ApiVersion::V1)
         ->and($viaUrl->apiVersion())->toBe($viaHandler->apiVersion())
@@ -90,7 +90,7 @@ it('routes the handler form to V1 as surely as the raw callback URL', function (
 
 it('throws on forceV2() with a callback handler, not just a callback URL', function () {
     (new KudosityMessage('Hi'))
-        ->to('61400000000')
+        ->to('61491570006')
         ->onReply('App\\Handlers\\Reply')
         ->forceV2()
         ->apiVersion();
@@ -99,15 +99,15 @@ it('throws on forceV2() with a callback handler, not just a callback URL', funct
 it('treats a single recipient with surrounding whitespace as one recipient', function () {
     // A trailing comma or a space must not be mistaken for a second recipient and
     // silently downgrade an otherwise-V2 send.
-    expect((new KudosityMessage('Hi'))->to(' 61400000000 ')->apiVersion())->toBe(ApiVersion::V2)
-        ->and((new KudosityMessage('Hi'))->to('61400000000,')->apiVersion())->toBe(ApiVersion::V2);
+    expect((new KudosityMessage('Hi'))->to(' 61491570006 ')->apiVersion())->toBe(ApiVersion::V2)
+        ->and((new KudosityMessage('Hi'))->to('61491570006,')->apiVersion())->toBe(ApiVersion::V2);
 });
 
 it('names every reason when several V1-only options are set', function () {
     // For diagnostics: a developer wondering why their send went to V1 wants the
     // whole list, not the first one found.
     $message = (new KudosityMessage('Hi'))
-        ->to('61400000000')
+        ->to('61491570006')
         ->sendAt('2026-09-01 09:00:00')
         ->validity(60)
         ->dlrCallback('https://e.com/dlr');
@@ -121,7 +121,7 @@ it('names every reason when several V1-only options are set', function () {
 });
 
 it('reports no reasons for a message that routes to V2', function () {
-    expect((new KudosityMessage('Hi'))->to('61400000000')->v1Reasons())->toBe([]);
+    expect((new KudosityMessage('Hi'))->to('61491570006')->v1Reasons())->toBe([]);
 });
 
 // ---------------------------------------------------------------------------
@@ -131,12 +131,12 @@ it('reports no reasons for a message that routes to V2', function () {
 it('lets forceV1() send an otherwise-V2 message over V1', function () {
     // A legitimate escape hatch: an account might have V1-side reporting a team
     // depends on, and nothing about a plain send is V2-only.
-    expect((new KudosityMessage('Hi'))->to('61400000000')->forceV1()->apiVersion())
+    expect((new KudosityMessage('Hi'))->to('61491570006')->forceV1()->apiVersion())
         ->toBe(ApiVersion::V1);
 });
 
 it('lets forceV2() send a plain message over V2 explicitly', function () {
-    expect((new KudosityMessage('Hi'))->to('61400000000')->forceV2()->apiVersion())
+    expect((new KudosityMessage('Hi'))->to('61491570006')->forceV2()->apiVersion())
         ->toBe(ApiVersion::V2);
 });
 
@@ -145,7 +145,7 @@ it('throws when forceV2() is combined with an option V2 cannot express', functio
     // into an immediate one — a wrong send, not a failed one, and the kind of
     // failure nobody notices until a customer gets a 3am message.
     (new KudosityMessage('Hi'))
-        ->to('61400000000')
+        ->to('61491570006')
         ->sendAt('2026-09-01 09:00:00')
         ->forceV2()
         ->apiVersion();
@@ -154,7 +154,7 @@ it('throws when forceV2() is combined with an option V2 cannot express', functio
 it('names every offending option when forceV2() cannot be honoured', function () {
     try {
         (new KudosityMessage('Hi'))
-            ->to('61400000000')
+            ->to('61491570006')
             ->validity(60)
             ->replyCallback('https://e.com/reply')
             ->forceV2()
@@ -175,18 +175,18 @@ it('throws on forceV2() with a list send, which has no V2 equivalent at all', fu
 })->throws(ValidationException::class, 'toList');
 
 it('lets the last override win, so a builder can be reconfigured', function () {
-    $message = (new KudosityMessage('Hi'))->to('61400000000')->forceV1()->forceV2();
+    $message = (new KudosityMessage('Hi'))->to('61491570006')->forceV1()->forceV2();
 
     expect($message->apiVersion())->toBe(ApiVersion::V2);
 
-    expect((new KudosityMessage('Hi'))->to('61400000000')->forceV2()->forceV1()->apiVersion())
+    expect((new KudosityMessage('Hi'))->to('61491570006')->forceV2()->forceV1()->apiVersion())
         ->toBe(ApiVersion::V1);
 });
 
 it('makes the routing decision inspectable before anything is sent', function () {
     // apiVersion() is a query, not a side effect: it must be safe to call in a
     // test or a log line without sending anything.
-    $message = (new KudosityMessage('Hi'))->to('61400000000');
+    $message = (new KudosityMessage('Hi'))->to('61491570006');
 
     expect($message->apiVersion())->toBe($message->apiVersion());
 });
@@ -219,8 +219,8 @@ it('reads a V1 send response through the contract', function () {
 it('reads a V2 send response through the same contract', function () {
     $sent = SmsMessageData::fromArray([
         'id' => '953b88be-5b6f-4b6d-8fcb-3436ec21c0be',
-        'recipient' => '61400000000',
-        'sender' => '61481074185',
+        'recipient' => '61491570006',
+        'sender' => '61491570017',
         'message' => 'Hi',
         'status' => 'delivered',
         'sms_count' => '2',

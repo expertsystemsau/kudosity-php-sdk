@@ -64,7 +64,7 @@ final class SendSmsRequestTest extends TestCase
     public function test_chains_to_method(): void
     {
         $request = (new SendSmsRequest('Test'))
-            ->to('61400000000');
+            ->to('61491570006');
 
         $this->assertInstanceOf(SendSmsRequest::class, $request);
     }
@@ -80,7 +80,7 @@ final class SendSmsRequestTest extends TestCase
     public function test_chains_from_method(): void
     {
         $request = (new SendSmsRequest('Test'))
-            ->to('61400000000')
+            ->to('61491570006')
             ->from('MyBrand');
 
         $this->assertInstanceOf(SendSmsRequest::class, $request);
@@ -89,7 +89,7 @@ final class SendSmsRequestTest extends TestCase
     public function test_chains_country_code_method(): void
     {
         $request = (new SendSmsRequest('Test'))
-            ->to('0400000000')
+            ->to('0491570006')
             ->countryCode('AU');
 
         $this->assertInstanceOf(SendSmsRequest::class, $request);
@@ -98,7 +98,7 @@ final class SendSmsRequestTest extends TestCase
     public function test_chains_all_methods_together(): void
     {
         $request = (new SendSmsRequest('Test message'))
-            ->to('61400000000')
+            ->to('61491570006')
             ->from('MyBrand')
             ->countryCode('AU')
             ->scheduledAt('2025-12-06 10:00:00')
@@ -119,7 +119,7 @@ final class SendSmsRequestTest extends TestCase
     public function test_scheduled_at_accepts_string_datetime(): void
     {
         $request = (new SendSmsRequest('Test'))
-            ->to('61400000000')
+            ->to('61491570006')
             ->scheduledAt('2025-12-06 10:00:00');
 
         $this->assertInstanceOf(SendSmsRequest::class, $request);
@@ -129,7 +129,7 @@ final class SendSmsRequestTest extends TestCase
     {
         $dateTime = new DateTime('2025-12-06 10:00:00', new DateTimeZone('UTC'));
         $request = (new SendSmsRequest('Test'))
-            ->to('61400000000')
+            ->to('61491570006')
             ->scheduledAt($dateTime);
 
         $this->assertInstanceOf(SendSmsRequest::class, $request);
@@ -139,7 +139,7 @@ final class SendSmsRequestTest extends TestCase
     {
         $dateTime = new DateTimeImmutable('2025-12-06 10:00:00', new DateTimeZone('UTC'));
         $request = (new SendSmsRequest('Test'))
-            ->to('61400000000')
+            ->to('61491570006')
             ->scheduledAt($dateTime);
 
         $this->assertInstanceOf(SendSmsRequest::class, $request);
@@ -150,7 +150,7 @@ final class SendSmsRequestTest extends TestCase
         // Create a datetime in Sydney timezone (UTC+11 in December)
         $sydneyTime = new DateTime('2025-12-06 21:00:00', new DateTimeZone('Australia/Sydney'));
         $request = (new SendSmsRequest('Test'))
-            ->to('61400000000')
+            ->to('61491570006')
             ->scheduledAt($sydneyTime);
 
         // The internal sendAt should be in UTC (21:00 Sydney = 10:00 UTC)
@@ -175,7 +175,7 @@ final class SendSmsRequestTest extends TestCase
     public function test_can_enable_number_formatting(): void
     {
         $request = (new SendSmsRequest('Test'))
-            ->to('0400000000')
+            ->to('0491570006')
             ->countryCode('AU')
             ->formatNumbers();
 
@@ -324,7 +324,7 @@ final class SendSmsRequestTest extends TestCase
 
     public function test_accepts_valid_number_of_recipients(): void
     {
-        $recipients = implode(',', array_fill(0, 100, '61400000000'));
+        $recipients = implode(',', array_fill(0, 100, '61491570006'));
         $request = (new SendSmsRequest('Test'))->to($recipients);
 
         $this->assertInstanceOf(SendSmsRequest::class, $request);
@@ -332,7 +332,7 @@ final class SendSmsRequestTest extends TestCase
 
     public function test_rejects_more_than_500_recipients(): void
     {
-        $recipients = implode(',', array_fill(0, 501, '61400000000'));
+        $recipients = implode(',', array_fill(0, 501, '61491570006'));
 
         $this->expectException(ValidationException::class);
         $this->expectExceptionMessage('exceeds maximum');

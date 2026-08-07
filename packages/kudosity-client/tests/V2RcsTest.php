@@ -73,7 +73,7 @@ final class V2RcsTest extends TestCase
             'id' => '6fdae71c-dad7-4c36-9734-a69693ecf3b4',
             'message_ref' => 'order-7782',
             'sender' => 'DemoSender',
-            'recipient' => '61438333061',
+            'recipient' => '61491570014',
             'content_type' => 'text',
             'created_at' => '2026-07-29T00:00:00Z',
         ], $overrides);
@@ -119,7 +119,7 @@ final class V2RcsTest extends TestCase
         return [
             'data' => [
                 'results' => [
-                    ['phone_number' => '61438333061', 'code' => 'ENABLED'],
+                    ['phone_number' => '61491570014', 'code' => 'ENABLED'],
                     ['phone_number' => '61491570156', 'code' => 'UNREACHABLE'],
                 ],
             ],
@@ -145,7 +145,7 @@ final class V2RcsTest extends TestCase
         $connector = new KudosityV2Connector('key');
         $connector->withMockClient($mock);
 
-        (new RcsResource($connector))->send('Your order has shipped.', '61438333061', 'DemoSender');
+        (new RcsResource($connector))->send('Your order has shipped.', '61491570014', 'DemoSender');
 
         $body = $mock->getLastPendingRequest()->body()->all();
 
@@ -160,12 +160,12 @@ final class V2RcsTest extends TestCase
         $connector = new KudosityV2Connector('key');
         $connector->withMockClient($mock);
 
-        (new RcsResource($connector))->send('Hi', '+61 438 333 061', 'DemoSender');
+        (new RcsResource($connector))->send('Hi', '+61 491 570 014', 'DemoSender');
 
         $body = $mock->getLastPendingRequest()->body()->all();
 
         $this->assertSame('DemoSender', $body['sender']);
-        $this->assertSame('61438333061', $body['recipient']);
+        $this->assertSame('61491570014', $body['recipient']);
     }
 
     // ---------------------------------------------------------------------------
@@ -177,17 +177,17 @@ final class V2RcsTest extends TestCase
         // A plausible E.164 value that PhoneNumber::isValid() actually accepts:
         // 11 digits once cleaned, no leading zero. If this stopped satisfying
         // isValid() for an unrelated reason, this test would prove nothing.
-        $this->assertTrue(PhoneNumber::isValid('+61411122211'));
+        $this->assertTrue(PhoneNumber::isValid('+61491570010'));
 
         $this->expectException(ValidationException::class);
         $this->expectExceptionMessage('agent ID');
 
-        new SendRcsRequest('Hi', '61438333061', '+61411122211');
+        new SendRcsRequest('Hi', '61491570014', '+61491570010');
     }
 
     public function test_accepts_an_alphanumeric_agent_id(): void
     {
-        $this->assertInstanceOf(SendRcsRequest::class, new SendRcsRequest('Hi', '61438333061', 'DemoSender'));
+        $this->assertInstanceOf(SendRcsRequest::class, new SendRcsRequest('Hi', '61491570014', 'DemoSender'));
     }
 
     public function test_accepts_a_numeric_agent_id_that_is_not_a_valid_phone_number(): void
@@ -197,7 +197,7 @@ final class V2RcsTest extends TestCase
         // "looks like a valid phone number", not "contains only digits".
         $this->assertFalse(PhoneNumber::isValid('12345'));
 
-        $this->assertInstanceOf(SendRcsRequest::class, new SendRcsRequest('Hi', '61438333061', '12345'));
+        $this->assertInstanceOf(SendRcsRequest::class, new SendRcsRequest('Hi', '61491570014', '12345'));
     }
 
     // ---------------------------------------------------------------------------
@@ -208,7 +208,7 @@ final class V2RcsTest extends TestCase
     {
         $this->assertInstanceOf(
             SendRcsRequest::class,
-            new SendRcsRequest(str_repeat('a', 3072), '61438333061', 'DemoSender'),
+            new SendRcsRequest(str_repeat('a', 3072), '61491570014', 'DemoSender'),
         );
     }
 
@@ -217,7 +217,7 @@ final class V2RcsTest extends TestCase
         $this->expectException(ValidationException::class);
         $this->expectExceptionMessage('3072');
 
-        new SendRcsRequest(str_repeat('a', 3073), '61438333061', 'DemoSender');
+        new SendRcsRequest(str_repeat('a', 3073), '61491570014', 'DemoSender');
     }
 
     public function test_counts_multi_byte_characters_rather_than_bytes_against_the_3072_limit(): void
@@ -229,7 +229,7 @@ final class V2RcsTest extends TestCase
         $this->assertSame(3072, mb_strlen($message));
         $this->assertSame(6144, strlen($message));
 
-        $this->assertInstanceOf(SendRcsRequest::class, new SendRcsRequest($message, '61438333061', 'DemoSender'));
+        $this->assertInstanceOf(SendRcsRequest::class, new SendRcsRequest($message, '61491570014', 'DemoSender'));
     }
 
     // ---------------------------------------------------------------------------
@@ -241,14 +241,14 @@ final class V2RcsTest extends TestCase
         $this->expectException(ValidationException::class);
         $this->expectExceptionMessage('500');
 
-        new SendRcsRequest('Hi', '61438333061', 'DemoSender', messageRef: str_repeat('a', 501));
+        new SendRcsRequest('Hi', '61491570014', 'DemoSender', messageRef: str_repeat('a', 501));
     }
 
     public function test_accepts_a_message_ref_at_exactly_500_characters(): void
     {
         $this->assertInstanceOf(
             SendRcsRequest::class,
-            new SendRcsRequest('Hi', '61438333061', 'DemoSender', messageRef: str_repeat('a', 500)),
+            new SendRcsRequest('Hi', '61491570014', 'DemoSender', messageRef: str_repeat('a', 500)),
         );
     }
 
@@ -264,13 +264,13 @@ final class V2RcsTest extends TestCase
 
         (new RcsResource($connector))->send(
             'Your order has shipped.',
-            '61438333061',
+            '61491570014',
             'DemoSender',
-            fallback: new SmsFallback('Your order has shipped.', '61481074185'),
+            fallback: new SmsFallback('Your order has shipped.', '61491570017'),
         );
 
         $this->assertSame(
-            ['message' => 'Your order has shipped.', 'sender' => '61481074185'],
+            ['message' => 'Your order has shipped.', 'sender' => '61491570017'],
             $mock->getLastPendingRequest()->body()->all()['sms_fallback'],
         );
     }
@@ -281,7 +281,7 @@ final class V2RcsTest extends TestCase
         $connector = new KudosityV2Connector('key');
         $connector->withMockClient($mock);
 
-        (new RcsResource($connector))->send('Hi', '61438333061', 'DemoSender');
+        (new RcsResource($connector))->send('Hi', '61491570014', 'DemoSender');
 
         $body = $mock->getLastPendingRequest()->body()->all();
 
@@ -301,7 +301,7 @@ final class V2RcsTest extends TestCase
 
         $rcs = (new RcsResource($connector))->send(
             'Your order has shipped.',
-            '61438333061',
+            '61491570014',
             'DemoSender',
             messageRef: 'order-7782',
         );
@@ -309,13 +309,13 @@ final class V2RcsTest extends TestCase
         $this->assertInstanceOf(RcsMessageData::class, $rcs);
         $this->assertSame('6fdae71c-dad7-4c36-9734-a69693ecf3b4', $rcs->id);
         $this->assertSame('DemoSender', $rcs->sender);
-        $this->assertSame('61438333061', $rcs->recipient);
+        $this->assertSame('61491570014', $rcs->recipient);
         $this->assertSame('text', $rcs->contentType);
         $this->assertSame('order-7782', $rcs->messageRef);
 
         $this->assertSame([
             'sender' => 'DemoSender',
-            'recipient' => '61438333061',
+            'recipient' => '61491570014',
             'content_type' => 'text',
             'content' => ['text' => ['message' => 'Your order has shipped.']],
             'message_ref' => 'order-7782',
@@ -335,7 +335,7 @@ final class V2RcsTest extends TestCase
                 'id' => 'top-level-decoy',
                 'data' => self::rcsMessage(),
             ], 200),
-        ])->send('Hi', '61438333061', 'DemoSender');
+        ])->send('Hi', '61491570014', 'DemoSender');
 
         $this->assertSame('6fdae71c-dad7-4c36-9734-a69693ecf3b4', $rcs->id);
     }
@@ -471,12 +471,12 @@ final class V2RcsTest extends TestCase
     public function test_parses_sms_fallback_off_a_response_into_an_sms_fallback(): void
     {
         $rcs = RcsMessageData::fromArray(self::rcsMessage([
-            'sms_fallback' => ['sender' => '61481074185', 'message' => 'Order has shipped.'],
+            'sms_fallback' => ['sender' => '61491570017', 'message' => 'Order has shipped.'],
         ]));
 
         $this->assertInstanceOf(SmsFallback::class, $rcs->smsFallback);
         $this->assertSame('Order has shipped.', $rcs->smsFallback?->message);
-        $this->assertSame('61481074185', $rcs->smsFallback?->sender);
+        $this->assertSame('61491570017', $rcs->smsFallback?->sender);
     }
 
     public function test_leaves_sms_fallback_null_when_the_response_omits_it(): void
@@ -488,7 +488,7 @@ final class V2RcsTest extends TestCase
     {
         // Uses SmsFallback::fromResponse() rather than a bespoke guard: that
         // factory already returns null for an absent/empty/non-string message.
-        $rcs = RcsMessageData::fromArray(self::rcsMessage(['sms_fallback' => ['sender' => '61481074185']]));
+        $rcs = RcsMessageData::fromArray(self::rcsMessage(['sms_fallback' => ['sender' => '61491570017']]));
 
         $this->assertNull($rcs->smsFallback);
     }
@@ -563,9 +563,9 @@ final class V2RcsTest extends TestCase
 
     public function test_builds_an_rcs_capability_data_from_a_capability_result(): void
     {
-        $data = RcsCapabilityData::fromArray(['phone_number' => '61438333061', 'code' => 'ENABLED']);
+        $data = RcsCapabilityData::fromArray(['phone_number' => '61491570014', 'code' => 'ENABLED']);
 
-        $this->assertSame('61438333061', $data->phoneNumber);
+        $this->assertSame('61491570014', $data->phoneNumber);
         $this->assertSame(RcsCapabilityCode::Enabled, $data->code);
     }
 
@@ -579,11 +579,11 @@ final class V2RcsTest extends TestCase
         $connector = new KudosityV2Connector('key');
         $connector->withMockClient($mock);
 
-        (new RcsResource($connector))->capabilities(['61438333061', '61491570156'], 'DemoSender');
+        (new RcsResource($connector))->capabilities(['61491570014', '61491570156'], 'DemoSender');
 
         $this->assertSame([
             'sender' => 'DemoSender',
-            'phone_numbers' => ['61438333061', '61491570156'],
+            'phone_numbers' => ['61491570014', '61491570156'],
         ], $mock->getLastPendingRequest()->body()->all());
     }
 
@@ -593,12 +593,12 @@ final class V2RcsTest extends TestCase
         $connector = new KudosityV2Connector('key');
         $connector->withMockClient($mock);
 
-        $results = (new RcsResource($connector))->capabilities(['61438333061', '61491570156'], 'DemoSender');
+        $results = (new RcsResource($connector))->capabilities(['61491570014', '61491570156'], 'DemoSender');
 
         $this->assertIsArray($results);
         $this->assertCount(2, $results);
         $this->assertInstanceOf(RcsCapabilityData::class, $results[0]);
-        $this->assertSame('61438333061', $results[0]->phoneNumber);
+        $this->assertSame('61491570014', $results[0]->phoneNumber);
         $this->assertSame(RcsCapabilityCode::Enabled, $results[0]->code);
         $this->assertSame('61491570156', $results[1]->phoneNumber);
         $this->assertSame(RcsCapabilityCode::Unreachable, $results[1]->code);
@@ -606,7 +606,7 @@ final class V2RcsTest extends TestCase
 
     public function test_rejects_more_than_100_phone_numbers_per_request(): void
     {
-        $numbers = array_map(static fn (int $i): string => (string) (61400000000 + $i), range(1, 101));
+        $numbers = array_map(static fn (int $i): string => (string) (61491570006 + $i), range(1, 101));
 
         $this->expectException(ValidationException::class);
         $this->expectExceptionMessage('100');
@@ -616,7 +616,7 @@ final class V2RcsTest extends TestCase
 
     public function test_accepts_exactly_100_phone_numbers(): void
     {
-        $numbers = array_map(static fn (int $i): string => (string) (61400000000 + $i), range(1, 100));
+        $numbers = array_map(static fn (int $i): string => (string) (61491570006 + $i), range(1, 100));
 
         $this->assertInstanceOf(CheckRcsCapabilitiesRequest::class, new CheckRcsCapabilitiesRequest($numbers, 'DemoSender'));
     }

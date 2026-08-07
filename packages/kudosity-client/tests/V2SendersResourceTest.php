@@ -87,7 +87,7 @@ final class V2SendersResourceTest extends TestCase
     {
         return array_merge([
             'id' => 'reg-7f3a',
-            'sender' => '61400000000',
+            'sender' => '61491570006',
             'country' => 'AU',
             'type' => 'PERSONAL_MOBILE_NUMBER',
             'details' => ['personal_mobile_number' => ['status' => 'READY_TO_USE']],
@@ -377,10 +377,10 @@ final class V2SendersResourceTest extends TestCase
         $connector = new KudosityV2Connector('key');
         $connector->withMockClient($mock);
 
-        (new SendersResource($connector))->register('61400000000', 'AU');
+        (new SendersResource($connector))->register('61491570006', 'AU');
 
         $this->assertSame([
-            'sender' => '61400000000',
+            'sender' => '61491570006',
             'country' => 'AU',
             'type' => 'PERSONAL_MOBILE_NUMBER',
         ], $mock->getLastPendingRequest()?->body()?->all());
@@ -399,7 +399,7 @@ final class V2SendersResourceTest extends TestCase
         $this->expectException(ValidationException::class);
         $this->expectExceptionMessage('type must be one of: PERSONAL_MOBILE_NUMBER');
 
-        new RegisterSenderRequest('61400000000', 'AU', SenderRegistrationType::Unknown);
+        new RegisterSenderRequest('61491570006', 'AU', SenderRegistrationType::Unknown);
     }
 
     /** @return array<string, array{0: string, 1: string, 2: string}> */
@@ -407,7 +407,7 @@ final class V2SendersResourceTest extends TestCase
     {
         return [
             'no sender' => ['', 'AU', 'sender is required'],
-            'no country' => ['61400000000', '', 'country is required'],
+            'no country' => ['61491570006', '', 'country is required'],
         ];
     }
 
@@ -424,7 +424,7 @@ final class V2SendersResourceTest extends TestCase
     {
         $reg = self::sendersResource([
             RegisterSenderRequest::class => MockResponse::make(['data' => self::senderRegistrationRow(['id' => 'from-data'])], 201),
-        ])->register('61400000000', 'AU');
+        ])->register('61491570006', 'AU');
 
         $this->assertSame('from-data', $reg->id);
     }
@@ -439,13 +439,13 @@ final class V2SendersResourceTest extends TestCase
         $connector = new KudosityV2Connector('key');
         $connector->withMockClient($mock);
 
-        (new SendersResource($connector))->requestVerification('reg-7f3a', '61481074185');
+        (new SendersResource($connector))->requestVerification('reg-7f3a', '61491570017');
 
         $request = $mock->getLastPendingRequest();
 
         $this->assertSame([
             'method' => 'SMS',
-            'originating_sender' => '61481074185',
+            'originating_sender' => '61491570017',
         ], $request?->body()?->all());
         $this->assertStringEndsWith('/v2/senders/registrations/reg-7f3a/verifications', (string) $request?->getUrl());
     }
@@ -455,14 +455,14 @@ final class V2SendersResourceTest extends TestCase
         $this->expectException(ValidationException::class);
         $this->expectExceptionMessage('method must be one of: SMS');
 
-        new RequestSenderVerificationRequest('reg-1', '61481074185', SenderVerificationMethod::Unknown);
+        new RequestSenderVerificationRequest('reg-1', '61491570017', SenderVerificationMethod::Unknown);
     }
 
     /** @return array<string, array{0: string, 1: string}> */
     public static function emptyVerificationFields(): array
     {
         return [
-            'no id' => ['', '61481074185'],
+            'no id' => ['', '61491570017'],
             'no originating sender' => ['reg-1', ''],
         ];
     }
@@ -508,15 +508,15 @@ final class V2SendersResourceTest extends TestCase
         $connector = new KudosityV2Connector('key');
         $connector->withMockClient($mock);
 
-        $this->assertTrue((new SendersResource($connector))->deleteByPhoneNumber('61400000000'));
-        $this->assertStringEndsWith('/v2/senders/phone-numbers/61400000000', (string) $mock->getLastPendingRequest()?->getUrl());
+        $this->assertTrue((new SendersResource($connector))->deleteByPhoneNumber('61491570006'));
+        $this->assertStringEndsWith('/v2/senders/phone-numbers/61491570006', (string) $mock->getLastPendingRequest()?->getUrl());
     }
 
     public function test_url_encodes_a_plus_prefixed_number_so_it_is_not_read_as_a_space(): void
     {
         $this->assertSame(
-            '/v2/senders/phone-numbers/%2B61400000000',
-            (new DeleteSenderPhoneNumberRequest('+61400000000'))->resolveEndpoint(),
+            '/v2/senders/phone-numbers/%2B61491570006',
+            (new DeleteSenderPhoneNumberRequest('+61491570006'))->resolveEndpoint(),
         );
     }
 
@@ -544,7 +544,7 @@ final class V2SendersResourceTest extends TestCase
                     'type' => 'https://developers.kudosity.com/reference/errors#not-found',
                 ],
             ], 404),
-        ])->deleteByPhoneNumber('61400000000');
+        ])->deleteByPhoneNumber('61491570006');
     }
 
     public function test_sends_no_body_on_the_delete(): void
@@ -553,7 +553,7 @@ final class V2SendersResourceTest extends TestCase
         $connector = new KudosityV2Connector('key');
         $connector->withMockClient($mock);
 
-        (new SendersResource($connector))->deleteByPhoneNumber('61400000000');
+        (new SendersResource($connector))->deleteByPhoneNumber('61491570006');
 
         $this->assertNull($mock->getLastPendingRequest()?->body());
     }

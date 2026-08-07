@@ -29,7 +29,7 @@ use ExpertSystems\Kudosity\Requests\V2\SendWhatsAppRequest;
  * - the template needs an image, document, buttons or a carousel →
  *   {@see self::custom()}
  *
- * `$to` must be given in international form — `61411122211`, not `0411 122 211`.
+ * `$to` must be given in international form — `61491570010`, not `0491 570 010`.
  * Spaces, dashes and a leading `+` are cleaned up for you, but no country is
  * assumed: a local number keeps its leading zero and the API rejects it.
  *
@@ -44,7 +44,7 @@ class WhatsAppResource extends V2Resource
     /**
      * Send free-form text. Only delivers inside the 24-hour service window.
      *
-     * @param  string  $to  Recipient in international form, e.g. `61411122211`. Punctuation
+     * @param  string  $to  Recipient in international form, e.g. `61491570010`. Punctuation
      *                      and a leading `+` are stripped; no country is assumed, so a local
      *                      number keeps its leading zero and the API rejects it.
      */
@@ -68,7 +68,7 @@ class WhatsAppResource extends V2Resource
      * while the runtime check still covers JSON-sourced values.
      *
      * @param  array<int, string>  $parameters  Positional strings filling `{1}`, `{2}`, …
-     * @param  string  $to  Recipient in international form, e.g. `61411122211`. Punctuation
+     * @param  string  $to  Recipient in international form, e.g. `61491570010`. Punctuation
      *                      and a leading `+` are stripped; no country is assumed, so a local
      *                      number keeps its leading zero and the API rejects it.
      */
@@ -88,7 +88,7 @@ class WhatsAppResource extends V2Resource
      * Send a raw Meta Cloud API payload — media headers, buttons, carousels.
      *
      * @param  array<string, mixed>  $payload
-     * @param  string  $to  Recipient in international form, e.g. `61411122211`. Punctuation
+     * @param  string  $to  Recipient in international form, e.g. `61491570010`. Punctuation
      *                      and a leading `+` are stripped; no country is assumed, so a local
      *                      number keeps its leading zero and the API rejects it.
      */
@@ -105,7 +105,7 @@ class WhatsAppResource extends V2Resource
     /**
      * Send any content variant. `content_type` is derived from `$content`.
      *
-     * @param  string  $to  Recipient in international form, e.g. `61411122211`. Punctuation
+     * @param  string  $to  Recipient in international form, e.g. `61491570010`. Punctuation
      *                      and a leading `+` are stripped; no country is assumed, so a local
      *                      number keeps its leading zero and the API rejects it.
      */

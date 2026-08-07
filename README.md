@@ -89,7 +89,7 @@ KUDOSITY_FROM=
 The `from` value (`KUDOSITY_FROM`, or the per-message `from` option) is the sender
 ID recipients see. It can be:
 
-- A **dedicated virtual number (VMN)** in international format, e.g. `61412345678` —
+- A **dedicated virtual number (VMN)** in international format, e.g. `61491570012` —
   supports two-way messaging (recipients can reply).
 - An **alphanumeric sender ID** ("alpha tag") such as `MyBrand` — max 11 characters,
   letters and digits only, no spaces (validated by `PhoneNumber::isValidSenderId()`).
@@ -130,21 +130,21 @@ use ExpertSystems\Kudosity\Requests\SendSmsRequest;
 $client = new KudosityClient('api-key', 'api-secret');
 
 // Send an SMS — send(string $message, string $to, ?string $from = null, ?callable $configure = null)
-$sms = $client->bulk()->send('Hello from Kudosity!', '+61400000000');
+$sms = $client->bulk()->send('Hello from Kudosity!', '+61491570006');
 $messageId = $sms->messageId;
 
 // Send to multiple recipients (comma-separated, up to 500)
-$client->bulk()->send('Bulk message', '+61400000000,+61400000001');
+$client->bulk()->send('Bulk message', '+61491570006,+61491570007');
 
 // Extra options (replies-to-email, callbacks, scheduling, validity) — pass a
 // configure closure. Connector defaults still apply, unlike sendRequest().
-$client->bulk()->send('Hello!', '+61400000000', configure: fn (SendSmsRequest $r) =>
+$client->bulk()->send('Hello!', '+61491570006', configure: fn (SendSmsRequest $r) =>
     $r->repliesToEmail('inbox@example.com')->validity(60)
 );
 
 // Full control with no connector defaults applied — build a request yourself
 $request = (new SendSmsRequest('Scheduled message'))
-    ->to('+61400000000')
+    ->to('+61491570006')
     ->from('MySenderID')
     ->scheduledAt('2026-12-25 09:00:00');
 $client->bulk()->sendRequest($request);
@@ -161,10 +161,10 @@ $replies = $client->reporting()->getAllResponses();
 
 // V2 channels — single recipient, no scheduling. See the client package
 // README's "V2 channels" section for the response envelope table.
-$client->sms()->send('Hi from V2!', '61400000000', '61481074185');
-$client->mms()->send('61400000000', '61481074185', ['https://example.com/product.jpg']);
-$client->whatsapp()->text('Hi from WhatsApp!', '61411122211');
-$client->rcs()->send('Hi from RCS!', '61411122211', 'DemoSender');
+$client->sms()->send('Hi from V2!', '61491570006', '61491570017');
+$client->mms()->send('61491570006', '61491570017', ['https://example.com/product.jpg']);
+$client->whatsapp()->text('Hi from WhatsApp!', '61491570010');
+$client->rcs()->send('Hi from RCS!', '61491570010', 'DemoSender');
 ```
 
 ### Pagination
@@ -206,10 +206,10 @@ use ExpertSystems\Kudosity\Laravel\Facades\Kudosity;
 
 // Send an SMS via V1 bulk() — multiple recipients, contact lists and
 // scheduling all live here, not on sms() (see "Core Client" above)
-Kudosity::bulk()->send('Hello from Laravel!', '+61400000000');
+Kudosity::bulk()->send('Hello from Laravel!', '+61491570006');
 
 // V2 single-recipient SMS
-Kudosity::sms()->send('Hi from V2!', '61400000000', '61481074185');
+Kudosity::sms()->send('Hi from V2!', '61491570006', '61491570017');
 
 // Get account balance
 $balance = Kudosity::account()->getBalance();

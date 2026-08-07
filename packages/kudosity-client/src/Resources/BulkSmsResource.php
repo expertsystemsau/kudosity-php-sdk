@@ -34,7 +34,7 @@ class BulkSmsResource extends Resource
      * request after connector defaults have been applied:
      *
      * ```php
-     * $client->bulk()->send('Hi', '+61400000000', configure: fn (SendSmsRequest $r) =>
+     * $client->bulk()->send('Hi', '+61491570006', configure: fn (SendSmsRequest $r) =>
      *     $r->repliesToEmail('inbox@example.com')->validity(60)
      * );
      * ```

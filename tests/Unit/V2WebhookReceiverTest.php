@@ -65,12 +65,12 @@ it('dispatches an opt-out event from the documented payload', function () {
     postEvent(documentedWebhook('OPT_OUT', [
         'opt_out' => [
             'source' => 'SMS_INBOUND',
-            'source_message' => ['id' => 'a1', 'recipient' => '61435790000', 'sender' => '61481074190'],
+            'source_message' => ['id' => 'a1', 'recipient' => '61491570021', 'sender' => '61491570020'],
         ],
     ]))->assertOk();
 
     Event::assertDispatched(KudosityOptOutReceived::class, function (KudosityOptOutReceived $e) {
-        return $e->optOut->optedOutNumber() === '61435790000';
+        return $e->optOut->optedOutNumber() === '61491570021';
     });
 });
 

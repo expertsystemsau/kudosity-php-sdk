@@ -93,7 +93,7 @@ final class V2TransportTest extends TestCase
         ]);
 
         try {
-            $resource->send(message: 'hi', to: '61400000000', from: 'nope');
+            $resource->send(message: 'hi', to: '61491570006', from: 'nope');
             $this->fail('Expected a ValidationException.');
         } catch (ValidationException $e) {
             // Per-field issues are the whole point of RFC 9457 here: without
@@ -167,8 +167,8 @@ final class V2TransportTest extends TestCase
         $resource = $this->smsResource([
             MockResponse::make([
                 'id' => '2d2c8fb6-e514-4f5f-9706-0672b0259218',
-                'recipient' => '61478038915',
-                'sender' => '61481074185',
+                'recipient' => '61491570018',
+                'sender' => '61491570017',
                 'message' => 'Report to the ready room!',
                 'status' => 'delivered',
                 'sms_count' => '1',
@@ -177,7 +177,7 @@ final class V2TransportTest extends TestCase
             ], 200),
         ]);
 
-        $sent = $resource->send(message: 'Report to the ready room!', to: '61478038915', from: '61481074185');
+        $sent = $resource->send(message: 'Report to the ready room!', to: '61491570018', from: '61491570017');
 
         $this->assertSame('2d2c8fb6-e514-4f5f-9706-0672b0259218', $sent->id());
         // Verified live: sms_count really does arrive as a JSON string.
@@ -209,7 +209,7 @@ final class V2TransportTest extends TestCase
     {
         $mock = new MockClient([
             MockResponse::make([
-                'id' => 'x', 'recipient' => '61478038915', 'sender' => '61481074185',
+                'id' => 'x', 'recipient' => '61491570018', 'sender' => '61491570017',
                 'message' => 'hi', 'status' => 'queued', 'sms_count' => '1',
                 'created_at' => '2022-03-28T06:12:52.450674000Z',
             ], 200),
@@ -220,8 +220,8 @@ final class V2TransportTest extends TestCase
 
         $connector->send(new SendSmsV2Request(
             message: 'hi',
-            recipient: '61478038915',
-            sender: '61481074185',
+            recipient: '61491570018',
+            sender: '61491570017',
             messageRef: 'order-1',
             trackLinks: true,
         ));
@@ -233,8 +233,8 @@ final class V2TransportTest extends TestCase
         $body = $request->body()?->all();
 
         $this->assertSame('hi', $body['message']);
-        $this->assertSame('61478038915', $body['recipient']);
-        $this->assertSame('61481074185', $body['sender']);
+        $this->assertSame('61491570018', $body['recipient']);
+        $this->assertSame('61491570017', $body['sender']);
         $this->assertSame('order-1', $body['message_ref']);
         $this->assertTrue($body['track_links']);
         $this->assertSame('/v2/sms', (new SendSmsV2Request('m', 'r', 's'))->resolveEndpoint());

@@ -141,8 +141,8 @@ class SendSmsRequest extends KudosityV1Request
     /**
      * Set the country code for formatting local numbers.
      *
-     * When set, local numbers (e.g., 0400000000) will be automatically
-     * formatted to international E.164 format (e.g., 61400000000).
+     * When set, local numbers (e.g., 0491570006) will be automatically
+     * formatted to international E.164 format (e.g., 61491570006).
      *
      * @param  string  $countryCode  2-letter ISO 3166 country code (e.g., 'AU', 'NZ', 'US')
      */

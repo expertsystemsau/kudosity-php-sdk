@@ -133,7 +133,7 @@ final class ExceptionTest extends TestCase
             'error' => [
                 'code' => 'RECIPIENTS_ERROR',
                 'description' => [
-                    'fails' => ['0400000001', '0400000002'],
+                    'fails' => ['0491570007', '0491570008'],
                     'optouts' => [],
                 ],
             ],
@@ -144,8 +144,8 @@ final class ExceptionTest extends TestCase
 
         $this->assertInstanceOf(InvalidRecipientsException::class, $exception);
         $this->assertStringContainsString('invalid numbers', $exception->getMessage());
-        $this->assertStringContainsString('0400000001', $exception->getMessage());
-        $this->assertStringContainsString('0400000002', $exception->getMessage());
+        $this->assertStringContainsString('0491570007', $exception->getMessage());
+        $this->assertStringContainsString('0491570008', $exception->getMessage());
         $this->assertSame('RECIPIENTS_ERROR', $exception->getErrorCode());
     }
 
@@ -157,7 +157,7 @@ final class ExceptionTest extends TestCase
                 'code' => 'RECIPIENTS_ERROR',
                 'description' => [
                     'fails' => [],
-                    'optouts' => ['61400000003'],
+                    'optouts' => ['61491570009'],
                 ],
             ],
         ]);
@@ -167,7 +167,7 @@ final class ExceptionTest extends TestCase
 
         $this->assertInstanceOf(InvalidRecipientsException::class, $exception);
         $this->assertStringContainsString('opted-out numbers', $exception->getMessage());
-        $this->assertStringContainsString('61400000003', $exception->getMessage());
+        $this->assertStringContainsString('61491570009', $exception->getMessage());
     }
 
     public function test_handles_recipients_error_with_both_fails_and_optouts(): void

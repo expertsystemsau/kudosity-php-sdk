@@ -151,7 +151,7 @@ final class V2ConnectorTest extends TestCase
 
     public function test_passes_a_flat_envelope_through_untouched(): void
     {
-        $json = ['id' => 'abc', 'recipient' => '61400000000', 'sms_count' => '1'];
+        $json = ['id' => 'abc', 'recipient' => '61491570006', 'sms_count' => '1'];
 
         $this->assertSame($json, DataUnwrapper::ofArray($json));
     }

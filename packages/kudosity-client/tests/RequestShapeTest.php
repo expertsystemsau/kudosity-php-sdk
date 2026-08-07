@@ -77,24 +77,24 @@ final class RequestShapeTest extends TestCase
     {
         return [
             // SMS
-            'SendSmsV2Request' => [new SendSmsV2Request('m', '61400000000', '61481074185'), 'POST', '/v2/sms'],
+            'SendSmsV2Request' => [new SendSmsV2Request('m', '61491570006', '61491570017'), 'POST', '/v2/sms'],
             'GetSmsV2Request' => [new GetSmsV2Request(self::VALID_ID), 'GET', '/v2/sms/'.self::VALID_ID],
             'ListSmsV2Request' => [new ListSmsV2Request, 'GET', '/v2/sms'],
 
             // MMS — note there is no list endpoint.
-            'SendMmsRequest' => [new SendMmsRequest('61400000000', '61481074185', ['https://e.com/a.jpg']), 'POST', '/v2/mms'],
+            'SendMmsRequest' => [new SendMmsRequest('61491570006', '61491570017', ['https://e.com/a.jpg']), 'POST', '/v2/mms'],
             'GetMmsRequest' => [new GetMmsRequest(self::VALID_ID), 'GET', '/v2/mms/'.self::VALID_ID],
 
             // WhatsApp — messages live under a nested path, unlike SMS and MMS.
-            'SendWhatsAppRequest' => [new SendWhatsAppRequest(new TextContent('hi'), '61400000000'), 'POST', '/v2/whatsapp/messages'],
+            'SendWhatsAppRequest' => [new SendWhatsAppRequest(new TextContent('hi'), '61491570006'), 'POST', '/v2/whatsapp/messages'],
             'GetWhatsAppRequest' => [new GetWhatsAppRequest(self::VALID_ID), 'GET', '/v2/whatsapp/messages/'.self::VALID_ID],
             'ListWhatsAppRequest' => [new ListWhatsAppRequest, 'GET', '/v2/whatsapp/messages'],
 
             // RCS — capabilities sits beside messages, not under it.
-            'SendRcsRequest' => [new SendRcsRequest('m', '61400000000', 'DemoAgent'), 'POST', '/v2/rcs/messages'],
+            'SendRcsRequest' => [new SendRcsRequest('m', '61491570006', 'DemoAgent'), 'POST', '/v2/rcs/messages'],
             'GetRcsRequest' => [new GetRcsRequest(self::VALID_ID), 'GET', '/v2/rcs/messages/'.self::VALID_ID],
             'ListRcsRequest' => [new ListRcsRequest, 'GET', '/v2/rcs/messages'],
-            'CheckRcsCapabilitiesRequest' => [new CheckRcsCapabilitiesRequest(['61400000000'], 'DemoAgent'), 'POST', '/v2/rcs/capabilities'],
+            'CheckRcsCapabilitiesRequest' => [new CheckRcsCapabilitiesRequest(['61491570006'], 'DemoAgent'), 'POST', '/v2/rcs/capabilities'],
 
             // Webhooks — singular `webhook`, and the same path for create and list.
             'CreateWebhookRequest' => [new CreateWebhookRequest('rig', 'https://e.com/h'), 'POST', '/v2/webhook'],
@@ -104,11 +104,11 @@ final class RequestShapeTest extends TestCase
             'DeleteWebhookRequest' => [new DeleteWebhookRequest(self::VALID_ID), 'DELETE', '/v2/webhook/'.self::VALID_ID],
 
             // Senders
-            'RegisterSenderRequest' => [new RegisterSenderRequest('61400000000', 'AU'), 'POST', '/v2/senders/registrations'],
+            'RegisterSenderRequest' => [new RegisterSenderRequest('61491570006', 'AU'), 'POST', '/v2/senders/registrations'],
             'ListSenderRegistrationsRequest' => [new ListSenderRegistrationsRequest, 'GET', '/v2/senders/registrations'],
-            'RequestSenderVerificationRequest' => [new RequestSenderVerificationRequest('reg-1', '61481074185'), 'POST', '/v2/senders/registrations/reg-1/verifications'],
+            'RequestSenderVerificationRequest' => [new RequestSenderVerificationRequest('reg-1', '61491570017'), 'POST', '/v2/senders/registrations/reg-1/verifications'],
             'ConfirmSenderVerificationRequest' => [new ConfirmSenderVerificationRequest('reg-1', '123456'), 'POST', '/v2/senders/registrations/reg-1/verifications/confirmation'],
-            'DeleteSenderPhoneNumberRequest' => [new DeleteSenderPhoneNumberRequest('61400000000'), 'DELETE', '/v2/senders/phone-numbers/61400000000'],
+            'DeleteSenderPhoneNumberRequest' => [new DeleteSenderPhoneNumberRequest('61491570006'), 'DELETE', '/v2/senders/phone-numbers/61491570006'],
         ];
     }
 
@@ -153,14 +153,14 @@ final class RequestShapeTest extends TestCase
         $this->expectException(ValidationException::class);
         $this->expectExceptionMessageMatches('/message_ref/');
 
-        new SendSmsV2Request('m', '61400000000', '61481074185', str_repeat('a', 501));
+        new SendSmsV2Request('m', '61491570006', '61491570017', str_repeat('a', 501));
     }
 
     public function test_a_message_ref_at_the_maximum_is_accepted(): void
     {
         // The boundary from the other side, so the guard cannot be satisfied by
         // rejecting everything.
-        $request = new SendSmsV2Request('m', '61400000000', '61481074185', str_repeat('a', 500));
+        $request = new SendSmsV2Request('m', '61491570006', '61491570017', str_repeat('a', 500));
 
         $this->assertSame('/v2/sms', $request->resolveEndpoint());
     }
@@ -171,7 +171,7 @@ final class RequestShapeTest extends TestCase
         $this->expectException(ValidationException::class);
         $this->expectExceptionMessageMatches('/subject length \(21\)/');
 
-        new SendMmsRequest('61400000000', '61481074185', ['https://e.com/a.jpg'], str_repeat('a', 21));
+        new SendMmsRequest('61491570006', '61491570017', ['https://e.com/a.jpg'], str_repeat('a', 21));
     }
 
     public function test_rcs_rejects_a_phone_number_where_an_agent_id_belongs(): void
@@ -182,7 +182,7 @@ final class RequestShapeTest extends TestCase
         $this->expectException(ValidationException::class);
         $this->expectExceptionMessageMatches('/agent/i');
 
-        new SendRcsRequest('m', '61400000000', '61481074185');
+        new SendRcsRequest('m', '61491570006', '61491570017');
     }
 
     public function test_rcs_capabilities_rejects_a_phone_number_sender_too(): void
@@ -192,7 +192,7 @@ final class RequestShapeTest extends TestCase
         $this->expectException(ValidationException::class);
         $this->expectExceptionMessageMatches('/agent/i');
 
-        new CheckRcsCapabilitiesRequest(['61400000000'], '61481074185');
+        new CheckRcsCapabilitiesRequest(['61491570006'], '61491570017');
     }
 
     public function test_the_insecure_url_opt_in_is_explicit_and_works(): void
@@ -206,12 +206,12 @@ final class RequestShapeTest extends TestCase
 
     public function test_the_send_body_carries_the_documented_keys(): void
     {
-        $body = (new SendSmsV2Request('hi', '61478038915', '61481074185', 'order-1', true))->body()?->all();
+        $body = (new SendSmsV2Request('hi', '61491570018', '61491570017', 'order-1', true))->body()?->all();
 
         $this->assertSame([
             'message' => 'hi',
-            'sender' => '61481074185',
-            'recipient' => '61478038915',
+            'sender' => '61491570017',
+            'recipient' => '61491570018',
             'message_ref' => 'order-1',
             'track_links' => true,
         ], $body);

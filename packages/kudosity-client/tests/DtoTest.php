@@ -58,9 +58,9 @@ final class DtoTest extends TestCase
         // Verbatim from .agents/skills/kudosity-sms/SKILL.md — the FLAT shape.
         return array_merge([
             'id' => '2d2c8fb6-e514-4f5f-9706-0672b0259218',
-            'recipient' => '61478038915',
+            'recipient' => '61491570018',
             'recipient_country' => 'AU',
-            'sender' => '61481074185',
+            'sender' => '61491570017',
             'sender_country' => 'AU',
             'message_ref' => 'ncc1701d',
             'message' => 'Report to the ready room!',
@@ -146,7 +146,7 @@ final class DtoTest extends TestCase
             'id' => 'c', 'recipient' => '614', 'sender' => 'DemoAgent',
             'content_type' => 'text', 'content' => ['message' => 'hi'],
             'status' => 'queued',
-            'sms_fallback' => ['message' => 'fallback', 'sender' => '61481074185'],
+            'sms_fallback' => ['message' => 'fallback', 'sender' => '61491570017'],
             'created_at' => '2022-03-28T06:12:52.450674000Z',
         ]);
 
@@ -192,7 +192,7 @@ final class DtoTest extends TestCase
         // completed a registration — so `raw` is retained deliberately and a
         // consumer can reach a field the DTO does not model yet.
         $registration = SenderRegistrationData::fromArray([
-            'id' => 'reg-1', 'sender' => '61400000000', 'country' => 'AU',
+            'id' => 'reg-1', 'sender' => '61491570006', 'country' => 'AU',
             'type' => 'PERSONAL_MOBILE_NUMBER', 'status' => 'VERIFIED',
             'something_undocumented' => 'kept',
         ]);

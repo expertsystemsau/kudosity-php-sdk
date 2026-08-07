@@ -27,9 +27,9 @@ describe('KudosityMessage', function () {
 
         it('sets recipient via to() method', function () {
             $message = (new KudosityMessage('Test'))
-                ->to('61400000000');
+                ->to('61491570006');
 
-            expect($message->getTo())->toBe('61400000000');
+            expect($message->getTo())->toBe('61491570006');
         });
 
         it('sets list ID via toList() method', function () {
@@ -119,7 +119,7 @@ describe('KudosityMessage', function () {
         it('chains all methods together', function () {
             $message = (new KudosityMessage)
                 ->content('Hello World')
-                ->to('61400000000')
+                ->to('61491570006')
                 ->from('MyBrand')
                 ->sendAt('2025-12-06 10:00:00')
                 ->validity(60)
@@ -131,7 +131,7 @@ describe('KudosityMessage', function () {
                 ->linkHitsCallback('https://example.com/hits');
 
             expect($message->getContent())->toBe('Hello World');
-            expect($message->getTo())->toBe('61400000000');
+            expect($message->getTo())->toBe('61491570006');
             expect($message->getFrom())->toBe('MyBrand');
             expect($message->getSendAt())->toBe('2025-12-06 10:00:00');
             expect($message->getValidity())->toBe(60);
@@ -147,7 +147,7 @@ describe('KudosityMessage', function () {
             $message = new KudosityMessage;
 
             expect($message->content('Test'))->toBe($message);
-            expect($message->to('61400000000'))->toBe($message);
+            expect($message->to('61491570006'))->toBe($message);
             expect($message->from('MyBrand'))->toBe($message);
             expect($message->sendAt('2025-12-06 10:00:00'))->toBe($message);
             expect($message->validity(60))->toBe($message);

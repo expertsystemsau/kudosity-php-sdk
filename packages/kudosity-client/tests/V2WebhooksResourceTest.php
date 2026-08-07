@@ -183,12 +183,12 @@ final class V2WebhooksResourceTest extends TestCase
         (new WebhooksResource($connector))->create('Failures', 'https://e.com/h', filter: new WebhookFilter(
             eventType: [WebhookEventType::SmsStatus],
             status: [MessageStatus::Failed, MessageStatus::HardBounce],
-            sender: ['61481074185'],
+            sender: ['61491570017'],
         ));
 
         $this->assertSame([
             'event_type' => ['SMS_STATUS'],
-            'sender' => ['61481074185'],
+            'sender' => ['61491570017'],
             'status' => ['FAILED', 'HARD_BOUNCE'],
         ], $mock->getLastPendingRequest()?->body()?->all()['filter']);
     }
@@ -203,14 +203,14 @@ final class V2WebhooksResourceTest extends TestCase
             'Events',
             'https://e.com/h',
             [WebhookEventType::OptOut],
-            new WebhookFilter(eventType: [WebhookEventType::SmsStatus], sender: ['61481074185']),
+            new WebhookFilter(eventType: [WebhookEventType::SmsStatus], sender: ['61491570017']),
         );
 
         $filter = $mock->getLastPendingRequest()?->body()?->all()['filter'];
 
         // The shortcut replaces event_type but must not discard the rest of the filter.
         $this->assertSame(['OPT_OUT'], $filter['event_type']);
-        $this->assertSame(['61481074185'], $filter['sender']);
+        $this->assertSame(['61491570017'], $filter['sender']);
     }
 
     public function test_sends_rate_limit_only_when_given_since_0_means_the_system_default(): void
@@ -625,7 +625,7 @@ final class V2WebhooksResourceTest extends TestCase
     {
         $filter = WebhookFilter::fromArray([
             'event_type' => ['SMS_STATUS', 'LINK_HIT'],
-            'sender' => ['61481074185'],
+            'sender' => ['61491570017'],
             'status' => ['DELIVERED'],
             'message_ref' => ['order-1'],
             'campaign_id' => ['camp-1'],
@@ -633,7 +633,7 @@ final class V2WebhooksResourceTest extends TestCase
 
         $this->assertSame([
             'event_type' => ['SMS_STATUS', 'LINK_HIT'],
-            'sender' => ['61481074185'],
+            'sender' => ['61491570017'],
             'status' => ['DELIVERED'],
             'message_ref' => ['order-1'],
             'campaign_id' => ['camp-1'],

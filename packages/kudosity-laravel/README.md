@@ -36,7 +36,7 @@ KUDOSITY_FROM=
 `KUDOSITY_FROM` (or the per-message `from()` / `from` option) is the sender ID
 recipients see. It can be:
 
-- A **dedicated virtual number (VMN)** in international format, e.g. `61412345678` —
+- A **dedicated virtual number (VMN)** in international format, e.g. `61491570012` —
   supports two-way messaging (recipients can reply).
 - An **alphanumeric sender ID** ("alpha tag") such as `MyBrand` — max 11 characters,
   letters and digits only, no spaces. One-way only; recipients cannot reply.
@@ -66,7 +66,7 @@ and so on.
 use ExpertSystems\Kudosity\Laravel\Facades\Kudosity;
 
 // Send an SMS — send(string $message, string $to, ?string $from = null, ?callable $configure = null)
-Kudosity::bulk()->send('Hello from Laravel!', '+61400000000');
+Kudosity::bulk()->send('Hello from Laravel!', '+61491570006');
 
 // Get account balance
 $balance = Kudosity::account()->getBalance();

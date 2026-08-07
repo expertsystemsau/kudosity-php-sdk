@@ -32,21 +32,21 @@ use ExpertSystems\Kudosity\Requests\SendSmsRequest;
 $client = new KudosityClient('your-api-key', 'your-api-secret');
 
 // Send an SMS — send(string $message, string $to, ?string $from = null, ?callable $configure = null)
-$sms = $client->bulk()->send('Hello from Kudosity!', '+61400000000');
+$sms = $client->bulk()->send('Hello from Kudosity!', '+61491570006');
 $messageId = $sms->messageId;
 
 // Send to multiple recipients (comma-separated, up to 500)
-$client->bulk()->send('Bulk message', '+61400000000,+61400000001');
+$client->bulk()->send('Bulk message', '+61491570006,+61491570007');
 
 // Extra options (replies-to-email, callbacks, scheduling, validity) — pass a
 // configure closure. Connector defaults still apply, unlike sendRequest().
-$client->bulk()->send('Hello!', '+61400000000', configure: fn (SendSmsRequest $r) =>
+$client->bulk()->send('Hello!', '+61491570006', configure: fn (SendSmsRequest $r) =>
     $r->repliesToEmail('inbox@example.com')->validity(60)
 );
 
 // Full control with no connector defaults applied — build a request yourself
 $request = (new SendSmsRequest('Scheduled message'))
-    ->to('+61400000000')
+    ->to('+61491570006')
     ->from('MySenderID')
     ->scheduledAt('2026-12-25 09:00:00');
 $client->bulk()->sendRequest($request);
@@ -63,7 +63,7 @@ $replies = $client->reporting()->getAllResponses();
 
 // Manage contact lists
 $lists = $client->lists()->all();
-$client->lists()->addContact(123, '+61400000000', firstName: 'John');
+$client->lists()->addContact(123, '+61491570006', firstName: 'John');
 ```
 
 ## Pagination
@@ -95,7 +95,7 @@ correct key per request automatically.
 The `from` value (per-message, or the connector default via `setDefaultFrom()`) is the
 sender ID recipients see. It can be:
 
-- A **dedicated virtual number (VMN)** in international format, e.g. `61412345678` —
+- A **dedicated virtual number (VMN)** in international format, e.g. `61491570012` —
   supports two-way messaging (recipients can reply).
 - An **alphanumeric sender ID** ("alpha tag") such as `MyBrand` — max 11 characters,
   letters and digits only, no spaces (validate with `$client->bulk()->isValidSenderId()`).
@@ -109,7 +109,7 @@ $client = new KudosityClient('your-api-key', 'your-api-secret');
 
 // 1. Per message — the third argument to send() overrides any default.
 //    send(string $message, string $to, ?string $from = null, ?callable $configure = null)
-$client->bulk()->send('Hello!', '+61400000000', 'MyBrand');
+$client->bulk()->send('Hello!', '+61491570006', 'MyBrand');
 
 // 2. A default sender ID applied to every send()/sendToList() call, set on
 //    the connector. Optionally set a default country code used to normalise
@@ -117,7 +117,7 @@ $client->bulk()->send('Hello!', '+61400000000', 'MyBrand');
 $client->connector()->setDefaultFrom('MyBrand');
 $client->connector()->setDefaultCountryCode('AU');
 
-$client->bulk()->send('Hello!', '+61400000000'); // uses "MyBrand"
+$client->bulk()->send('Hello!', '+61491570006'); // uses "MyBrand"
 
 // Validate a value before you rely on it
 if (! $client->bulk()->isValidSenderId('MyBrand')) {
@@ -165,7 +165,7 @@ $urlBuilder = new CallbackUrlBuilder(
 
 // Send SMS with callbacks
 $request = (new SendSmsRequest('Your order has shipped!'))
-    ->to('61400000000')
+    ->to('61491570006')
     ->from('MYSTORE')
     ->dlrCallback(
         $urlBuilder->build(
@@ -275,20 +275,20 @@ returning typed DTOs rather than raw arrays.
 
 ```php
 // SMS — single recipient, no scheduling.
-$sms = $client->sms()->send('Hello from Kudosity!', '61400000000', '61481074185');
+$sms = $client->sms()->send('Hello from Kudosity!', '61491570006', '61491570017');
 $sms = $client->sms()->get($sms->id);
 
 // MMS — one recipient, one media file.
-$mms = $client->mms()->send('61400000000', '61481074185', ['https://example.com/product.jpg']);
+$mms = $client->mms()->send('61491570006', '61491570017', ['https://example.com/product.jpg']);
 
 // WhatsApp — text only delivers inside the 24-hour service window; use
 // template() to initiate a conversation, or custom() for media/buttons.
-$wa = $client->whatsapp()->text('Your order has shipped!', '61411122211');
+$wa = $client->whatsapp()->text('Your order has shipped!', '61491570010');
 
 // RCS — $agentId is a registered agent ID (e.g. "DemoSender"), never a phone
 // number; a phone-number-shaped value is rejected before the request is sent.
-$rcs = $client->rcs()->send('Your order has shipped!', '61411122211', 'DemoSender');
-$reachable = $client->rcs()->capabilities(['61411122211'], 'DemoSender');
+$rcs = $client->rcs()->send('Your order has shipped!', '61491570010', 'DemoSender');
+$reachable = $client->rcs()->capabilities(['61491570010'], 'DemoSender');
 ```
 
 SMS lists page by page (`$client->sms()->list()`); WhatsApp and RCS lists
@@ -523,11 +523,11 @@ if (StatusPrecedence::supersedes($event->status, $recorded)) {
 $client->senders()->allRegistrations();   // typed, all pages
 $client->senders()->readyToUse();         // only those that can actually send
 
-$reg = $client->senders()->register('61400000000', 'AU');
-$client->senders()->requestVerification($reg->id, originatingSender: '61481074185');
+$reg = $client->senders()->register('61491570006', 'AU');
+$client->senders()->requestVerification($reg->id, originatingSender: '61491570017');
 $client->senders()->confirmVerification($reg->id, '012345');   // string: codes have leading zeros
 
-$client->senders()->deleteByPhoneNumber('61400000000');
+$client->senders()->deleteByPhoneNumber('61491570006');
 ```
 
 **`VERIFIED` does not mean you can send.** It means *provisioning*. The registry

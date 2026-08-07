@@ -261,8 +261,8 @@ final class V2SignedMessageRefTest extends TestCase
         // too long.
         $request = new SendSmsV2Request(
             message: 'Hi',
-            recipient: '61400000000',
-            sender: '61481074185',
+            recipient: '61491570006',
+            sender: '61491570017',
             messageRef: $ref,
         );
 

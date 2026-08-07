@@ -24,7 +24,7 @@ use Illuminate\Notifications\ChannelManager;
 use Illuminate\Notifications\Notification;
 
 /** A notifiable that routes every channel to one number. */
-function v2Notifiable(?string $number = '61400000000'): object
+function v2Notifiable(?string $number = '61491570006'): object
 {
     return new class($number)
     {
@@ -60,16 +60,16 @@ it('sends an MMS through the V2 resource', function () {
     $client = Mockery::mock(KudosityClient::class);
     $client->shouldReceive('mms')->andReturn($resource);
 
-    $sent = MmsMessageData::fromArray(['id' => 'mms-1', 'recipient' => '61400000000', 'sender' => '61481074185']);
+    $sent = MmsMessageData::fromArray(['id' => 'mms-1', 'recipient' => '61491570006', 'sender' => '61491570017']);
 
     $resource->shouldReceive('send')->once()->withArgs(
-        fn (string $to, string $from, array $contentUrls, ?string $subject) => $to === '61400000000'
-            && $from === '61426309571'
+        fn (string $to, string $from, array $contentUrls, ?string $subject) => $to === '61491570006'
+            && $from === '61491570022'
             && $contentUrls === ['https://example.com/a.jpg']
             && $subject === 'Sale'
     )->andReturn($sent);
 
-    config()->set('kudosity.mms.sender', '61426309571');
+    config()->set('kudosity.mms.sender', '61491570022');
 
     $message = KudosityMmsMessage::create('Look at this')
         ->media('https://example.com/a.jpg')
@@ -87,10 +87,10 @@ it('prefers the MMS sender key over the shared SMS from', function () {
     $client->shouldReceive('mms')->andReturn($resource);
 
     config()->set('kudosity.from', 'MyBrand');
-    config()->set('kudosity.mms.sender', '61426309571');
+    config()->set('kudosity.mms.sender', '61491570022');
 
     $resource->shouldReceive('send')->once()->withArgs(
-        fn (string $to, string $from) => $from === '61426309571'
+        fn (string $to, string $from) => $from === '61491570022'
     )->andReturn(MmsMessageData::fromArray(['id' => 'x', 'recipient' => '1', 'sender' => '2']));
 
     (new KudosityMmsChannel($client))->send(
@@ -104,11 +104,11 @@ it('falls back to the shared from when no MMS sender is configured', function ()
     $client = Mockery::mock(KudosityClient::class);
     $client->shouldReceive('mms')->andReturn($resource);
 
-    config()->set('kudosity.from', '61426309571');
+    config()->set('kudosity.from', '61491570022');
     config()->set('kudosity.mms.sender', null);
 
     $resource->shouldReceive('send')->once()->withArgs(
-        fn (string $to, string $from) => $from === '61426309571'
+        fn (string $to, string $from) => $from === '61491570022'
     )->andReturn(MmsMessageData::fromArray(['id' => 'x', 'recipient' => '1', 'sender' => '2']));
 
     (new KudosityMmsChannel($client))->send(
@@ -139,7 +139,7 @@ it('sends WhatsApp free-form text through the V2 resource', function () {
     $sent = WhatsAppMessageData::fromArray(['id' => 'wa-1']);
 
     $resource->shouldReceive('send')->once()->withArgs(
-        fn ($content, string $to) => $content instanceof TextContent && $to === '61400000000'
+        fn ($content, string $to) => $content instanceof TextContent && $to === '61491570006'
     )->andReturn($sent);
 
     expect((new KudosityWhatsAppChannel($client))->send(
@@ -216,7 +216,7 @@ it('sends RCS with the configured agent ID', function () {
     $sent = RcsMessageData::fromArray(['id' => 'rcs-1']);
 
     $resource->shouldReceive('send')->once()->withArgs(
-        fn (string $message, string $to, string $agentId) => $agentId === 'DemoSender' && $to === '61400000000'
+        fn (string $message, string $to, string $agentId) => $agentId === 'DemoSender' && $to === '61491570006'
     )->andReturn($sent);
 
     expect((new KudosityRcsChannel($client))->send(
@@ -261,7 +261,7 @@ it('still rejects a phone-number-shaped RCS agent ID through the channel', funct
     $client = Mockery::mock(KudosityClient::class);
     $client->shouldReceive('rcs')->andReturn(new RcsResource(new KudosityV2Connector('key')));
 
-    config()->set('kudosity.rcs.agent_id', '61426309571');
+    config()->set('kudosity.rcs.agent_id', '61491570022');
 
     (new KudosityRcsChannel($client))->send(
         v2Notifiable(),

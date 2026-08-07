@@ -18,7 +18,7 @@ use ExpertSystems\Kudosity\Requests\V2\SendRcsRequest;
  * RCS via the V2 API.
  *
  * The one thing that trips people up: `$agentId` is a registered RCS agent
- * ID, not a phone number — `DemoSender`, not `61411122211`. Passing a phone
+ * ID, not a phone number — `DemoSender`, not `61491570010`. Passing a phone
  * number is rejected before the request leaves the process rather than left
  * for the API's generic validation error.
  *
@@ -34,7 +34,7 @@ class RcsResource extends V2Resource
     /**
      * Send an RCS message.
      *
-     * @param  string  $to  Recipient in international form, e.g. `61411122211`. Punctuation
+     * @param  string  $to  Recipient in international form, e.g. `61491570010`. Punctuation
      *                      and a leading `+` are stripped; no country is assumed, so a local
      *                      number keeps its leading zero and the API rejects it.
      * @param  string  $agentId  Your registered RCS agent ID (e.g. `DemoSender`) — never a

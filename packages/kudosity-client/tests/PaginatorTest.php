@@ -143,7 +143,7 @@ final class PaginatorTest extends TestCase
         $connector = new KudosityV1Connector('key', 'secret');
         $connector->withMockClient(new MockClient([
             MockResponse::make([
-                'numbers' => [['number' => '61481000001'], ['number' => '61481000002']],
+                'numbers' => [['number' => '61491570015'], ['number' => '61491570016']],
                 'page' => ['number' => 1, 'count' => 1],
             ], 200),
         ]));

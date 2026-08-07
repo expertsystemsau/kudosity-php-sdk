@@ -224,8 +224,8 @@ The dangerous case is multi-recipient code that still compiles unchanged:
 ```php
 // 1.x: sent to two recipients.
 // 2.x: same line, but now sends to ONE recipient — the literal string
-// "61400000000,61400000001", comma and all. No exception, no warning.
-$client->sms()->send($msg, '61400000000,61400000001');
+// "61491570006,61491570007", comma and all. No exception, no warning.
+$client->sms()->send($msg, '61491570006,61491570007');
 ```
 
 That is worse than the fatal error this call produced in the rebrand
@@ -347,18 +347,18 @@ nothing to migrate — this is new surface, not a rename.
 ```php
 // SMS — single recipient only. See "sms() means something different now"
 // above before pointing multi-recipient 1.x code at this.
-$client->sms()->send('Hello from Kudosity!', '61400000000', '61481074185');
+$client->sms()->send('Hello from Kudosity!', '61491570006', '61491570017');
 
 // MMS — one recipient, one media file.
-$client->mms()->send('61400000000', '61481074185', ['https://example.com/product.jpg']);
+$client->mms()->send('61491570006', '61491570017', ['https://example.com/product.jpg']);
 
 // WhatsApp — free-form text only delivers inside the 24-hour service window;
 // use template() instead to initiate a conversation.
-$client->whatsapp()->text('Your order has shipped!', '61411122211');
+$client->whatsapp()->text('Your order has shipped!', '61491570010');
 
 // RCS — $agentId is a registered agent ID (e.g. "DemoSender"), never a phone
 // number; a phone-number-shaped value is rejected before the request is sent.
-$client->rcs()->send('Your order has shipped!', '61411122211', 'DemoSender');
+$client->rcs()->send('Your order has shipped!', '61491570010', 'DemoSender');
 ```
 
 See the client package README's "V2 channels" section for the full method

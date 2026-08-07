@@ -40,8 +40,8 @@ use Saloon\PaginationPlugin\Paginator;
  * ## Verification flow
  *
  * ```php
- * $reg = $k->senders()->register('61400000000', 'AU');
- * $k->senders()->requestVerification($reg->id, originatingSender: '61481074185');
+ * $reg = $k->senders()->register('61491570006', 'AU');
+ * $k->senders()->requestVerification($reg->id, originatingSender: '61491570017');
  * $k->senders()->confirmVerification($reg->id, '123456');
  *
  * foreach ($k->senders()->registrations() as $r) {
