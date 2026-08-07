@@ -1371,8 +1371,15 @@ final class ListsScenario extends BaseScenario
     /**
      * A reserved fictitious AU number. Opting this out has no real-world
      * effect, which is why the opt-out check uses it and never the handset.
+     *
+     * Deliberately NOT 61491570006. That is the value the redactor rewrites the
+     * real handset to, so using it here made the two indistinguishable in the
+     * results file — and the whole point of this constant is to *prove* the
+     * opt-out never touched the handset. An artifact that cannot tell them apart
+     * cannot evidence that. 61491570011 is in the same ACMA reserved range
+     * (0491 570 006 - 0491 570 016, unroutable) and is not a redaction target.
      */
-    private const FICTITIOUS = '61491570006';
+    private const FICTITIOUS = '61491570011';
 
     public function name(): string
     {

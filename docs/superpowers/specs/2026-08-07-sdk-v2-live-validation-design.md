@@ -117,7 +117,7 @@ one surface, states what it asserts, and can run alone.
 - create a throwaway list → add the test handset → read members → bulk CSV add →
   remove a member → delete the list
 - API opt-out exercised on a *second* contact created with a reserved fictitious
-  number (`61491570006`), never on the test handset — that number cannot receive
+  number (`61491570011`), never on the test handset — that number cannot receive
   a message, so opting it out has no real-world effect
 
 **V1 bulk send**
