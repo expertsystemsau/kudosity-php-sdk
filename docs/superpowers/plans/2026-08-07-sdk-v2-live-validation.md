@@ -954,10 +954,17 @@ final class SmsV2Scenario implements Scenario
         // a flat envelope `{"smses": [...], "total_records": ...}` — both
         // ListSmsV2Request::paginationItemsKey() and SmsListData::fromArray()
         // read `smses`. `data` is the WhatsApp/RCS wrapped shape, not this one.
+        //
+        // setPerPageLimit(10) forces a real page boundary. The API's own
+        // default is 100/page (V2PagedPaginator::DEFAULT_LIMIT) — this
+        // recipient has well under 100 messages, so without an explicit,
+        // deliberately small limit every run returns a single page and the
+        // "no duplicate across pages" check below would be vacuously true
+        // (a single page has no boundary to duplicate across).
         $seen = 0;
         $pages = 0;
         $ids = [];
-        foreach ($client->sms()->list(recipient: $boot->recipient()) as $response) {
+        foreach ($client->sms()->list(recipient: $boot->recipient())->setPerPageLimit(10) as $response) {
             $pages++;
             foreach (($response->json('smses') ?? []) as $row) {
                 $seen++;
