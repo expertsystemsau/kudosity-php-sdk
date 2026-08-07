@@ -39,7 +39,7 @@
   asserting nothing and will misreport as "indexing lag". Read it by id with a
   retry, not by scanning the head of the list. V1 `number` fields arrive as
   JSON integers — cast before string use.
-- **Scenarios extend `BaseScenario` and accumulate into `$this->checks`, never a local `$checks` variable.** An uncaught throwable partway through `run()` must not destroy checks that already cost real money to produce — Tasks 5 through 9 each make five to fifteen live API calls inside a single scenario, several of them after a paid send. `CheckRunner` recovers `$scenario->partialChecks()` when `run()` throws and appends one `Check::fail()` describing the throwable, rather than discarding every check the scenario had already accumulated. This is not optional per-scenario style — the `Scenario` interface requires `partialChecks()`, and `BaseScenario` is the only place it is implemented.
+- **Scenarios extend `BaseScenario` and accumulate into `$this->checks`, never a local `$checks` variable.** An uncaught throwable partway through `run()` must not destroy checks that already cost real money to produce — Tasks 5 through 9 each make five to fifteen live API calls inside a single scenario, several of them after a paid send. `CheckRunner` recovers `$scenario->partialChecks()` when `run()` throws and appends one `Check::fail()` describing the throwable, rather than discarding every check the scenario had already accumulated. This is not optional per-scenario style — the `Scenario` interface requires `partialChecks()`, and `BaseScenario` is the only place it is implemented. **The same requirement applies to Project B's `RunChecks` command** (Tasks 12, 13, 15, 16, 17): it has no `Scenario` family to extend, but its `smsLive()`/`mmsLive()`/`eventsLive()`/`commands()`/`v1Callbacks()` methods accumulate into `$this->checks`, a property on the command, and `handle()` wraps the `match` that dispatches them in a `try`/`catch (Throwable)` that writes `$this->checks` plus one appended failure row on a throw — the identical reasoning, since several of those methods spend real money before their last call too.
 - **Failure handling:** a failing check never stops the run. Triage into `FAIL` (SDK defect), `FINDING` (upstream API behaviour), or `BLOCKED` (environment/account), record it, and continue. See "Fix Protocol" below.
 
 ## Fix Protocol
@@ -3343,7 +3343,7 @@ The channel's defining behaviour: V2 by default, V1 only when the message uses s
 
 **Interfaces:**
 - Consumes: `App\Models\Customer` from Task 11.
-- Produces: `App\Console\Commands\RunChecks` — signature `checks:run {scenario}`, writing `../results/B-<scenario>.json`. This task produces `results/B-sms-live.json`; **Tasks 13, 15, 16 and 17 add cases to this command's `match`**, producing `B-mms-live.json`, `B-events-live.json`, `B-commands.json` and `B-v1-callbacks.json`.
+- Produces: `App\Console\Commands\RunChecks` — signature `checks:run {scenario}`, writing `../results/B-<scenario>.json`. This task produces `results/B-sms-live.json`; **Tasks 13, 15, 16 and 17 add cases to this command's `match`**, producing `B-mms-live.json`, `B-events-live.json`, `B-commands.json` and `B-v1-callbacks.json`. Every one of those methods accumulates into `$this->checks`, a property on the command, never a local `$checks` variable — `handle()` wraps the `match` in `try`/`catch (Throwable)` and, on a throw, writes `$this->checks` plus one appended failure row, the same recovery `CheckRunner` performs for Project A and for the same reason: several of these methods spend real money before their last call.
 
 `KudosityMessage` builder methods, verbatim: `content()`, `to()`, `toList()`, `from()`, `sendAt()`, `validity()`, `countryCode()`, `formatNumbers()`, `repliesToEmail()`, `trackedLinkUrl()`, `dlrCallback()`, `replyCallback()`, `linkHitsCallback()`, `onDlr()`, `onReply()`, `onLinkHit()`, plus `apiVersion()`, `v1Reasons()`, `forceV1()`, `forceV2()`, `getForcedVersion()`, `hasCallbackHandlers()`.
 
@@ -3516,22 +3516,50 @@ class RunChecks extends Command
 
     protected $description = 'Run one live validation scenario and write its result JSON';
 
+    /**
+     * Scenarios accumulate here directly, never into a local $checks
+     * variable, so a throwable partway through one still leaves every check
+     * completed so far in $this->checks — see handle()'s catch block.
+     *
+     * @var array<int, array<string, mixed>>
+     */
+    protected array $checks = [];
+
     public function handle(): int
     {
         $scenario = (string) $this->argument('scenario');
 
-        $checks = match ($scenario) {
-            'sms-live' => $this->smsLive(),
-            default => [$this->row('unknown', "scenario '$scenario' is not defined", 'FAIL', 'No such scenario')],
-        };
+        try {
+            $this->checks = match ($scenario) {
+                'sms-live' => $this->smsLive(),
+                default => [$this->row('unknown', "scenario '$scenario' is not defined", 'FAIL', 'No such scenario')],
+            };
+        } catch (Throwable $e) {
+            // A scenario that dies mid-way still reports. $this->checks
+            // already holds whatever the failing method appended before it
+            // threw — the methods below write into the property directly,
+            // not a local variable that dies with the stack frame — so this
+            // mirrors what CheckRunner does for Project A, for the same
+            // reason: several scenarios spend real money before their last
+            // call, and losing those checks to one throwable near the end
+            // means reconstructing them by hand or not at all.
+            $completed = count($this->checks);
+            $this->checks[] = $this->row(
+                $scenario,
+                'scenario completes without an uncaught throwable',
+                'FAIL',
+                sprintf('%s: %s (%d check(s) completed before this)', get_class($e), $e->getMessage(), $completed),
+                ['trace' => array_slice(explode("\n", $e->getTraceAsString()), 0, 8), 'checks_completed_before_throw' => $completed],
+            );
+        }
 
-        foreach ($checks as $c) {
+        foreach ($this->checks as $c) {
             $this->line(sprintf('  [%-7s] %s — %s', $c['result'], $c['surface'], $c['detail']));
         }
 
         file_put_contents(
             base_path("../results/B-$scenario.json"),
-            json_encode(['scenario' => $scenario, 'checks' => $checks], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)."\n",
+            json_encode(['scenario' => $scenario, 'checks' => $this->checks], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)."\n",
         );
 
         return self::SUCCESS;
@@ -3540,20 +3568,19 @@ class RunChecks extends Command
     /** @return array<int, array<string, mixed>> */
     protected function smsLive(): array
     {
-        $checks = [];
         $customer = new Customer(['name' => 'Test Handset', 'phone' => env('KUDOSITY_TEST_RECIPIENT')]);
 
         // The V2 default path, sent for real.
         try {
             $customer->notify(new OrderShipped('v2'));
-            $checks[] = $this->row(
+            $this->checks[] = $this->row(
                 'kudosity channel (V2)',
                 'a plain notification sends via V2 and returns a SentMessage',
                 'PASS',
                 'Notification dispatched',
             );
         } catch (Throwable $e) {
-            $checks[] = $this->row('kudosity channel (V2)', 'a plain notification sends via V2', 'FAIL', get_class($e).': '.$e->getMessage());
+            $this->checks[] = $this->row('kudosity channel (V2)', 'a plain notification sends via V2', 'FAIL', get_class($e).': '.$e->getMessage());
         }
 
         // The channel's return type is the contract, not a concrete DTO — the
@@ -3561,11 +3588,11 @@ class RunChecks extends Command
         try {
             $channel = app(\ExpertSystems\Kudosity\Laravel\Notifications\KudosityChannel::class);
             $result = $channel->send($customer, new OrderShipped('v2'));
-            $checks[] = $result instanceof SentMessage
+            $this->checks[] = $result instanceof SentMessage
                 ? $this->row('KudosityChannel::send()', 'the channel returns Contracts\SentMessage, stable across the routing decision', 'PASS', $result::class.' implements SentMessage, id='.$result->id())
                 : $this->row('KudosityChannel::send()', 'the channel returns Contracts\SentMessage', 'FAIL', 'Returned '.get_debug_type($result));
         } catch (Throwable $e) {
-            $checks[] = $this->row('KudosityChannel::send()', 'the channel returns Contracts\SentMessage', 'FAIL', get_class($e).': '.$e->getMessage());
+            $this->checks[] = $this->row('KudosityChannel::send()', 'the channel returns Contracts\SentMessage', 'FAIL', get_class($e).': '.$e->getMessage());
         }
 
         // The V1 branch, sent for real: scheduled two hours out so it costs
@@ -3573,7 +3600,7 @@ class RunChecks extends Command
         try {
             $channel = app(\ExpertSystems\Kudosity\Laravel\Notifications\KudosityChannel::class);
             $result = $channel->send($customer, new OrderShipped('schedule'));
-            $checks[] = $this->row(
+            $this->checks[] = $this->row(
                 'kudosity channel (V1)',
                 'a scheduled notification routes to V1 and sends',
                 'PASS',
@@ -3582,10 +3609,10 @@ class RunChecks extends Command
             );
             file_put_contents(base_path('../scheduled-to-cancel.txt'), $result?->id()."\n", FILE_APPEND);
         } catch (Throwable $e) {
-            $checks[] = $this->row('kudosity channel (V1)', 'a scheduled notification routes to V1 and sends', 'FAIL', get_class($e).': '.$e->getMessage());
+            $this->checks[] = $this->row('kudosity channel (V1)', 'a scheduled notification routes to V1 and sends', 'FAIL', get_class($e).': '.$e->getMessage());
         }
 
-        return $checks;
+        return $this->checks;
     }
 
     /** @return array<string, mixed> */
@@ -3683,20 +3710,19 @@ And the method:
     /** @return array<int, array<string, mixed>> */
     protected function mmsLive(): array
     {
-        $checks = [];
         $customer = new Customer(['name' => 'Test Handset', 'phone' => env('KUDOSITY_TEST_RECIPIENT')]);
 
         // The guard first, so a defect here costs nothing.
         try {
             (new \App\Notifications\OrderPhoto(withoutMedia: true))->toKudosityMms($customer)->assertSendable();
-            $checks[] = $this->row(
+            $this->checks[] = $this->row(
                 'KudosityMmsMessage::assertSendable()',
                 'an MMS with no media is rejected before a request is made',
                 'FAIL',
                 'Accepted a media-less MMS',
             );
         } catch (Throwable $e) {
-            $checks[] = $this->row(
+            $this->checks[] = $this->row(
                 'KudosityMmsMessage::assertSendable()',
                 'an MMS with no media is rejected before a request is made',
                 'PASS',
@@ -3706,34 +3732,34 @@ And the method:
 
         // The sender default comes from config('kudosity.mms.sender'), which is
         // a separate key from `from` because an MMS sender must be a number.
-        $checks[] = config('kudosity.mms.sender') !== null
+        $this->checks[] = config('kudosity.mms.sender') !== null
             ? $this->row('config kudosity.mms.sender', 'the MMS channel has its own sender default', 'PASS', 'configured')
             : $this->row('config kudosity.mms.sender', 'the MMS channel has its own sender default', 'FAIL', 'null — the channel will have no sender');
 
         try {
             $channel = app(\ExpertSystems\Kudosity\Laravel\Notifications\KudosityMmsChannel::class);
             $result = $channel->send($customer, new \App\Notifications\OrderPhoto());
-            $checks[] = $result instanceof \ExpertSystems\Kudosity\Contracts\SentMessage
+            $this->checks[] = $result instanceof \ExpertSystems\Kudosity\Contracts\SentMessage
                 ? $this->row('kudosity-mms channel', 'an MMS notification sends and returns a SentMessage', 'PASS', $result::class.' id='.$result->id())
                 : $this->row('kudosity-mms channel', 'an MMS notification sends and returns a SentMessage', 'FAIL', 'Returned '.get_debug_type($result));
         } catch (Throwable $e) {
-            $checks[] = $this->row('kudosity-mms channel', 'an MMS notification sends and returns a SentMessage', 'FAIL', get_class($e).': '.$e->getMessage());
+            $this->checks[] = $this->row('kudosity-mms channel', 'an MMS notification sends and returns a SentMessage', 'FAIL', get_class($e).': '.$e->getMessage());
         }
 
         // The notifiable's own route, rather than a direct channel call.
         try {
             $customer->notify(new \App\Notifications\OrderPhoto());
-            $checks[] = $this->row(
+            $this->checks[] = $this->row(
                 'routeNotificationForKudosityMms()',
                 'the MMS channel reads its recipient from the notifiable route',
                 'PASS',
                 'Dispatched through notify()',
             );
         } catch (Throwable $e) {
-            $checks[] = $this->row('routeNotificationForKudosityMms()', 'the MMS channel reads its recipient from the notifiable route', 'FAIL', get_class($e).': '.$e->getMessage());
+            $this->checks[] = $this->row('routeNotificationForKudosityMms()', 'the MMS channel reads its recipient from the notifiable route', 'FAIL', get_class($e).': '.$e->getMessage());
         }
 
-        return $checks;
+        return $this->checks;
     }
 ```
 
@@ -4135,7 +4161,6 @@ php artisan config:clear
     /** @return array<int, array<string, mixed>> */
     protected function eventsLive(): array
     {
-        $checks = [];
         $client = app(\ExpertSystems\Kudosity\KudosityClient::class);
         $builder = app(\ExpertSystems\Kudosity\Callbacks\CallbackUrlBuilder::class);
 
@@ -4158,7 +4183,7 @@ php artisan config:clear
                 name: 'sdk-validation-live-phase2',
                 url: $receiver,
             );
-            $checks[] = $this->row(
+            $this->checks[] = $this->row(
                 'webhooks()->update()',
                 'the phase-1 registration is re-pointed at this app, proving update() replaces the URL',
                 'PASS',
@@ -4184,7 +4209,7 @@ php artisan config:clear
         $rows = \App\Models\MessageEvent::where('id', '>', $before)->get();
         $byType = $rows->groupBy('event_type')->map->count()->all();
 
-        $checks[] = $rows->isNotEmpty()
+        $this->checks[] = $rows->isNotEmpty()
             ? $this->row(
                 'WebhookController::events()',
                 'live deliveries reach the real controller and persist through the listeners',
@@ -4202,7 +4227,7 @@ php artisan config:clear
         // The 403 case is the specific trap worth naming in the report.
         $log = @file_get_contents('/tmp/laravel.log') ?: '';
         $forbidden = substr_count($log, ' 403 ');
-        $checks[] = $forbidden === 0
+        $this->checks[] = $forbidden === 0
             ? $this->row('receiver authenticity', 'no live delivery was refused', 'PASS', 'zero 403s in the request log')
             : $this->row(
                 'receiver authenticity',
@@ -4219,7 +4244,7 @@ php artisan config:clear
                 continue;
             }
             $current = $all->whereNotNull('status')->last()?->status;
-            $checks[] = $current !== 'SENT' || $all->where('status', 'DELIVERED')->isEmpty()
+            $this->checks[] = $current !== 'SENT' || $all->where('status', 'DELIVERED')->isEmpty()
                 ? $this->row(
                     'RecordKudosityEvent::handleStatus()',
                     'the recorded status never regresses across multiple live deliveries',
@@ -4235,7 +4260,7 @@ php artisan config:clear
                 );
         }
 
-        return $checks;
+        return $this->checks;
     }
 ```
 
@@ -4312,13 +4337,12 @@ kudosity:webhook:delete {id} {--force}
     /** @return array<int, array<string, mixed>> */
     protected function commands(): array
     {
-        $checks = [];
         $client = app(\ExpertSystems\Kudosity\KudosityClient::class);
 
         // --- list ---
         $exit = \Illuminate\Support\Facades\Artisan::call('kudosity:webhook:list');
         $listOutput = \Illuminate\Support\Facades\Artisan::output();
-        $checks[] = $exit === 0
+        $this->checks[] = $exit === 0
             ? $this->row('kudosity:webhook:list', 'the command lists the account\'s registrations', 'PASS', sprintf('%d line(s) of output', substr_count($listOutput, "\n")), ['output' => array_slice(explode("\n", $listOutput), 0, 12)])
             : $this->row('kudosity:webhook:list', 'the command lists the account\'s registrations', 'FAIL', 'exit '.$exit.': '.$listOutput);
 
@@ -4338,7 +4362,7 @@ kudosity:webhook:delete {id} {--force}
             }
         }
 
-        $checks[] = $installed !== null
+        $this->checks[] = $installed !== null
             ? $this->row('kudosity:webhook:install', 'the command registers a webhook', 'PASS', sprintf('id=%s url=%s', $installed->id, $installed->url), ['id' => $installed->id, 'url' => $installed->url])
             : $this->row('kudosity:webhook:install', 'the command registers a webhook', 'FAIL', 'exit '.$exit.': '.$installOutput);
 
@@ -4348,7 +4372,7 @@ kudosity:webhook:delete {id} {--force}
             $query = [];
             parse_str((string) parse_url($installed->url, PHP_URL_QUERY), $query);
 
-            $checks[] = isset($query['s'], $query['h']) && $query['s'] !== '' && $query['h'] !== ''
+            $this->checks[] = isset($query['s'], $query['h']) && $query['s'] !== '' && $query['h'] !== ''
                 ? $this->row(
                     'kudosity:webhook:install',
                     'the registered URL is built through CallbackUrlBuilder, so the receiver accepts it',
@@ -4369,7 +4393,7 @@ kudosity:webhook:delete {id} {--force}
                 '/home/mitchell/projects/transmitsms-php-sdk/packages/kudosity-client/tests/Fixtures/V2Webhooks/sms-status-sent.json'
             ), true));
 
-            $checks[] = $probe->successful()
+            $this->checks[] = $probe->successful()
                 ? $this->row(
                     'kudosity:webhook:install → WebhookController::events()',
                     'a delivery to the URL the install command registered is accepted by this app\'s receiver',
@@ -4387,7 +4411,7 @@ kudosity:webhook:delete {id} {--force}
             // the check above meaningful rather than tautological.
             $bare = url(config('kudosity.webhooks.prefix').'/'.config('kudosity.webhooks.events.path'));
             $refused = \Illuminate\Support\Facades\Http::post($bare, ['event_type' => 'SMS_STATUS']);
-            $checks[] = $refused->status() === 403
+            $this->checks[] = $refused->status() === 403
                 ? $this->row(
                     'WebhookController::events()',
                     'an unsigned URL is refused, so the install command\'s signing is load-bearing',
@@ -4413,12 +4437,12 @@ kudosity:webhook:delete {id} {--force}
                 }
             }
 
-            $checks[] = $exit === 0 && ! $stillThere
+            $this->checks[] = $exit === 0 && ! $stillThere
                 ? $this->row('kudosity:webhook:delete', 'the command deletes the registration', 'PASS', 'deleted '.$installed->id)
                 : $this->row('kudosity:webhook:delete', 'the command deletes the registration', 'FAIL', sprintf('exit=%d still_present=%s: %s', $exit, var_export($stillThere, true), $deleteOutput));
         }
 
-        return $checks;
+        return $this->checks;
     }
 ```
 
@@ -4461,7 +4485,6 @@ The three V1 GET routes remain live for V1 sends. Task 14 tested them offline; t
     /** @return array<int, array<string, mixed>> */
     protected function v1Callbacks(): array
     {
-        $checks = [];
         $client = app(\ExpertSystems\Kudosity\KudosityClient::class);
         $builder = app(\ExpertSystems\Kudosity\Callbacks\CallbackUrlBuilder::class);
 
@@ -4472,7 +4495,7 @@ The three V1 GET routes remain live for V1 sends. Task 14 tested them offline; t
         $reply = $builder->reply($handler, ['order' => 9931]);
         $hits = $builder->linkHits($handler, ['order' => 9931]);
 
-        $checks[] = str_contains($dlr, 's=') && str_contains($dlr, 'h=')
+        $this->checks[] = str_contains($dlr, 's=') && str_contains($dlr, 'h=')
             ? $this->row('CallbackUrlBuilder::dlr()', 'a V1 callback URL is signed and carries its handler and context', 'PASS', 'signature and handler present')
             : $this->row('CallbackUrlBuilder::dlr()', 'a V1 callback URL is signed and carries its handler and context', 'FAIL', $dlr);
 
@@ -4490,7 +4513,7 @@ The three V1 GET routes remain live for V1 sends. Task 14 tested them offline; t
                         ->trackedLinkUrl('https://example.com/o/9931');
                 },
             );
-            $checks[] = $this->row(
+            $this->checks[] = $this->row(
                 'bulk()->send() with per-send callbacks',
                 'a V1 send accepts the three signed callback URLs',
                 'PASS',
@@ -4498,7 +4521,12 @@ The three V1 GET routes remain live for V1 sends. Task 14 tested them offline; t
                 ['message_id' => $sent->messageId],
             );
         } catch (Throwable $e) {
-            return array_merge($checks, [$this->row('bulk()->send() with per-send callbacks', 'a V1 send accepts the three signed callback URLs', 'FAIL', get_class($e).': '.$e->getMessage())]);
+            // $this->checks already holds the dlr-signing check above — append
+            // to it rather than returning a fresh array, or that check is lost
+            // even though nothing here threw before recording it.
+            $this->checks[] = $this->row('bulk()->send() with per-send callbacks', 'a V1 send accepts the three signed callback URLs', 'FAIL', get_class($e).': '.$e->getMessage());
+
+            return $this->checks;
         }
 
         // V1 DLRs arrive as GET requests on the dlr route. They are handled by
@@ -4515,7 +4543,7 @@ The three V1 GET routes remain live for V1 sends. Task 14 tested them offline; t
             sleep(4);
         }
 
-        $checks[] = $seen
+        $this->checks[] = $seen
             ? $this->row(
                 'V1 dlr GET route',
                 'a real V1 delivery receipt reaches the GET route',
@@ -4529,7 +4557,7 @@ The three V1 GET routes remain live for V1 sends. Task 14 tested them offline; t
                 'No V1 DLR arrived within 90s. V1 callbacks can lag well beyond a V2 status event; the route itself is proven by the offline test in Task 14.',
             );
 
-        $checks[] = $this->row(
+        $this->checks[] = $this->row(
             'V1 vs V2 callbacks',
             'the V1 GET routes and the V2 POST receiver coexist',
             'PASS',
@@ -4540,7 +4568,7 @@ The three V1 GET routes remain live for V1 sends. Task 14 tested them offline; t
             ),
         );
 
-        return $checks;
+        return $this->checks;
     }
 ```
 
