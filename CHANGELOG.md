@@ -2,11 +2,17 @@
 
 All notable changes to `kudosity-php-client` will be documented in this file.
 
-## v2.0.0 - 2026-08-07
+## 2.0.1 - 2026-08-07
 
-**Full Changelog**: https://github.com/expertsystemsau/kudosity-php-sdk/compare/v1.9.0...v2.0.0
+Metadata only — no code changes from 2.0.0.
+
+### Changed
+
+- Each package now declares a `replace` for the 1.x name it was renamed from, so a dependency graph still referencing `expertsystemsau/transmitsms-php-client` or `expertsystemsau/transmitsms-laravel-client` resolves to the 2.x package instead of installing both side by side. Note that the namespace changed in 2.0, so a package requiring the old name is satisfied by the replace but will not find the old classes — run the codemod, and see UPGRADING.md.
 
 ## 2.0.0 - 2026-08-07
+
+**Full Changelog**: https://github.com/expertsystemsau/kudosity-php-sdk/compare/v1.9.0...v2.0.0
 
 ### Breaking
 
