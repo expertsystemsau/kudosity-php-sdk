@@ -4602,7 +4602,7 @@ Per the Fix Protocol.
 
 - [ ] **Step 1: Write the report generator**
 
-```php
+````php
 <?php // make-report.php
 declare(strict_types=1);
 
@@ -4694,7 +4694,7 @@ $out[] = '';
 
 file_put_contents(__DIR__.'/VALIDATION-REPORT.md', implode("\n", $out)."\n");
 printf("wrote VALIDATION-REPORT.md — %d checks: %s\n", count($all), json_encode($counts));
-```
+````
 
 - [ ] **Step 2: Generate the report**
 
