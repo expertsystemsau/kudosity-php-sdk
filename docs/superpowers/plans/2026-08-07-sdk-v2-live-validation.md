@@ -138,10 +138,13 @@ REPO=/home/mitchell/projects/transmitsms-php-sdk
 OUT=/home/mitchell/projects/kudosity-sdk-validation/artifacts
 VERSION=2.0.1
 
+mkdir -p "$OUT"
 rm -f "$OUT"/*.zip
 
 for pkg in kudosity-client kudosity-laravel; do
   work=$(mktemp -d)
+  trap 'rm -rf "$work"' EXIT
+
   git -C "$REPO" archive --format=tar "HEAD:packages/$pkg" | tar -x -C "$work"
 
   if [ -d "$work/tests" ]; then
@@ -162,12 +165,13 @@ for pkg in kudosity-client kudosity-laravel; do
     file_put_contents($f, json_encode($j, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n");
   ' "$work/composer.json" "$VERSION"
 
-  (cd "$work" && composer validate --strict --no-check-publish)
+  (cd "$work" && composer validate --strict --no-check-version)
 
   zip="$OUT/$(echo "$name" | tr '/' '-')-$VERSION.zip"
   (cd "$work" && zip -qr "$zip" .)
   echo "built $zip"
   rm -rf "$work"
+  trap - EXIT
 done
 SCRIPT
 chmod +x /home/mitchell/projects/kudosity-sdk-validation/build-artifacts.sh
