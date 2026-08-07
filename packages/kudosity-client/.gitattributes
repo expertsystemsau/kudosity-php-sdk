@@ -4,3 +4,4 @@
 # Ignore all test and documentation with "export-ignore".
 /phpunit.xml.dist   export-ignore
 /tests              export-ignore
+/.gitattributes     export-ignore
