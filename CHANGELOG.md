@@ -2,6 +2,10 @@
 
 All notable changes to `kudosity-php-client` will be documented in this file.
 
+## v2.0.0 - 2026-08-07
+
+**Full Changelog**: https://github.com/expertsystemsau/kudosity-php-sdk/compare/v1.9.0...v2.0.0
+
 ## 2.0.0 - 2026-08-07
 
 ### Breaking
