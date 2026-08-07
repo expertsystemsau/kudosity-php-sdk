@@ -846,6 +846,7 @@ declare(strict_types=1);
 namespace OrderNotifier\Scenario;
 
 use ExpertSystems\Kudosity\Enums\MessageStatus;
+use ExpertSystems\Kudosity\Exceptions\NotFoundException;
 use ExpertSystems\Kudosity\Webhooks\SignedMessageRef;
 use OrderNotifier\Bootstrap;
 use OrderNotifier\Check;
@@ -899,11 +900,37 @@ final class SmsV2Scenario implements Scenario
             ? Check::pass('SentMessage::recipientCount()', 'a V2 SMS reports exactly one recipient, not its segment count', '1')
             : Check::fail('SentMessage::recipientCount()', 'a V2 SMS reports exactly one recipient', (string) $sent->recipientCount());
 
-        // GET /v2/sms/{id}
-        $fetched = $client->sms()->get($sent->id);
-        $checks[] = $fetched->id === $sent->id
-            ? Check::pass('sms()->get()', 'GET /v2/sms/{id} returns the same message', sprintf('status now %s', $fetched->status->value), ['status' => $fetched->status->value])
-            : Check::fail('sms()->get()', 'GET /v2/sms/{id} returns the same message', sprintf('asked for %s, got %s', $sent->id, $fetched->id));
+        // GET /v2/sms/{id}. Observed live: an immediate GET for a message id
+        // just returned by POST can 404 for a read-after-write window — over
+        // a minute, confirmed by retrying by hand well after the original
+        // attempt. Retried here, rather than left to throw, so a transient
+        // indexing lag doesn't take the independent list checks below down
+        // with it — a scenario-wide throw loses every check not yet returned.
+        $fetched = null;
+        $lastNotFound = null;
+        for ($attempt = 1; $attempt <= 10; $attempt++) {
+            try {
+                $fetched = $client->sms()->get($sent->id);
+                break;
+            } catch (NotFoundException $e) {
+                $lastNotFound = $e;
+                if ($attempt < 10) {
+                    sleep(15);
+                }
+            }
+        }
+
+        if ($fetched !== null) {
+            $checks[] = $fetched->id === $sent->id
+                ? Check::pass('sms()->get()', 'GET /v2/sms/{id} returns the same message', sprintf('status now %s', $fetched->status->value), ['status' => $fetched->status->value])
+                : Check::fail('sms()->get()', 'GET /v2/sms/{id} returns the same message', sprintf('asked for %s, got %s', $sent->id, $fetched->id));
+        } else {
+            $checks[] = Check::finding(
+                'sms()->get()',
+                'GET /v2/sms/{id} returns the same message',
+                sprintf('Still 404 after 10 retries (~135s): %s — read-after-write lag exceeded the retry budget', $lastNotFound?->getMessage() ?? 'unknown error'),
+            );
+        }
 
         // Paginated list, filtered to this recipient. The point is crossing a
         // page boundary: V2PagedPaginator must read `limit` from the response
@@ -913,12 +940,17 @@ final class SmsV2Scenario implements Scenario
         // Countable — `foreach ($page as $item)` over one silently yields
         // nothing and `count($page)` throws. ->items() yields the rows, and the
         // rows are RAW ARRAYS, not DTOs, so index them with ['key'].
+        //
+        // Items key is `smses`, not `data`: GET /v2/sms (list) is documented as
+        // a flat envelope `{"smses": [...], "total_records": ...}` — both
+        // ListSmsV2Request::paginationItemsKey() and SmsListData::fromArray()
+        // read `smses`. `data` is the WhatsApp/RCS wrapped shape, not this one.
         $seen = 0;
         $pages = 0;
         $ids = [];
         foreach ($client->sms()->list(recipient: $boot->recipient()) as $response) {
             $pages++;
-            foreach (($response->json('data') ?? []) as $row) {
+            foreach (($response->json('smses') ?? []) as $row) {
                 $seen++;
                 $ids[] = (string) ($row['id'] ?? '');
             }
@@ -944,7 +976,7 @@ final class SmsV2Scenario implements Scenario
         // case-insensitive for exactly this reason.
         $firstPage = null;
         foreach ($client->sms()->list(status: MessageStatus::Delivered, recipient: $boot->recipient()) as $response) {
-            $firstPage = $response->json('data') ?? [];
+            $firstPage = $response->json('smses') ?? [];
             break;
         }
         $checks[] = $firstPage !== null
