@@ -154,7 +154,7 @@ final class V2WebhookEventTest extends TestCase
         $event = WebhookEvent::fromArray(self::documentedWebhook('OPT_OUT', [
             'opt_out' => [
                 'source' => 'SMS_INBOUND',
-                'source_message' => ['id' => 'a51ebe4e', 'message_ref' => 'ncc5009d', 'recipient' => '61435790000', 'sender' => '61481074190'],
+                'source_message' => ['id' => 'a51ebe4e', 'message_ref' => 'ncc5009d', 'recipient' => '61491570021', 'sender' => '61491570020'],
             ],
         ]));
 
@@ -272,10 +272,10 @@ final class V2WebhookEventTest extends TestCase
         // for inbound events, i.e. it filters by YOUR number.
         $inbound = WebhookEvent::fromArray(Fixtures::webhook('sms-inbound-with-last-message'));
 
-        $this->assertSame('61400000000', $inbound->sender);
-        $this->assertSame('61481074185', $inbound->recipient);
-        $this->assertSame('61481074185', $inbound->lastMessage?->sender);
-        $this->assertSame('61400000000', $inbound->lastMessage?->recipient);
+        $this->assertSame('61491570006', $inbound->sender);
+        $this->assertSame('61491570017', $inbound->recipient);
+        $this->assertSame('61491570017', $inbound->lastMessage?->sender);
+        $this->assertSame('61491570006', $inbound->lastMessage?->recipient);
     }
 
     public function test_reports_an_inbound_with_last_message_as_correlated_and_carries_the_outbound_text(): void
@@ -314,7 +314,7 @@ final class V2WebhookEventTest extends TestCase
                 'type' => 'MMS',
                 'id' => 'mo-1',
                 'message' => 'here you go',
-                'recipient' => '61481074190',
+                'recipient' => '61491570020',
                 'sender' => '447507222200',
                 'subject' => 'My picture',
                 'content_urls' => ['https://example.com/a.jpg', 42, 'https://example.com/b.jpg'],
@@ -340,7 +340,7 @@ final class V2WebhookEventTest extends TestCase
         $hit = WebhookEvent::fromArray(Fixtures::webhook('link-hit-sms'));
 
         $this->assertSame('https://www.example.com/abc', $hit->url);
-        $this->assertStringContainsString('https://tapth.at/', (string) $hit->sourceMessage?->message);
+        $this->assertStringContainsString('https://clkth.test/', (string) $hit->sourceMessage?->message);
         $this->assertStringNotContainsString('www.example.com', (string) $hit->sourceMessage?->message);
     }
 
@@ -383,8 +383,8 @@ final class V2WebhookEventTest extends TestCase
                     'id' => 'faf68308',
                     'message' => 'Check this out http://clckme.info/KYhSsuIH',
                     'message_ref' => 'D301',
-                    'recipient' => '61435795809',
-                    'sender' => '61481074185',
+                    'recipient' => '61491570019',
+                    'sender' => '61491570017',
                     'subject' => 'Sale',
                     'content_urls' => ['https://example.com/promo.png'],
                 ],
@@ -422,7 +422,7 @@ final class V2WebhookEventTest extends TestCase
         $event = WebhookEvent::fromArray(self::documentedWebhook('OPT_OUT', [
             'opt_out' => [
                 'source' => $source,
-                'source_message' => ['id' => 'a51ebe4e', 'recipient' => '61435790000', 'sender' => '61481074190'],
+                'source_message' => ['id' => 'a51ebe4e', 'recipient' => '61491570021', 'sender' => '61491570020'],
             ],
         ]));
 
@@ -438,12 +438,12 @@ final class V2WebhookEventTest extends TestCase
         $event = WebhookEvent::fromArray(self::documentedWebhook('OPT_OUT', [
             'opt_out' => [
                 'source' => 'SMS_INBOUND',
-                'source_message' => ['id' => 'a51ebe4e', 'recipient' => '61435790000', 'sender' => '61481074190'],
+                'source_message' => ['id' => 'a51ebe4e', 'recipient' => '61491570021', 'sender' => '61491570020'],
             ],
         ]));
 
         $this->assertInstanceOf(OptOutEvent::class, $event);
-        $this->assertSame('61435790000', $event->optedOutNumber());
+        $this->assertSame('61491570021', $event->optedOutNumber());
     }
 
     // -------------------------------------------------------------------
@@ -579,8 +579,8 @@ final class V2WebhookEventTest extends TestCase
         // about when matching numbers.
         $inbound = WebhookEvent::fromArray(Fixtures::webhook('mms-inbound-with-media'));
 
-        $this->assertSame('+61400000000', $inbound->sender);
-        $this->assertSame('61481074185', $inbound->recipient);
+        $this->assertSame('+61491570006', $inbound->sender);
+        $this->assertSame('61491570017', $inbound->recipient);
     }
 
     public function test_ignores_media_entries_that_are_not_shaped_like_media(): void

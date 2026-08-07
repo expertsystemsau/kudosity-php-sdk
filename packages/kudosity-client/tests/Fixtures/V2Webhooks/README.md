@@ -6,10 +6,10 @@ not copied from the upstream documentation, which matters: the live payloads
 carry fields the docs omit — and, in the inbound MMS case, omit a field the docs
 say is there.
 
-Phone numbers are redacted — the customer's handset to `61400000000`, our own
-number to `61481074185` (the example sender the vendored skills use). On inbound
+Phone numbers are redacted — the customer's handset to `61491570006`, our own
+number to `61491570017` (the example sender the vendored skills use). On inbound
 events those roles are reversed, so it is `mo.recipient` that reads
-`61481074185`. Message and webhook IDs are left intact; they are opaque
+`61491570017`. Message and webhook IDs are left intact; they are opaque
 identifiers for records that no longer exist.
 
 | Fixture | Event |
@@ -93,7 +93,7 @@ Two smaller things from the same run:
 
 - **`source_message.message` carries the SHORTENED link, while `link_hit.url`
   carries the original destination.** The fixture shows
-  `https://tapth.at/qK.LnvtM` in the message and `https://www.example.com/abc` in
+  `https://clkth.test/mK.ptRq7` in the message and `https://www.example.com/abc` in
   `url`. Code that expects to find the original URL in the message text will not.
 - **The composite `message_ref` survived again** — `linkhit-8842:cust-4471`,
   intact through both the status events and the link hits. Note the colon: a
@@ -137,7 +137,7 @@ Five things about it contradict the outbound API it was modelled on:
 - **No content type anywhere.** A filename is all you get, which is why
   `InboundMedia::mimeType()` sniffs the decoded bytes and treats the extension
   as a fallback. The name comes from a stranger; the bytes do not.
-- **`mo.id` is not a UUID.** It was `vj41WbAbHfzIjSMIfB91BH@mmsc.telstra.com` — a
+- **`mo.id` is not a UUID.** It was `yruOoxEwEjiQqGR4j9Vurs@mmsc.telstra.com` — a
   carrier MMSC identifier with an `@host` suffix. Anything that validates V2 ids
   as UUIDs rejects a real inbound MMS.
 - **`mo.sender` carries a leading `+` and `mo.recipient` does not**, in the same

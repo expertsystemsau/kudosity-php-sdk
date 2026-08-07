@@ -193,7 +193,7 @@ final class WebhookPayloadTest extends TestCase
         // Not a UUID. Anything validating V2 ids as UUIDs rejects a real
         // inbound MMS.
         $this->assertSame(
-            'vj41WbAbHfzIjSMIfB91BH@mmsc.telstra.com',
+            'yruOoxEwEjiQqGR4j9Vurs@mmsc.telstra.com',
             WebhookEvent::fromArray(Fixtures::webhook('mms-inbound-with-media'))->id,
         );
     }

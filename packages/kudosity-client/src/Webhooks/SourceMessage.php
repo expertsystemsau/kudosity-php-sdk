@@ -15,7 +15,7 @@ namespace ExpertSystems\Kudosity\Webhooks;
  *
  * `$message` is the text **as sent**, which for a tracked link means it carries
  * the *shortened* URL. A captured delivery holds
- * `"… Please tap: https://tapth.at/qK.LnvtM"` in here while
+ * `"… Please tap: https://clkth.test/mK.ptRq7"` in here while
  * {@see LinkHitEvent::$url} holds the original destination — see
  * `tests/Fixtures/V2Webhooks/README.md`. Code looking for the original URL in
  * the message text will not find it.

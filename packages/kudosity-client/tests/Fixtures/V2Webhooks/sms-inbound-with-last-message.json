@@ -6,13 +6,13 @@
             "id": "85fdf391-cfd8-4340-b004-419223c84e83",
             "message": "Kudosity SDK webhook recon. Please reply YES to this message so we can capture an inbound event.",
             "message_ref": "order-9931:cust-4471",
-            "recipient": "61400000000",
-            "sender": "61481074185",
+            "recipient": "61491570006",
+            "sender": "61491570017",
             "type": "SMS"
         },
         "message": "YES ",
-        "recipient": "61481074185",
-        "sender": "61400000000",
+        "recipient": "61491570017",
+        "sender": "61491570006",
         "type": "SMS"
     },
     "timestamp": "2026-08-05T12:06:58Z",
