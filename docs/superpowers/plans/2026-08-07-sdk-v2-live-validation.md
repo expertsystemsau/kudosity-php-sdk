@@ -39,6 +39,7 @@
   asserting nothing and will misreport as "indexing lag". Read it by id with a
   retry, not by scanning the head of the list. V1 `number` fields arrive as
   JSON integers — cast before string use.
+- **Scenarios extend `BaseScenario` and accumulate into `$this->checks`, never a local `$checks` variable.** An uncaught throwable partway through `run()` must not destroy checks that already cost real money to produce — Tasks 5 through 9 each make five to fifteen live API calls inside a single scenario, several of them after a paid send. `CheckRunner` recovers `$scenario->partialChecks()` when `run()` throws and appends one `Check::fail()` describing the throwable, rather than discarding every check the scenario had already accumulated. This is not optional per-scenario style — the `Scenario` interface requires `partialChecks()`, and `BaseScenario` is the only place it is implemented.
 - **Failure handling:** a failing check never stops the run. Triage into `FAIL` (SDK defect), `FINDING` (upstream API behaviour), or `BLOCKED` (environment/account), record it, and continue. See "Fix Protocol" below.
 
 ## Fix Protocol
@@ -79,6 +80,7 @@ Escalate to the user rather than deciding, when a fix would change documented be
 | `src/Redactor.php` | Redacts credentials and the handset number from evidence |
 | `src/CheckRunner.php` | Runs a scenario, prints progress, writes `results/A-<name>.json` |
 | `src/Scenario/Scenario.php` | Interface every scenario implements |
+| `src/Scenario/BaseScenario.php` | Abstract base holding `$this->checks` and `partialChecks()`, so a throw mid-scenario cannot destroy checks already accumulated |
 | `src/Scenario/PreflightScenario.php` | Sender confirmation and balance — the gate for every send |
 | `src/Scenario/SmsV2Scenario.php` | `sms()` send / get / paginated list |
 | `src/Scenario/MmsV2Scenario.php` | `mms()` send / get, flat-envelope assertions |
@@ -248,7 +250,7 @@ Creates the vanilla consumer, installs the client package from the artifact, and
 **Files:**
 - Create: `order-notifier/composer.json`, `.env`, `bin/notify`
 - Create: `order-notifier/src/Bootstrap.php`, `src/Check.php`, `src/Redactor.php`, `src/CheckRunner.php`
-- Create: `order-notifier/src/Scenario/Scenario.php`, `src/Scenario/PreflightScenario.php`
+- Create: `order-notifier/src/Scenario/Scenario.php`, `src/Scenario/BaseScenario.php`, `src/Scenario/PreflightScenario.php`
 
 **Interfaces:**
 - Consumes: `artifacts/*.zip` from Task 1.
@@ -261,8 +263,9 @@ Creates the vanilla consumer, installs the client package from the artifact, and
   - `new Check(string $surface, string $expectation, string $result, string $detail, array $evidence = [])` with `$result` one of `PASS`, `FAIL`, `FINDING`, `BLOCKED`, `SKIPPED`
   - `Check::pass(string $surface, string $expectation, string $detail, array $evidence = []): Check` and matching `fail()`, `finding()`, `blocked()`, `skipped()`
   - `Redactor::scrub(mixed $value): mixed` — recursive; replaces the handset with `61491570006`, the sender with `61491570017`, and the API key/secret with `<redacted>`
-  - `interface Scenario { public function name(): string; public function run(Bootstrap $boot): array; }` returning `Check[]`
-  - `CheckRunner::run(Scenario $s, Bootstrap $boot): void` — writes `results/A-<name>.json`
+  - `interface Scenario { public function name(): string; public function run(Bootstrap $boot): array; public function partialChecks(): array; }` — `run()` and `partialChecks()` both return `Check[]`
+  - `abstract class BaseScenario implements Scenario` — holds `protected array $checks = []` and implements `partialChecks(): array` by returning it. Every scenario extends this and accumulates into `$this->checks`, never a local `$checks` variable, so a throw partway through `run()` leaves prior checks recoverable.
+  - `CheckRunner::run(Scenario $s, Bootstrap $boot): void` — writes `results/A-<name>.json`. On a throw, recovers `$scenario->partialChecks()` and appends one `Check::fail()` naming the exception and how many checks preceded it, instead of discarding the scenario's results.
 
 - [ ] **Step 1: Scaffold the project and install the package**
 
@@ -449,7 +452,7 @@ final class Redactor
 }
 ```
 
-- [ ] **Step 5: Write Bootstrap, Scenario and CheckRunner**
+- [ ] **Step 5: Write Bootstrap, Scenario, BaseScenario and CheckRunner**
 
 ```php
 <?php // src/Bootstrap.php
@@ -577,6 +580,39 @@ interface Scenario
 
     /** @return array<int, Check> */
     public function run(Bootstrap $boot): array;
+
+    /**
+     * Checks accumulated so far, even if run() never returned normally.
+     * Lets CheckRunner recover progress from a scenario that threw partway
+     * through, instead of losing every check completed before the throw.
+     *
+     * @return array<int, Check>
+     */
+    public function partialChecks(): array;
+}
+```
+
+```php
+<?php // src/Scenario/BaseScenario.php
+declare(strict_types=1);
+
+namespace OrderNotifier\Scenario;
+
+/**
+ * Scenarios accumulate into $this->checks rather than a local variable, so
+ * an uncaught throwable partway through run() still leaves every check
+ * completed so far reachable via partialChecks() — CheckRunner recovers it
+ * instead of discarding the whole scenario.
+ */
+abstract class BaseScenario implements Scenario
+{
+    /** @var array<int, \OrderNotifier\Check> */
+    protected array $checks = [];
+
+    public function partialChecks(): array
+    {
+        return $this->checks;
+    }
 }
 ```
 
@@ -621,12 +657,24 @@ final class CheckRunner
             // A scenario that dies mid-way still reports. An uncaught throwable
             // is itself a result: the SDK let an exception escape a documented
             // surface, or the account is not in the state the scenario needs.
-            $checks = [Check::fail(
+            //
+            // Recover whatever the scenario had already accumulated rather
+            // than discarding it — several scenarios spend real money before
+            // their last call, and losing those checks to one throwable near
+            // the end means reconstructing them by hand or not at all.
+            $checks = $scenario->partialChecks();
+            $completed = count($checks);
+            $checks[] = Check::fail(
                 $scenario->name(),
                 'scenario completes without an uncaught throwable',
-                get_class($e).': '.$e->getMessage(),
-                ['trace' => array_slice(explode("\n", $e->getTraceAsString()), 0, 8)],
-            )];
+                sprintf(
+                    '%s: %s (%d check(s) completed before this)',
+                    get_class($e),
+                    $e->getMessage(),
+                    $completed,
+                ),
+                ['trace' => array_slice(explode("\n", $e->getTraceAsString()), 0, 8), 'checks_completed_before_throw' => $completed],
+            );
         }
 
         $redactor = $boot->redactor();
@@ -672,7 +720,7 @@ use ExpertSystems\Kudosity\Data\V2\SenderRegistrationData;
 use OrderNotifier\Bootstrap;
 use OrderNotifier\Check;
 
-final class PreflightScenario implements Scenario
+final class PreflightScenario extends BaseScenario
 {
     public function name(): string
     {
@@ -682,12 +730,11 @@ final class PreflightScenario implements Scenario
     public function run(Bootstrap $boot): array
     {
         $client = $boot->client();
-        $checks = [];
 
         // V1 auth, and the budget gate. Both APIs share the key; only V1 uses
         // the secret, so a balance read proves the Basic Auth pair works.
         $balance = $client->account()->getBalance();
-        $checks[] = Check::pass(
+        $this->checks[] = Check::pass(
             'account()->getBalance()',
             'V1 Basic Auth works and the account has credit',
             sprintf('%.2f %s', $balance->balance, $balance->currency),
@@ -695,13 +742,13 @@ final class PreflightScenario implements Scenario
         );
 
         if ($balance->balance <= 1.0) {
-            $checks[] = Check::blocked(
+            $this->checks[] = Check::blocked(
                 'budget',
                 'balance covers ~12 messages',
                 'Balance too low to run the send scenarios',
             );
 
-            return $checks;
+            return $this->checks;
         }
 
         // V2 auth, and the sender question.
@@ -729,7 +776,7 @@ final class PreflightScenario implements Scenario
             }
         }
 
-        $checks[] = Check::pass(
+        $this->checks[] = Check::pass(
             'senders()->readyToUse()',
             'V2 x-api-key auth works and returns any registered senders',
             sprintf('%d registration(s) ready: %s', count($usable), implode(', ', $usable) ?: 'none'),
@@ -745,7 +792,7 @@ final class PreflightScenario implements Scenario
             }
         }
 
-        $checks[] = Check::pass(
+        $this->checks[] = Check::pass(
             'numbers()->all()',
             'V1 auth works and the account\'s leased virtual numbers are listed',
             sprintf('%d active leased number(s): %s', count($leased), implode(', ', $leased) ?: 'none'),
@@ -759,14 +806,14 @@ final class PreflightScenario implements Scenario
         $declared = $boot->declaredSender();
         if (in_array($declared, $usable, true)) {
             $boot->confirmSender($declared);
-            $checks[] = Check::pass(
+            $this->checks[] = Check::pass(
                 'KUDOSITY_FROM',
                 'the declared sender is registered and usable',
                 "Using $declared",
             );
         } elseif ($usable !== []) {
             $boot->confirmSender($usable[0]);
-            $checks[] = Check::finding(
+            $this->checks[] = Check::finding(
                 'KUDOSITY_FROM',
                 'the declared sender is registered and usable',
                 sprintf(
@@ -779,7 +826,7 @@ final class PreflightScenario implements Scenario
                 ['declared' => $declared, 'usable' => $usable],
             );
         } else {
-            $checks[] = Check::blocked(
+            $this->checks[] = Check::blocked(
                 'KUDOSITY_FROM',
                 'at least one usable sender exists',
                 'Neither a leased virtual number nor a ready sender registration exists on '
@@ -788,7 +835,7 @@ final class PreflightScenario implements Scenario
             );
         }
 
-        return $checks;
+        return $this->checks;
     }
 }
 ```
@@ -875,7 +922,7 @@ use ExpertSystems\Kudosity\Webhooks\SignedMessageRef;
 use OrderNotifier\Bootstrap;
 use OrderNotifier\Check;
 
-final class SmsV2Scenario implements Scenario
+final class SmsV2Scenario extends BaseScenario
 {
     /** Signing secret for the correlation ref. Not an API credential. */
     private const REF_SECRET = 'order-notifier-validation-secret';
@@ -894,7 +941,6 @@ final class SmsV2Scenario implements Scenario
     public function run(Bootstrap $boot): array
     {
         $client = $boot->client();
-        $checks = [];
 
         // A signed ref, so the reply captured in Task 9 proves correlation
         // survives the round trip AND that a forged ref would be rejected.
@@ -919,7 +965,7 @@ final class SmsV2Scenario implements Scenario
             && $sent->sender === $boot->sender()
             && $sent->status !== MessageStatus::Unknown;
 
-        $checks[] = $envelopeLooksRight
+        $this->checks[] = $envelopeLooksRight
             ? Check::pass(
                 'sms()->send()',
                 'POST /v2/sms returns a flat envelope decoded into SmsMessageData',
@@ -935,11 +981,11 @@ final class SmsV2Scenario implements Scenario
                 ),
             );
 
-        $checks[] = $sent->messageRef === $ref
+        $this->checks[] = $sent->messageRef === $ref
             ? Check::pass('sms()->send()', 'the message_ref round-trips on the send response', 'ref echoed intact')
             : Check::fail('sms()->send()', 'the message_ref round-trips on the send response', sprintf('sent %s, got back %s', $ref, $sent->messageRef ?? 'null'));
 
-        $checks[] = $sent->trackLinks
+        $this->checks[] = $sent->trackLinks
             ? Check::pass('sms()->send()', 'trackLinks: true is reflected in the response', 'track_links true')
             : Check::finding('sms()->send()', 'trackLinks: true is reflected in the response', 'Sent with trackLinks: true but the response reports false');
 
@@ -948,7 +994,7 @@ final class SmsV2Scenario implements Scenario
         // against a future edit conflating it with smsCount (segment count),
         // not a live assertion about the API. Kept for that reason; expectation
         // worded to say so rather than imply it reads something from the wire.
-        $checks[] = $sent->recipientCount() === 1
+        $this->checks[] = $sent->recipientCount() === 1
             ? Check::pass('SentMessage::recipientCount()', 'is hardcoded to 1 for a V2 SMS (regression guard, not a live API assertion)', '1')
             : Check::fail('SentMessage::recipientCount()', 'is hardcoded to 1 for a V2 SMS (regression guard, not a live API assertion)', (string) $sent->recipientCount());
 
@@ -982,7 +1028,7 @@ final class SmsV2Scenario implements Scenario
             }
         }
 
-        $checks[] = $succeededOnFirstAttempt
+        $this->checks[] = $succeededOnFirstAttempt
             ? Check::pass('sms()->get()', 'a GET for a just-sent message id succeeds immediately', 'no read-after-write lag observed')
             : Check::finding(
                 'sms()->get()',
@@ -997,7 +1043,7 @@ final class SmsV2Scenario implements Scenario
                     ),
             );
 
-        $checks[] = $fetched !== null
+        $this->checks[] = $fetched !== null
             ? ($fetched->id === $sent->id
                 ? Check::pass('sms()->get()', 'GET /v2/sms/{id} returns the same message', sprintf('status now %s', $fetched->status->value), ['status' => $fetched->status->value])
                 : Check::fail('sms()->get()', 'GET /v2/sms/{id} returns the same message', sprintf('asked for %s, got %s', $sent->id, $fetched->id)))
@@ -1037,15 +1083,15 @@ final class SmsV2Scenario implements Scenario
             }
         }
 
-        $checks[] = $seen > 0
+        $this->checks[] = $seen > 0
             ? Check::pass('sms()->list()', 'the paged paginator yields items across pages', sprintf('%d items over %d page(s)', $seen, $pages), ['pages' => $pages, 'items' => $seen])
             : Check::fail('sms()->list()', 'the paged paginator yields items across pages', 'No items returned for a recipient we just messaged');
 
-        $checks[] = count($ids) === count(array_unique($ids))
+        $this->checks[] = count($ids) === count(array_unique($ids))
             ? Check::pass('sms()->list()', 'no item is yielded twice across page boundaries', sprintf('%d unique ids', count($ids)))
             : Check::fail('sms()->list()', 'no item is yielded twice across page boundaries', 'Duplicate ids across pages — the paginator is mis-reading `limit` or `offset`');
 
-        $checks[] = in_array($sent->id, $ids, true)
+        $this->checks[] = in_array($sent->id, $ids, true)
             ? Check::pass('sms()->list()', 'the message just sent appears in the filtered list', $sent->id)
             : Check::finding(
                 'sms()->list()',
@@ -1072,9 +1118,9 @@ final class SmsV2Scenario implements Scenario
         }
 
         if ($firstPage === null) {
-            $checks[] = Check::finding('sms()->list(status:)', 'every row returned by the status filter actually carries that status', 'The filtered request returned no page at all');
+            $this->checks[] = Check::finding('sms()->list(status:)', 'every row returned by the status filter actually carries that status', 'The filtered request returned no page at all');
         } elseif ($firstPage === []) {
-            $checks[] = Check::finding('sms()->list(status:)', 'every row returned by the status filter actually carries that status', 'Filtered page was empty — nothing delivered yet for this recipient, so this run cannot confirm the filter either way');
+            $this->checks[] = Check::finding('sms()->list(status:)', 'every row returned by the status filter actually carries that status', 'Filtered page was empty — nothing delivered yet for this recipient, so this run cannot confirm the filter either way');
         } else {
             // Row status arrives lowercase ("delivered"), same convention as
             // the send endpoints — MessageStatus::fromApi() is case-insensitive
@@ -1087,12 +1133,12 @@ final class SmsV2Scenario implements Scenario
                     break;
                 }
             }
-            $checks[] = $allMatch
+            $this->checks[] = $allMatch
                 ? Check::pass('sms()->list(status:)', 'every row returned by the status filter actually carries that status', sprintf('%d/%d rows are %s', count($firstPage), count($firstPage), MessageStatus::Delivered->value))
                 : Check::fail('sms()->list(status:)', 'every row returned by the status filter actually carries that status', 'At least one returned row does not carry the filtered status — the API silently ignored the filter');
         }
 
-        return $checks;
+        return $this->checks;
     }
 }
 ```
@@ -1160,7 +1206,7 @@ use ExpertSystems\Kudosity\Exceptions\KudosityException;
 use OrderNotifier\Bootstrap;
 use OrderNotifier\Check;
 
-final class MmsV2Scenario implements Scenario
+final class MmsV2Scenario extends BaseScenario
 {
     /** A small, stable, publicly reachable image. */
     private const MEDIA = 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/Australia_location_map.svg/320px-Australia_location_map.svg.png';
@@ -1173,7 +1219,6 @@ final class MmsV2Scenario implements Scenario
     public function run(Bootstrap $boot): array
     {
         $client = $boot->client();
-        $checks = [];
 
         $sent = $client->mms()->send(
             to: $boot->recipient(),
@@ -1187,19 +1232,19 @@ final class MmsV2Scenario implements Scenario
 
         file_put_contents(__DIR__.'/../../.last-mms-id', $sent->id);
 
-        $checks[] = Check::pass(
+        $this->checks[] = Check::pass(
             'mms()->send()',
             'POST /v2/mms returns a flat envelope decoded into MmsMessageData',
             sprintf('id=%s status=%s subject=%s', $sent->id, $sent->status->value, $sent->subject ?? 'null'),
             ['id' => $sent->id, 'status' => $sent->status->value, 'content_urls' => $sent->contentUrls, 'subject' => $sent->subject, 'message_ref' => $sent->messageRef],
         );
 
-        $checks[] = $sent->contentUrls === [self::MEDIA]
+        $this->checks[] = $sent->contentUrls === [self::MEDIA]
             ? Check::pass('mms()->send()', 'the media URL round-trips in content_urls', '1 url echoed intact')
             : Check::finding('mms()->send()', 'the media URL round-trips in content_urls', 'The API rewrote or dropped the URL', ['sent' => [self::MEDIA], 'returned' => $sent->contentUrls]);
 
         $fetched = $client->mms()->get($sent->id);
-        $checks[] = $fetched->id === $sent->id
+        $this->checks[] = $fetched->id === $sent->id
             ? Check::pass('mms()->get()', 'GET /v2/mms/{id} returns the same message', sprintf('status now %s', $fetched->status->value), ['status' => $fetched->status->value])
             : Check::fail('mms()->get()', 'GET /v2/mms/{id} returns the same message', sprintf('asked for %s, got %s', $sent->id, $fetched->id));
 
@@ -1212,14 +1257,14 @@ final class MmsV2Scenario implements Scenario
                 contentUrls: [self::MEDIA, self::MEDIA],
                 message: 'Two attachments',
             );
-            $checks[] = Check::finding(
+            $this->checks[] = Check::finding(
                 'mms()->send()',
                 'the API rejects more than one media file, per the vendored skill',
                 sprintf('Accepted two content_urls and returned id=%s with %d url(s)', $two->id, count($two->contentUrls)),
                 ['id' => $two->id, 'content_urls' => $two->contentUrls],
             );
         } catch (KudosityException $e) {
-            $checks[] = Check::pass(
+            $this->checks[] = Check::pass(
                 'mms()->send()',
                 'the API rejects more than one media file, per the vendored skill',
                 'Rejected: '.$e->getMessage(),
@@ -1228,11 +1273,11 @@ final class MmsV2Scenario implements Scenario
 
         // MmsResource deliberately has no list(). Assert the SDK does not
         // pretend otherwise — a list() here would be inventing an endpoint.
-        $checks[] = ! method_exists($client->mms(), 'list')
+        $this->checks[] = ! method_exists($client->mms(), 'list')
             ? Check::pass('mms()', 'MmsResource exposes no list() — /v2/mms has no list endpoint', 'no list() method')
             : Check::fail('mms()', 'MmsResource exposes no list() — /v2/mms has no list endpoint', 'A list() method exists; /v2/mms has no list endpoint to back it');
 
-        return $checks;
+        return $this->checks;
     }
 }
 ```
@@ -1297,7 +1342,7 @@ use ExpertSystems\Kudosity\Exceptions\KudosityException;
 use OrderNotifier\Bootstrap;
 use OrderNotifier\Check;
 
-final class ListsScenario implements Scenario
+final class ListsScenario extends BaseScenario
 {
     /**
      * A reserved fictitious AU number. Opting this out has no real-world
@@ -1313,13 +1358,12 @@ final class ListsScenario implements Scenario
     public function run(Bootstrap $boot): array
     {
         $client = $boot->client();
-        $checks = [];
 
         $listName = 'sdk-validation-'.date('Ymd-His');
         $list = $client->lists()->create($listName);
         file_put_contents(__DIR__.'/../../.list-id', (string) $list->id);
 
-        $checks[] = Check::pass(
+        $this->checks[] = Check::pass(
             'lists()->create()',
             'a list is created and returns its id',
             sprintf('id=%d name=%s', $list->id, $list->name),
@@ -1328,13 +1372,13 @@ final class ListsScenario implements Scenario
 
         // A custom field, so the list carries more than the built-in columns.
         $field = $client->lists()->addField($list->id, 1, 'order_number');
-        $checks[] = $field
+        $this->checks[] = $field
             ? Check::pass('lists()->addField()', 'a custom field is added to the list', 'field 1 = order_number')
             : Check::fail('lists()->addField()', 'a custom field is added to the list', 'Returned false');
 
         // The handset, so Task 6 can send to this list.
         $contact = $client->lists()->addContact($list->id, $boot->recipient(), 'Test', 'Handset');
-        $checks[] = Check::pass(
+        $this->checks[] = Check::pass(
             'lists()->addContact()',
             'a contact is added and returned as ContactData',
             sprintf('mobile=%s', $contact->mobile ?? 'null'),
@@ -1342,19 +1386,19 @@ final class ListsScenario implements Scenario
         );
 
         $fetched = $client->lists()->getContact($list->id, $boot->recipient());
-        $checks[] = ($fetched->mobile ?? null) !== null
+        $this->checks[] = ($fetched->mobile ?? null) !== null
             ? Check::pass('lists()->getContact()', 'the contact reads back by mobile', (string) $fetched->mobile)
             : Check::fail('lists()->getContact()', 'the contact reads back by mobile', 'No mobile on the returned ContactData');
 
         $updated = $client->lists()->updateContact($list->id, $boot->recipient(), 'Updated', 'Handset');
-        $checks[] = $updated
+        $this->checks[] = $updated
             ? Check::pass('lists()->updateContact()', 'the contact is updated', 'first name changed to Updated')
             : Check::fail('lists()->updateContact()', 'the contact is updated', 'Returned false');
 
         // Membership count. `members` on a freshly-read list should reflect the
         // contact just added; if it lags, that is an API property, not a bug.
         $reread = $client->lists()->get($list->id);
-        $checks[] = $reread->members >= 1
+        $this->checks[] = $reread->members >= 1
             ? Check::pass('lists()->get()', 'the list reports its member count', sprintf('%d member(s)', $reread->members), ['members' => $reread->members])
             : Check::finding('lists()->get()', 'the list reports its member count', sprintf('Reports %d after adding a contact — the count lags', $reread->members));
 
@@ -1363,19 +1407,19 @@ final class ListsScenario implements Scenario
         foreach ($client->lists()->getContacts($list->id)->items() as $row) {
             $seen++;
         }
-        $checks[] = $seen >= 1
+        $this->checks[] = $seen >= 1
             ? Check::pass('lists()->getContacts()', 'members paginate', sprintf('%d on page 1', $seen))
             : Check::fail('lists()->getContacts()', 'members paginate', 'Page 1 was empty for a list with a member');
 
         // Opt-out, on the fictitious number only.
         $client->lists()->addContact($list->id, self::FICTITIOUS, 'Fictitious', 'Reserved');
         $optedOut = $client->lists()->optoutContact($list->id, self::FICTITIOUS);
-        $checks[] = $optedOut
+        $this->checks[] = $optedOut
             ? Check::pass('lists()->optoutContact()', 'a contact is opted out via the API', 'Opted out '.self::FICTITIOUS.' — a reserved number, never the handset')
             : Check::fail('lists()->optoutContact()', 'a contact is opted out via the API', 'Returned false');
 
         $deleted = $client->lists()->deleteContact($list->id, self::FICTITIOUS);
-        $checks[] = $deleted
+        $this->checks[] = $deleted
             ? Check::pass('lists()->deleteContact()', 'a contact is removed from the list', 'removed '.self::FICTITIOUS)
             : Check::fail('lists()->deleteContact()', 'a contact is removed from the list', 'Returned false');
 
@@ -1385,7 +1429,7 @@ final class ListsScenario implements Scenario
         // faked: asserting against a URL the API cannot fetch proves nothing.
         $tunnel = $boot->tunnelUrl();
         if ($tunnel === null) {
-            $checks[] = Check::blocked(
+            $this->checks[] = Check::blocked(
                 'lists()->bulkAdd()',
                 'a CSV at a public URL is imported into the list',
                 'No TUNNEL_URL set — the API fetches the CSV itself and cannot reach a local file. Re-run this scenario during Task 9, when the tunnel is up.',
@@ -1393,7 +1437,7 @@ final class ListsScenario implements Scenario
         } else {
             try {
                 $result = $client->lists()->bulkAdd($tunnel.'/contacts.csv', $list->id);
-                $checks[] = Check::pass(
+                $this->checks[] = Check::pass(
                     'lists()->bulkAdd()',
                     'a CSV at a public URL is imported into the list',
                     'Accepted the import',
@@ -1401,14 +1445,14 @@ final class ListsScenario implements Scenario
                 );
 
                 $progress = $client->lists()->bulkAddProgress($list->id);
-                $checks[] = Check::pass(
+                $this->checks[] = Check::pass(
                     'lists()->bulkAddProgress()',
                     'import progress reads back',
                     'progress returned',
                     ['progress' => (array) $progress],
                 );
             } catch (KudosityException $e) {
-                $checks[] = Check::fail(
+                $this->checks[] = Check::fail(
                     'lists()->bulkAdd()',
                     'a CSV at a public URL is imported into the list',
                     $e->getMessage(),
@@ -1418,13 +1462,13 @@ final class ListsScenario implements Scenario
 
         // The list itself is NOT deleted here — Task 6 sends to it. Cleanup is
         // Task 18.
-        $checks[] = Check::skipped(
+        $this->checks[] = Check::skipped(
             'lists()->delete()',
             'the throwaway list is deleted',
             'Deferred to Task 18 cleanup — Task 6 sends to this list',
         );
 
-        return $checks;
+        return $this->checks;
     }
 }
 ```
@@ -1490,7 +1534,7 @@ use ExpertSystems\Kudosity\Requests\SendSmsRequest;
 use OrderNotifier\Bootstrap;
 use OrderNotifier\Check;
 
-final class BulkSendScenario implements Scenario
+final class BulkSendScenario extends BaseScenario
 {
     public function name(): string
     {
@@ -1500,7 +1544,6 @@ final class BulkSendScenario implements Scenario
     public function run(Bootstrap $boot): array
     {
         $client = $boot->client();
-        $checks = [];
 
         $listIdFile = __DIR__.'/../../.list-id';
         if (! is_file($listIdFile)) {
@@ -1533,18 +1576,18 @@ final class BulkSendScenario implements Scenario
 
         file_put_contents(__DIR__.'/../../.last-bulk-id', (string) $sent->messageId);
 
-        $checks[] = Check::pass(
+        $this->checks[] = Check::pass(
             'bulk()->sendToList()',
             'a V1 list send accepts validity, tracked link, replies-to-email and callbacks',
             sprintf('message_id=%d recipients=%d cost=%.4f segments=%d', $sent->messageId, $sent->recipients, $sent->cost, $sent->sms),
             ['message_id' => $sent->messageId, 'recipients' => $sent->recipients, 'cost' => $sent->cost, 'sms' => $sent->sms, 'send_at' => $sent->sendAt],
         );
 
-        $checks[] = $sent->messageId > 0
+        $this->checks[] = $sent->messageId > 0
             ? Check::pass('SmsData::$messageId', 'V1 returns an integer message id, unlike V2s string id', (string) $sent->messageId)
             : Check::fail('SmsData::$messageId', 'V1 returns an integer message id', 'Got '.var_export($sent->messageId, true));
 
-        $checks[] = $sent->list !== null
+        $this->checks[] = $sent->list !== null
             ? Check::pass('SmsData::$list', 'a list send reports the list it went to', sprintf('list id %s', $sent->list->id ?? 'null'), ['list' => (array) $sent->list])
             : Check::finding('SmsData::$list', 'a list send reports the list it went to', 'The response carried no list block');
 
@@ -1558,7 +1601,7 @@ final class BulkSendScenario implements Scenario
             from: $boot->sender(),
         );
 
-        $checks[] = Check::pass(
+        $this->checks[] = Check::pass(
             'bulk()->schedule()',
             'a send is scheduled for a future time',
             sprintf('message_id=%d send_at=%s', $scheduled->messageId, $scheduled->sendAt),
@@ -1566,7 +1609,7 @@ final class BulkSendScenario implements Scenario
         );
 
         $cancelled = $client->bulk()->cancel($scheduled->messageId);
-        $checks[] = $cancelled
+        $this->checks[] = $cancelled
             ? Check::pass('bulk()->cancel()', 'a scheduled send is cancelled before it costs anything', 'cancelled '.$scheduled->messageId)
             : Check::fail('bulk()->cancel()', 'a scheduled send is cancelled before it costs anything', 'Returned false — a real message will send in 2 hours. Cancel it in the dashboard.');
 
@@ -1579,13 +1622,13 @@ final class BulkSendScenario implements Scenario
                 from: $boot->sender(),
             );
             $client->bulk()->cancel($dt->messageId);
-            $checks[] = Check::pass(
+            $this->checks[] = Check::pass(
                 'bulk()->schedule()',
                 'a DateTimeInterface is accepted where a string is',
                 sprintf('scheduled %d then cancelled', $dt->messageId),
             );
         } catch (KudosityException $e) {
-            $checks[] = Check::fail(
+            $this->checks[] = Check::fail(
                 'bulk()->schedule()',
                 'a DateTimeInterface is accepted where a string is',
                 $e->getMessage(),
@@ -1597,20 +1640,20 @@ final class BulkSendScenario implements Scenario
         try {
             $tooMany = new SendSmsRequest('over the limit');
             $tooMany->to(implode(',', array_fill(0, 501, '61491570006')));
-            $checks[] = Check::fail(
+            $this->checks[] = Check::fail(
                 'SendSmsRequest::to()',
                 'more than 500 recipients is rejected before sending',
                 'Accepted 501 recipients',
             );
         } catch (\Throwable $e) {
-            $checks[] = Check::pass(
+            $this->checks[] = Check::pass(
                 'SendSmsRequest::to()',
                 'more than 500 recipients is rejected before sending',
                 get_class($e).': '.$e->getMessage(),
             );
         }
 
-        return $checks;
+        return $this->checks;
     }
 }
 ```
@@ -1628,7 +1671,7 @@ use ExpertSystems\Kudosity\Exceptions\KudosityException;
 use OrderNotifier\Bootstrap;
 use OrderNotifier\Check;
 
-final class ReportingScenario implements Scenario
+final class ReportingScenario extends BaseScenario
 {
     public function name(): string
     {
@@ -1638,7 +1681,6 @@ final class ReportingScenario implements Scenario
     public function run(Bootstrap $boot): array
     {
         $client = $boot->client();
-        $checks = [];
 
         $idFile = __DIR__.'/../../.last-bulk-id';
         if (! is_file($idFile)) {
@@ -1647,7 +1689,7 @@ final class ReportingScenario implements Scenario
         $messageId = (int) file_get_contents($idFile);
 
         $message = $client->reporting()->getMessage($messageId);
-        $checks[] = Check::pass(
+        $this->checks[] = Check::pass(
             'reporting()->getMessage()',
             'a sent message reads back by id',
             sprintf('id=%d', $messageId),
@@ -1655,7 +1697,7 @@ final class ReportingScenario implements Scenario
         );
 
         $status = $client->reporting()->getDeliveryStatus($messageId, $boot->recipient());
-        $checks[] = Check::pass(
+        $this->checks[] = Check::pass(
             'reporting()->getDeliveryStatus()',
             'per-recipient delivery status reads back',
             'status returned',
@@ -1663,7 +1705,7 @@ final class ReportingScenario implements Scenario
         );
 
         $stats = $client->reporting()->getStats($messageId);
-        $checks[] = Check::pass(
+        $this->checks[] = Check::pass(
             'reporting()->getStats()',
             'delivery stats read back for the send',
             'stats returned',
@@ -1674,7 +1716,7 @@ final class ReportingScenario implements Scenario
             new DateTimeImmutable('-1 day'),
             new DateTimeImmutable('+1 day'),
         );
-        $checks[] = Check::pass(
+        $this->checks[] = Check::pass(
             'reporting()->getSentCount()',
             'a sent count over a date range reads back',
             'count returned',
@@ -1686,7 +1728,7 @@ final class ReportingScenario implements Scenario
         foreach ($client->reporting()->getSent($messageId)->items() as $row) {
             $recipients++;
         }
-        $checks[] = $recipients >= 1
+        $this->checks[] = $recipients >= 1
             ? Check::pass('reporting()->getSent()', 'the recipients of a send paginate', sprintf('%d on page 1', $recipients))
             : Check::finding('reporting()->getSent()', 'the recipients of a send paginate', 'Page 1 empty — reporting lag');
 
@@ -1701,7 +1743,7 @@ final class ReportingScenario implements Scenario
                 break;
             }
         }
-        $checks[] = $rows > 0
+        $this->checks[] = $rows > 0
             ? Check::pass('reporting()->getUserSent()', 'account-wide sent messages paginate', sprintf('%d rows over %d page(s)', $rows, $pages))
             : Check::finding('reporting()->getUserSent()', 'account-wide sent messages paginate', 'No rows returned');
 
@@ -1709,7 +1751,7 @@ final class ReportingScenario implements Scenario
             new DateTimeImmutable('-7 days'),
             new DateTimeImmutable('+1 day'),
         );
-        $checks[] = Check::pass(
+        $this->checks[] = Check::pass(
             'reporting()->getMessageReport()',
             'a date-ranged message report reads back',
             'report returned',
@@ -1717,7 +1759,7 @@ final class ReportingScenario implements Scenario
         );
 
         $contactStats = $client->reporting()->getContactStats($boot->recipient());
-        $checks[] = Check::pass(
+        $this->checks[] = Check::pass(
             'reporting()->getContactStats()',
             'per-contact SMS stats read back',
             'stats returned',
@@ -1731,17 +1773,17 @@ final class ReportingScenario implements Scenario
             foreach ($client->reporting()->getAllResponses()->items() as $row) {
                 $responses++;
             }
-            $checks[] = Check::pass(
+            $this->checks[] = Check::pass(
                 'reporting()->getAllResponses()',
                 'account-wide replies paginate',
                 sprintf('%d on page 1 (0 is expected before the Task 9 reply)', $responses),
                 ['page_1_count' => $responses],
             );
         } catch (KudosityException $e) {
-            $checks[] = Check::fail('reporting()->getAllResponses()', 'account-wide replies paginate', $e->getMessage());
+            $this->checks[] = Check::fail('reporting()->getAllResponses()', 'account-wide replies paginate', $e->getMessage());
         }
 
-        return $checks;
+        return $this->checks;
     }
 }
 ```
@@ -1807,7 +1849,7 @@ use ExpertSystems\Kudosity\Data\V2\SenderRegistrationData;
 use OrderNotifier\Bootstrap;
 use OrderNotifier\Check;
 
-final class SendersScenario implements Scenario
+final class SendersScenario extends BaseScenario
 {
     public function name(): string
     {
@@ -1817,7 +1859,6 @@ final class SendersScenario implements Scenario
     public function run(Bootstrap $boot): array
     {
         $client = $boot->client();
-        $checks = [];
 
         // Paginated registrations. This surface reports total_count under
         // meta.pagination and puts its items at data.registrations, not data —
@@ -1838,7 +1879,7 @@ final class SendersScenario implements Scenario
         // {"data":{"registrations":[]},"meta":{...,"total_count":0}}. Do not read
         // an empty result here as a defect.
 
-        $checks[] = Check::pass(
+        $this->checks[] = Check::pass(
             'senders()->registrations()',
             'registrations paginate from data.registrations with meta.pagination.total_count',
             sprintf('%d item(s) over %d page(s)', $items, $pages),
@@ -1846,7 +1887,7 @@ final class SendersScenario implements Scenario
         );
 
         $all = $client->senders()->allRegistrations();
-        $checks[] = count($all) === 0 || $all[0] instanceof SenderRegistrationData
+        $this->checks[] = count($all) === 0 || $all[0] instanceof SenderRegistrationData
             ? Check::pass('senders()->allRegistrations()', 'every page is collected into SenderRegistrationData objects', sprintf('%d registration(s)', count($all)))
             : Check::fail('senders()->allRegistrations()', 'every page is collected into SenderRegistrationData objects', 'Returned something other than SenderRegistrationData');
 
@@ -1861,7 +1902,7 @@ final class SendersScenario implements Scenario
                 'status_reason' => $reg->statusReason,
             ];
         }
-        $checks[] = Check::pass(
+        $this->checks[] = Check::pass(
             'SenderRegistrationData',
             'the item shape decodes without nulls where the API sends values',
             sprintf('%d shape(s) captured', count($shapes)),
@@ -1869,7 +1910,7 @@ final class SendersScenario implements Scenario
         );
 
         $ready = $client->senders()->readyToUse();
-        $checks[] = Check::pass(
+        $this->checks[] = Check::pass(
             'senders()->readyToUse()',
             'only verified, usable senders are returned',
             sprintf('%d of %d registrations are ready', count($ready), count($all)),
@@ -1879,7 +1920,7 @@ final class SendersScenario implements Scenario
         // the common real-world case, so both outcomes are informative — but
         // neither a new registration nor a verification code request is made
         // for a number we do not control.
-        $checks[] = Check::skipped(
+        $this->checks[] = Check::skipped(
             'senders()->register() / requestVerification() / confirmVerification()',
             'a new personal mobile number is registered and verified by SMS',
             'Not run: registering requires a number the account does not already own, and '
@@ -1888,7 +1929,7 @@ final class SendersScenario implements Scenario
             .'is left to the Laravel-side check in Task 16, which registers nothing.',
         );
 
-        return $checks;
+        return $this->checks;
     }
 }
 ```
@@ -1917,7 +1958,7 @@ use ExpertSystems\Kudosity\Exceptions\KudosityException;
 use OrderNotifier\Bootstrap;
 use OrderNotifier\Check;
 
-final class WebhooksCrudScenario implements Scenario
+final class WebhooksCrudScenario extends BaseScenario
 {
     public function name(): string
     {
@@ -1927,7 +1968,6 @@ final class WebhooksCrudScenario implements Scenario
     public function run(Bootstrap $boot): array
     {
         $client = $boot->client();
-        $checks = [];
 
         // A URL that is HTTPS and unreachable. CRUD does not need deliveries —
         // Task 9 does that with the tunnel.
@@ -1940,26 +1980,26 @@ final class WebhooksCrudScenario implements Scenario
             rateLimit: 10,
         );
 
-        $checks[] = Check::pass(
+        $this->checks[] = Check::pass(
             'webhooks()->create()',
             'a webhook registers and returns a flat WebhookData',
             sprintf('id=%s name=%s rate=%d sandbox=%s', $created->id, $created->name, $created->rateLimit, $created->isSandbox ? 'yes' : 'no'),
             ['id' => $created->id, 'name' => $created->name, 'url' => $created->url, 'rate_limit' => $created->rateLimit, 'filter' => (array) $created->filter],
         );
 
-        $checks[] = $created->filter->eventType === ['SMS_STATUS', 'SMS_INBOUND']
+        $this->checks[] = $created->filter->eventType === ['SMS_STATUS', 'SMS_INBOUND']
             ? Check::pass('webhooks()->create()', 'event types land in filter.event_type, not the deprecated top-level field', implode(', ', $created->filter->eventType))
             : Check::finding('webhooks()->create()', 'event types land in filter.event_type', 'Filter reads '.json_encode($created->filter->eventType), ['filter' => (array) $created->filter]);
 
         // GET /v2/webhook/{id} — absent from the vendored skill, present on the API.
         $fetched = $client->webhooks()->get($created->id);
-        $checks[] = $fetched->id === $created->id
+        $this->checks[] = $fetched->id === $created->id
             ? Check::pass('webhooks()->get()', 'GET /v2/webhook/{id} returns the same flat shape as create', $fetched->id)
             : Check::fail('webhooks()->get()', 'GET /v2/webhook/{id} returns the same flat shape as create', sprintf('asked %s got %s', $created->id, $fetched->id));
 
         $all = $client->webhooks()->all();
         $ids = array_map(fn ($w) => $w->id, $all);
-        $checks[] = in_array($created->id, $ids, true)
+        $this->checks[] = in_array($created->id, $ids, true)
             ? Check::pass('webhooks()->all()', 'the new registration appears in the list', sprintf('%d registration(s)', count($all)))
             : Check::fail('webhooks()->all()', 'the new registration appears in the list', 'Created id absent from all()');
 
@@ -1973,11 +2013,11 @@ final class WebhooksCrudScenario implements Scenario
             rateLimit: 20,
         );
 
-        $checks[] = $updated->name === 'sdk-validation-crud-renamed' && $updated->rateLimit === 20
+        $this->checks[] = $updated->name === 'sdk-validation-crud-renamed' && $updated->rateLimit === 20
             ? Check::pass('webhooks()->update()', 'PUT replaces the registration with the supplied whole shape', 'name and rate limit both changed')
             : Check::fail('webhooks()->update()', 'PUT replaces the registration with the supplied whole shape', sprintf('name=%s rate=%d', $updated->name, $updated->rateLimit));
 
-        $checks[] = $updated->filter->eventType === ['SMS_STATUS', 'SMS_INBOUND']
+        $this->checks[] = $updated->filter->eventType === ['SMS_STATUS', 'SMS_INBOUND']
             ? Check::pass('webhooks()->update()', 'a replace that re-sends the event types keeps them', implode(', ', $updated->filter->eventType))
             : Check::fail('webhooks()->update()', 'a replace that re-sends the event types keeps them', 'Event types lost on update: '.json_encode($updated->filter->eventType));
 
@@ -1985,13 +2025,13 @@ final class WebhooksCrudScenario implements Scenario
         // API accepts http:// with a 201, and this client refuses.
         try {
             $client->webhooks()->create(name: 'sdk-validation-insecure', url: 'http://example.com/insecure');
-            $checks[] = Check::fail(
+            $this->checks[] = Check::fail(
                 'webhooks()->create()',
                 'an http:// URL is refused client-side even though the API accepts it',
                 'The insecure URL was accepted — delete the stray registration',
             );
         } catch (KudosityException $e) {
-            $checks[] = Check::pass(
+            $this->checks[] = Check::pass(
                 'webhooks()->create()',
                 'an http:// URL is refused client-side even though the API accepts it',
                 $e->getMessage(),
@@ -2006,13 +2046,13 @@ final class WebhooksCrudScenario implements Scenario
                 allowInsecureUrl: true,
             );
             $client->webhooks()->delete($insecure->id);
-            $checks[] = Check::pass(
+            $this->checks[] = Check::pass(
                 'webhooks()->create(allowInsecureUrl: true)',
                 'the strictness is opt-out, not absolute',
                 'Accepted with the explicit flag, then deleted',
             );
         } catch (KudosityException $e) {
-            $checks[] = Check::fail(
+            $this->checks[] = Check::fail(
                 'webhooks()->create(allowInsecureUrl: true)',
                 'the strictness is opt-out, not absolute',
                 'Refused even with allowInsecureUrl: true — '.$e->getMessage(),
@@ -2020,27 +2060,27 @@ final class WebhooksCrudScenario implements Scenario
         }
 
         $deleted = $client->webhooks()->delete($created->id);
-        $checks[] = $deleted
+        $this->checks[] = $deleted
             ? Check::pass('webhooks()->delete()', 'the registration is removed', 'deleted '.$created->id)
             : Check::fail('webhooks()->delete()', 'the registration is removed', 'Returned false');
 
         // A deleted id must 404, not return a stale record.
         try {
             $client->webhooks()->get($created->id);
-            $checks[] = Check::finding(
+            $this->checks[] = Check::finding(
                 'webhooks()->get()',
                 'a deleted registration 404s',
                 'Still readable after delete — the delete is eventually consistent',
             );
         } catch (KudosityException $e) {
-            $checks[] = Check::pass(
+            $this->checks[] = Check::pass(
                 'webhooks()->get()',
                 'a deleted registration 404s',
                 get_class($e).': '.$e->getMessage(),
             );
         }
 
-        return $checks;
+        return $this->checks;
     }
 }
 ```
@@ -2057,7 +2097,7 @@ use ExpertSystems\Kudosity\Exceptions\KudosityException;
 use OrderNotifier\Bootstrap;
 use OrderNotifier\Check;
 
-final class MiscV1Scenario implements Scenario
+final class MiscV1Scenario extends BaseScenario
 {
     public function name(): string
     {
@@ -2067,7 +2107,6 @@ final class MiscV1Scenario implements Scenario
     public function run(Bootstrap $boot): array
     {
         $client = $boot->client();
-        $checks = [];
 
         // --- Numbers (read-only; leasing is excluded) ---
         // Rows are raw arrays and `number` arrives as a JSON INTEGER, not a
@@ -2076,7 +2115,7 @@ final class MiscV1Scenario implements Scenario
         foreach ($client->numbers()->all()->items() as $row) {
             $owned[] = $row;
         }
-        $checks[] = Check::pass(
+        $this->checks[] = Check::pass(
             'numbers()->all()',
             'the account\'s numbers paginate',
             sprintf('%d number(s) on page 1', count($owned)),
@@ -2086,7 +2125,7 @@ final class MiscV1Scenario implements Scenario
         // Offline formatting. The SDK refuses to guess a country, because
         // guessing wrong sends a real message to the wrong person.
         $formatted = $client->numbers()->formatNumber('0491570006', 'AU');
-        $checks[] = Check::pass(
+        $this->checks[] = Check::pass(
             'numbers()->formatNumber()',
             'a local number normalises to E.164 when a country is supplied',
             '0491570006 + AU',
@@ -2098,7 +2137,7 @@ final class MiscV1Scenario implements Scenario
         foreach ($client->keywords()->all()->items() as $row) {
             $keywords++;
         }
-        $checks[] = Check::pass(
+        $this->checks[] = Check::pass(
             'keywords()->all()',
             'keywords paginate',
             sprintf('%d keyword(s) on page 1', $keywords),
@@ -2111,7 +2150,7 @@ final class MiscV1Scenario implements Scenario
                 foreach ($client->keywords()->forNumber($number)->items() as $row) {
                     $forNumber++;
                 }
-                $checks[] = Check::pass(
+                $this->checks[] = Check::pass(
                     'keywords()->forNumber()',
                     'keywords filter by number',
                     sprintf('%d for the first owned number', $forNumber),
@@ -2126,24 +2165,24 @@ final class MiscV1Scenario implements Scenario
         // success — a false `true` here would be a real defect.
         try {
             $result = $client->emailSms()->delete('definitely-not-registered@example.invalid');
-            $checks[] = $result === false
+            $this->checks[] = $result === false
                 ? Check::pass('emailSms()->delete()', 'deleting an unregistered address reports failure', 'returned false')
                 : Check::finding('emailSms()->delete()', 'deleting an unregistered address reports failure', 'Returned true for an address that was never registered');
         } catch (KudosityException $e) {
-            $checks[] = Check::pass(
+            $this->checks[] = Check::pass(
                 'emailSms()->delete()',
                 'deleting an unregistered address reports failure',
                 'Threw rather than reporting success: '.$e->getMessage(),
             );
         }
 
-        $checks[] = Check::skipped(
+        $this->checks[] = Check::skipped(
             'emailSms()->add() / addWithLimit() / addWithNumber()',
             'an email address is authorised for email-to-SMS',
             'Not run: it changes account-wide configuration that outlives this validation run.',
         );
 
-        return $checks;
+        return $this->checks;
     }
 }
 ```
@@ -2164,7 +2203,7 @@ use OrderNotifier\Check;
 use Saloon\Http\Faking\MockClient;
 use Saloon\Http\Faking\MockResponse;
 
-final class LeaseStubScenario implements Scenario
+final class LeaseStubScenario extends BaseScenario
 {
     public function name(): string
     {
@@ -2492,7 +2531,7 @@ use ExpertSystems\Kudosity\Webhooks\SignedMessageRef;
 use OrderNotifier\Bootstrap;
 use OrderNotifier\Check;
 
-final class LiveCallbackScenario implements Scenario
+final class LiveCallbackScenario extends BaseScenario
 {
     private const REF_SECRET = 'order-notifier-validation-secret';
 
@@ -2506,7 +2545,6 @@ final class LiveCallbackScenario implements Scenario
     public function run(Bootstrap $boot): array
     {
         $client = $boot->client();
-        $checks = [];
 
         $tunnel = $boot->tunnelUrl();
         if ($tunnel === null) {
@@ -2521,7 +2559,7 @@ final class LiveCallbackScenario implements Scenario
         );
         file_put_contents(__DIR__.'/../../.webhook-id', $hook->id);
 
-        $checks[] = Check::pass(
+        $this->checks[] = Check::pass(
             'webhooks()->create()',
             'a webhook registers against the tunnel for all event types',
             sprintf('id=%s url=%s', $hook->id, $hook->url),
@@ -2540,7 +2578,7 @@ final class LiveCallbackScenario implements Scenario
             trackLinks: true,
         );
         file_put_contents(__DIR__.'/../../.last-sms-ref', $ref);
-        $checks[] = Check::pass('sms()->send()', 'a tracked-link SMS is sent to drive live status and link-hit events', $sms->id, ['id' => $sms->id, 'message_ref' => $ref]);
+        $this->checks[] = Check::pass('sms()->send()', 'a tracked-link SMS is sent to drive live status and link-hit events', $sms->id, ['id' => $sms->id, 'message_ref' => $ref]);
 
         // An MMS: produces MMS_STATUS, which carries the undocumented
         // status.description the fixtures record.
@@ -2552,7 +2590,7 @@ final class LiveCallbackScenario implements Scenario
             message: 'Reply with a photo of the parcel.',
             messageRef: 'order-9931:mms-live',
         );
-        $checks[] = Check::pass('mms()->send()', 'an MMS is sent to drive a live MMS_STATUS event', $mms->id, ['id' => $mms->id]);
+        $this->checks[] = Check::pass('mms()->send()', 'an MMS is sent to drive a live MMS_STATUS event', $mms->id, ['id' => $mms->id]);
 
         // Wait for deliveries. Status events arrive within seconds; the docs
         // warn they are unordered and at-least-once, so this collects rather
@@ -2569,12 +2607,12 @@ final class LiveCallbackScenario implements Scenario
             $byType[$t] = ($byType[$t] ?? 0) + 1;
         }
 
-        $checks[] = $byType !== []
+        $this->checks[] = $byType !== []
             ? Check::pass('webhook delivery', 'real events arrive at the registered URL', json_encode($byType), ['by_type' => $byType])
             : Check::fail('webhook delivery', 'real events arrive at the registered URL', 'Nothing arrived in 90s — the registration or the tunnel is not working');
 
         foreach (['SMS_STATUS', 'MMS_STATUS', 'LINK_HIT'] as $expected) {
-            $checks[] = ($byType[$expected] ?? 0) > 0
+            $this->checks[] = ($byType[$expected] ?? 0) > 0
                 ? Check::pass('webhook delivery', "$expected is delivered", sprintf('%d delivery(ies)', $byType[$expected]))
                 : Check::finding('webhook delivery', "$expected is delivered", "None arrived within 90s. LINK_HIT needs the link to be fetched; MMS_STATUS can lag further behind than SMS.");
         }
@@ -2585,19 +2623,19 @@ final class LiveCallbackScenario implements Scenario
         if ($statusEvents !== []) {
             $p = $statusEvents[0]['payload'];
             foreach (['webhook_id', 'webhook_name'] as $field) {
-                $checks[] = isset($p[$field])
+                $this->checks[] = isset($p[$field])
                     ? Check::pass('delivery payload', "$field is present on a live delivery, as the fixtures record", (string) $p[$field])
                     : Check::finding('delivery payload', "$field is present on a live delivery", "Absent — the fixture README records it as always present");
             }
         }
 
-        $checks[] = Check::pass(
+        $this->checks[] = Check::pass(
             'capture',
             'raw deliveries are recorded for Task 10 to parse',
             sprintf('%d record(s) in captured/phase1.jsonl', count($events)),
         );
 
-        return $checks;
+        return $this->checks;
     }
 
     /** @return array<int, array<string, mixed>> */
@@ -2729,7 +2767,7 @@ use ExpertSystems\Kudosity\Webhooks\WebhookEvent;
 use OrderNotifier\Bootstrap;
 use OrderNotifier\Check;
 
-final class WebhookParsingScenario implements Scenario
+final class WebhookParsingScenario extends BaseScenario
 {
     private const REF_SECRET = 'order-notifier-validation-secret';
 
@@ -2740,7 +2778,6 @@ final class WebhookParsingScenario implements Scenario
 
     public function run(Bootstrap $boot): array
     {
-        $checks = [];
         $payloads = $this->payloads();
 
         if ($payloads === []) {
@@ -2753,7 +2790,7 @@ final class WebhookParsingScenario implements Scenario
             try {
                 $decoded[] = WebhookEvent::fromArray($payload);
             } catch (\Throwable $e) {
-                $checks[] = Check::fail(
+                $this->checks[] = Check::fail(
                     'WebhookEvent::fromArray()',
                     'every live payload decodes without throwing',
                     sprintf('record %d (%s): %s', $i, $payload['event_type'] ?? 'no event_type', $e->getMessage()),
@@ -2765,14 +2802,14 @@ final class WebhookParsingScenario implements Scenario
         foreach ($decoded as $e) {
             $counts[$e::class] = ($counts[$e::class] ?? 0) + 1;
         }
-        $checks[] = Check::pass(
+        $this->checks[] = Check::pass(
             'WebhookEvent::fromArray()',
             'live payloads decode into typed events',
             sprintf('%d payload(s): %s', count($decoded), json_encode(array_map(fn ($k) => substr((string) strrchr($k, '\\'), 1), array_keys($counts)))),
             ['counts' => $counts],
         );
 
-        $checks[] = ! isset($counts[UnknownEvent::class])
+        $this->checks[] = ! isset($counts[UnknownEvent::class])
             ? Check::pass('WebhookEvent::fromArray()', 'no live payload falls through to UnknownEvent', 'all event types recognised')
             : Check::finding('WebhookEvent::fromArray()', 'no live payload falls through to UnknownEvent', sprintf('%d payload(s) were UnknownEvent — an event type shipped after this SDK', $counts[UnknownEvent::class]), ['unknown_types' => $this->unknownTypes($decoded)]);
 
@@ -2780,14 +2817,14 @@ final class WebhookParsingScenario implements Scenario
         $statuses = array_values(array_filter($decoded, fn ($e) => $e instanceof StatusEvent));
         if ($statuses !== []) {
             $first = $statuses[0];
-            $checks[] = Check::pass(
+            $this->checks[] = Check::pass(
                 'StatusEvent',
                 'a live status event decodes every documented field',
                 sprintf('id=%s status=%s routed_via=%s description=%s', $first->id, $first->status->value, $first->routedVia ?? 'null', $first->description ?? 'null'),
                 ['type' => $first->type, 'id' => $first->id, 'status' => $first->status->value, 'message_ref' => $first->messageRef, 'description' => $first->description],
             );
 
-            $checks[] = $first->status !== MessageStatus::Unknown
+            $this->checks[] = $first->status !== MessageStatus::Unknown
                 ? Check::pass('MessageStatus::fromApi()', 'an UPPERCASE live status resolves to a known case', $first->status->value)
                 : Check::fail('MessageStatus::fromApi()', 'an UPPERCASE live status resolves to a known case', 'Resolved to Unknown for '.json_encode($first->raw['status'] ?? null));
 
@@ -2804,7 +2841,7 @@ final class WebhookParsingScenario implements Scenario
                 }
                 $winner = StatusPrecedence::reduce($group, (string) $statusId);
                 $ranks = array_map(fn (StatusEvent $s) => StatusPrecedence::rank($s->status), $group);
-                $checks[] = $winner !== null && StatusPrecedence::rank($winner->status) === max($ranks)
+                $this->checks[] = $winner !== null && StatusPrecedence::rank($winner->status) === max($ranks)
                     ? Check::pass(
                         'StatusPrecedence::reduce()',
                         'the highest-ranked status wins across multiple live events for one message',
@@ -2819,12 +2856,12 @@ final class WebhookParsingScenario implements Scenario
             }
 
             // The hazard itself: a late SENT must never overwrite DELIVERED.
-            $checks[] = ! StatusPrecedence::supersedes(MessageStatus::Sent, MessageStatus::Delivered)
+            $this->checks[] = ! StatusPrecedence::supersedes(MessageStatus::Sent, MessageStatus::Delivered)
                 ? Check::pass('StatusPrecedence::supersedes()', 'a late SENT does not supersede a recorded DELIVERED', 'false, as required')
                 : Check::fail('StatusPrecedence::supersedes()', 'a late SENT does not supersede a recorded DELIVERED', 'Returned true — a redelivered SENT would overwrite DELIVERED');
 
             // READ follows DELIVERED, so isTerminal() alone is not a guard.
-            $checks[] = StatusPrecedence::supersedes(MessageStatus::Read, MessageStatus::Delivered)
+            $this->checks[] = StatusPrecedence::supersedes(MessageStatus::Read, MessageStatus::Delivered)
                 ? Check::pass('StatusPrecedence::supersedes()', 'READ supersedes DELIVERED — a read receipt follows delivery', 'true, as required')
                 : Check::fail('StatusPrecedence::supersedes()', 'READ supersedes DELIVERED', 'Returned false — an RCS/WhatsApp read receipt would be discarded');
 
@@ -2832,7 +2869,7 @@ final class WebhookParsingScenario implements Scenario
             // redelivered 60s later, byte-identical to its original.
             $signatures = array_map(fn (StatusEvent $s) => $s->id.'|'.$s->status->value.'|'.($s->timestamp?->format('c') ?? ''), $statuses);
             $dupes = count($signatures) - count(array_unique($signatures));
-            $checks[] = $dupes > 0
+            $this->checks[] = $dupes > 0
                 ? Check::pass(
                     'at-least-once delivery',
                     'duplicate status deliveries are observed live, not merely assumed',
@@ -2850,7 +2887,7 @@ final class WebhookParsingScenario implements Scenario
         $inbound = array_values(array_filter($decoded, fn ($e) => $e instanceof InboundEvent));
         foreach ($inbound as $in) {
             $isMms = $in->media !== [];
-            $checks[] = Check::pass(
+            $this->checks[] = Check::pass(
                 'InboundEvent',
                 sprintf('a live %s inbound decodes', $isMms ? 'MMS' : 'SMS'),
                 sprintf('from=%s to=%s message=%s media=%d', $in->sender, $in->recipient, var_export($in->message, true), count($in->media)),
@@ -2859,15 +2896,15 @@ final class WebhookParsingScenario implements Scenario
 
             if ($isMms) {
                 $media = $in->media[0];
-                $checks[] = $media->content !== ''
+                $this->checks[] = $media->content !== ''
                     ? Check::pass('InboundMedia', 'an inbound MMS attachment arrives as inline base64, not a URL', sprintf('%d base64 chars, name=%s', strlen($media->content), $media->name ?? 'null'))
                     : Check::fail('InboundMedia', 'an inbound MMS attachment arrives as inline base64', 'media[0]->content is empty');
 
-                $checks[] = $in->contentUrls === []
+                $this->checks[] = $in->contentUrls === []
                     ? Check::pass('InboundEvent::$contentUrls', 'contentUrls is empty on a real MMS_INBOUND — it reads mo.content_urls, the outbound shape', 'empty, as the fixture README records')
                     : Check::finding('InboundEvent::$contentUrls', 'contentUrls is empty on a real MMS_INBOUND', 'Populated: '.json_encode($in->contentUrls));
 
-                $checks[] = $in->lastMessage === null
+                $this->checks[] = $in->lastMessage === null
                     ? Check::pass('InboundEvent::$lastMessage', 'an MMS reply carries no last_message, so it has no correlation key', 'null, as the fixture README records')
                     : Check::finding('InboundEvent::$lastMessage', 'an MMS reply carries no last_message', 'An MMS_INBOUND DID carry last_message — this contradicts the fixture README and should be captured as a new fixture', ['last_message' => (array) $in->lastMessage]);
             } else {
@@ -2875,29 +2912,29 @@ final class WebhookParsingScenario implements Scenario
                 $ref = $in->lastMessage?->messageRef;
                 $sentRef = is_file(__DIR__.'/../../.last-sms-ref') ? trim((string) file_get_contents(__DIR__.'/../../.last-sms-ref')) : null;
 
-                $checks[] = $ref !== null
+                $this->checks[] = $ref !== null
                     ? Check::pass('InboundEvent::$lastMessage->messageRef', 'the outbound message_ref survives a real customer reply', $ref)
                     : Check::finding('InboundEvent::$lastMessage->messageRef', 'the outbound message_ref survives a real customer reply', 'last_message.message_ref is absent on this reply');
 
                 if ($ref !== null && $sentRef !== null) {
-                    $checks[] = $ref === $sentRef
+                    $this->checks[] = $ref === $sentRef
                         ? Check::pass('reply correlation', 'the recovered ref is byte-identical to the one sent', $ref)
                         : Check::fail('reply correlation', 'the recovered ref is byte-identical to the one sent', sprintf('sent %s, recovered %s', $sentRef, $ref));
 
                     // SignedMessageRef protects correlation, not the payload.
                     $entity = SignedMessageRef::verify($ref, self::REF_SECRET);
-                    $checks[] = $entity === 'order-9931'
+                    $this->checks[] = $entity === 'order-9931'
                         ? Check::pass('SignedMessageRef::verify()', 'a signed ref recovered from a live reply verifies to its entity', $entity)
                         : Check::fail('SignedMessageRef::verify()', 'a signed ref recovered from a live reply verifies to its entity', 'Got '.var_export($entity, true));
 
-                    $checks[] = SignedMessageRef::verify($ref, 'the-wrong-secret') === null
+                    $this->checks[] = SignedMessageRef::verify($ref, 'the-wrong-secret') === null
                         ? Check::pass('SignedMessageRef::verify()', 'the same ref fails under a different secret', 'null, as required')
                         : Check::fail('SignedMessageRef::verify()', 'the same ref fails under a different secret', 'A forged secret verified — the signature is not being checked');
                 }
 
                 // Real replies are untidy. "YES " arrived with a trailing space.
                 if (is_string($in->message)) {
-                    $checks[] = Check::pass(
+                    $this->checks[] = Check::pass(
                         'InboundEvent::$message',
                         'the reply text is delivered verbatim, untrimmed',
                         sprintf('%s (%d chars)', var_export($in->message, true), strlen($in->message)),
@@ -2906,27 +2943,27 @@ final class WebhookParsingScenario implements Scenario
                 }
             }
 
-            $checks[] = $in->messageRef() === ($in->lastMessage?->messageRef)
+            $this->checks[] = $in->messageRef() === ($in->lastMessage?->messageRef)
                 ? Check::pass('WebhookEvent::messageRef()', 'the accessor reads the ref from the per-type path the API hides it at', var_export($in->messageRef(), true))
                 : Check::fail('WebhookEvent::messageRef()', 'the accessor reads the ref from the per-type path the API hides it at', sprintf('accessor=%s lastMessage=%s', var_export($in->messageRef(), true), var_export($in->lastMessage?->messageRef, true)));
         }
 
         if ($inbound === []) {
-            $checks[] = Check::blocked('InboundEvent', 'a real customer reply decodes', 'No inbound event captured — the handset reply in Task 9 Step 8 did not arrive');
+            $this->checks[] = Check::blocked('InboundEvent', 'a real customer reply decodes', 'No inbound event captured — the handset reply in Task 9 Step 8 did not arrive');
         }
 
         // --- Link hits ---
         $hits = array_values(array_filter($decoded, fn ($e) => $e instanceof LinkHitEvent));
         if ($hits !== []) {
             $counts = array_map(fn (LinkHitEvent $h) => $h->hits, $hits);
-            $checks[] = Check::pass(
+            $this->checks[] = Check::pass(
                 'LinkHitEvent',
                 'link hits decode and `hits` is cumulative, not per-event',
                 sprintf('hit counts in arrival order: %s', implode(', ', $counts)),
                 ['hits' => $counts, 'url' => $hits[0]->url],
             );
 
-            $checks[] = Check::finding(
+            $this->checks[] = Check::finding(
                 'LinkHitEvent',
                 'a link hit is not evidence a human clicked',
                 'Recorded for the report: the first hit typically arrives in the same second as DELIVERED, which is a messaging-app link preview. `hits` counts machine fetches and is not an engagement metric.',
@@ -2944,19 +2981,19 @@ final class WebhookParsingScenario implements Scenario
             }
         }
         if ($optOutFile === null) {
-            $checks[] = Check::skipped(
+            $this->checks[] = Check::skipped(
                 'OptOutEvent',
                 'an OPT_OUT payload decodes',
                 'No OPT_OUT fixture exists in the repository, and a live STOP is excluded because it opts the handset out of the account.',
             );
         } else {
             $event = WebhookEvent::fromArray(json_decode((string) file_get_contents($optOutFile), true));
-            $checks[] = $event instanceof \ExpertSystems\Kudosity\Webhooks\OptOutEvent
+            $this->checks[] = $event instanceof \ExpertSystems\Kudosity\Webhooks\OptOutEvent
                 ? Check::pass('OptOutEvent', 'an OPT_OUT payload decodes (replayed from a fixture, not sent live)', sprintf('source=%s', $event->source->value))
                 : Check::fail('OptOutEvent', 'an OPT_OUT payload decodes', 'Decoded to '.$event::class);
         }
 
-        return $checks;
+        return $this->checks;
     }
 
     /** @return array<int, array<string, mixed>> */
