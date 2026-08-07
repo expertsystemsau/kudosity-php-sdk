@@ -1208,8 +1208,20 @@ use OrderNotifier\Check;
 
 final class MmsV2Scenario extends BaseScenario
 {
-    /** A small, stable, publicly reachable image. */
-    private const MEDIA = 'https://upload.wikimedia.org/wikipedia/commons/a/a9/Example.jpg';
+    /**
+     * The media URL from the vendor's own Postman collection for this API
+     * (this repo carried it until the security scrub in fafac1d).
+     *
+     * Not chosen for looks. Kudosity fetches content_url SERVER-SIDE and
+     * validates its Content-Type, and `upload.wikimedia.org` fails that fetch
+     * every time: three attempts on 2026-08-07, including a URL verified from
+     * here as 200/image/jpeg, all rejected with the identical
+     * `Content-Type: text/plain not supported` — a type the origin never sent,
+     * which points at Wikimedia handing Kudosity's fetcher a block page.
+     * Verifying a URL with curl proves nothing about what Kudosity can reach.
+     * Do not swap this for a Wikimedia or other consumer-site URL.
+     */
+    private const MEDIA = 'https://res.cloudinary.com/burst/image/upload/v1594795887/FyMeLX68fF7Q_fjtbi1.png';
 
     public function name(): string
     {
@@ -2589,7 +2601,7 @@ final class LiveCallbackScenario extends BaseScenario
         $mms = $client->mms()->send(
             to: $boot->recipient(),
             from: $boot->sender(),
-            contentUrls: ['https://upload.wikimedia.org/wikipedia/commons/a/a9/Example.jpg'],
+            contentUrls: ['https://res.cloudinary.com/burst/image/upload/v1594795887/FyMeLX68fF7Q_fjtbi1.png'],
             subject: 'Order 9931',
             message: 'Reply with a photo of the parcel.',
             messageRef: 'order-9931:mms-live',
@@ -3678,7 +3690,7 @@ use Illuminate\Notifications\Notification;
 
 class OrderPhoto extends Notification
 {
-    public const MEDIA = 'https://upload.wikimedia.org/wikipedia/commons/a/a9/Example.jpg';
+    public const MEDIA = 'https://res.cloudinary.com/burst/image/upload/v1594795887/FyMeLX68fF7Q_fjtbi1.png';
 
     public function __construct(public bool $withoutMedia = false) {}
 
