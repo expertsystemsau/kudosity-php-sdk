@@ -27,13 +27,19 @@ final readonly class SmsStatsData
     {
         $stats = $data['stats'] ?? $data;
 
+        // Live get-sms-stats.json (2026-08-07) has no 'sent' key at all — the
+        // real key is 'total' — and 'opt-outs' is hyphenated, not 'optouts'.
+        // delivered/pending/bounced/responses are already correct. The API
+        // also reports hard_bounced/soft_bounced/link_hits, which this DTO
+        // does not expose yet (2.1.0 work, not a rename of an existing
+        // field).
         return new self(
-            sent: (int) ($stats['sent'] ?? 0),
+            sent: (int) ($stats['total'] ?? $stats['sent'] ?? 0),
             delivered: (int) ($stats['delivered'] ?? 0),
             pending: (int) ($stats['pending'] ?? 0),
             bounced: (int) ($stats['bounced'] ?? 0),
             responses: (int) ($stats['responses'] ?? 0),
-            optouts: (int) ($stats['optouts'] ?? 0),
+            optouts: (int) ($stats['opt-outs'] ?? $stats['optouts'] ?? 0),
         );
     }
 

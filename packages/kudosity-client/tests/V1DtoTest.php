@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace ExpertSystems\Kudosity\Tests;
 
 use ExpertSystems\Kudosity\Data\BalanceData;
+use ExpertSystems\Kudosity\Data\BulkProgressData;
 use ExpertSystems\Kudosity\Data\ContactData;
 use ExpertSystems\Kudosity\Data\ListData;
 use ExpertSystems\Kudosity\Data\SmsData;
 use ExpertSystems\Kudosity\Data\SmsListData;
+use ExpertSystems\Kudosity\Data\SmsSentItemData;
 use ExpertSystems\Kudosity\Data\SmsStatsData;
 use InvalidArgumentException;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -20,10 +22,12 @@ use PHPUnit\Framework\TestCase;
  * Data\V2\* exclusively — zero class overlap with the V1 DTOs tested here.
  */
 #[CoversClass(BalanceData::class)]
+#[CoversClass(BulkProgressData::class)]
 #[CoversClass(ContactData::class)]
 #[CoversClass(ListData::class)]
 #[CoversClass(SmsData::class)]
 #[CoversClass(SmsListData::class)]
+#[CoversClass(SmsSentItemData::class)]
 #[CoversClass(SmsStatsData::class)]
 final class V1DtoTest extends TestCase
 {
@@ -211,14 +215,26 @@ final class V1DtoTest extends TestCase
 
     public function test_sms_stats_data_creates_from_stats_response(): void
     {
+        // The real key is 'total', not 'sent', and 'opt-outs' is hyphenated —
+        // confirmed live 2026-08-07 (get-sms-stats.json):
+        // {"stats":{"hard_bounced":0,"soft_bounced":0,"total":1,
+        //  "recipientCount":1,"delivered":1,"pending":0,"bounced":0,
+        //  "responses":0,"opt-outs":0,"link_hits":0}}
+        // Before this fix, fromResponse() read $stats['sent'] and
+        // $stats['optouts'] — both absent from the real shape — so $sent and
+        // $optouts were always 0 regardless of activity.
         $dto = SmsStatsData::fromResponse([
             'stats' => [
-                'sent' => 100,
+                'hard_bounced' => 0,
+                'soft_bounced' => 0,
+                'total' => 100,
+                'recipientCount' => 100,
                 'delivered' => 95,
                 'pending' => 3,
                 'bounced' => 2,
                 'responses' => 10,
-                'optouts' => 1,
+                'opt-outs' => 1,
+                'link_hits' => 0,
             ],
         ]);
 
@@ -233,12 +249,12 @@ final class V1DtoTest extends TestCase
     public function test_sms_stats_data_calculates_delivery_rate(): void
     {
         $dto = SmsStatsData::fromResponse([
-            'sent' => 100,
+            'total' => 100,
             'delivered' => 80,
             'pending' => 10,
             'bounced' => 10,
             'responses' => 5,
-            'optouts' => 0,
+            'opt-outs' => 0,
         ]);
 
         $this->assertSame(80.0, $dto->getDeliveryRate());
@@ -249,15 +265,100 @@ final class V1DtoTest extends TestCase
     public function test_sms_stats_data_handles_zero_sent_for_rate_calculations(): void
     {
         $dto = SmsStatsData::fromResponse([
-            'sent' => 0,
+            'total' => 0,
             'delivered' => 0,
             'pending' => 0,
             'bounced' => 0,
             'responses' => 0,
-            'optouts' => 0,
+            'opt-outs' => 0,
         ]);
 
         $this->assertSame(0.0, $dto->getDeliveryRate());
         $this->assertSame(0.0, $dto->getBounceRate());
+    }
+
+    // -----------------------------------------------------------------
+    // SmsSentItemData
+    // -----------------------------------------------------------------
+
+    /**
+     * Live get-message-report.json (2026-08-07) returns items keyed
+     * id/msisdn/sent_at, not message_id/mobile/send_at:
+     * {"type":"api","id":1718653641,"sms":1,"cost":-0.027,
+     *  "sent_at":"2026-08-07 18:36:00","status":"user cancelled",...,
+     *  "msisdn":61447514584}
+     * Before this fix, fromResponse() read the absent message_id/mobile/
+     * send_at keys — send_at is a non-nullable string constructor param, so
+     * the missing key was a fatal TypeError, not a caught KudosityException.
+     */
+    public function test_sms_sent_item_data_creates_from_message_report_row(): void
+    {
+        $dto = SmsSentItemData::fromResponse([
+            'type' => 'api',
+            'id' => 1718653641,
+            'sms' => 1,
+            'cost' => -0.027,
+            'sent_at' => '2026-08-07 18:36:00',
+            'status' => 'user cancelled',
+            'message' => 'DateTimeInterface scheduling check, cancelled immediately.',
+            'pending' => 0,
+            'delivered' => 0,
+            'msisdn' => 61447514584,
+        ]);
+
+        $this->assertSame(1718653641, $dto->messageId);
+        $this->assertSame('61447514584', $dto->mobile);
+        $this->assertSame('2026-08-07 18:36:00', $dto->sendAt);
+        $this->assertSame('user cancelled', $dto->status);
+    }
+
+    // -----------------------------------------------------------------
+    // BulkProgressData
+    // -----------------------------------------------------------------
+
+    /**
+     * The vendored kudosity-contacts-lists skill documents the real
+     * add-contacts-bulk-progress response:
+     * {"list_id":4214121,"status":"completed","importlength":2,
+     *  "completed":2,"duplicates":0,"skipped":0,"optout":0,"imported":2}
+     * Before this fix, total/processed read the absent total/processed keys
+     * (always 0), isComplete() compared against 'complete' (API says
+     * 'completed'), and isProcessing() compared against 'processing' (API
+     * says 'in progress') — so both predicates were always false and
+     * getProgressPercent() always divided by zero.
+     */
+    public function test_bulk_progress_data_creates_from_real_response_shape(): void
+    {
+        $dto = BulkProgressData::fromResponse([
+            'list_id' => 4214121,
+            'status' => 'completed',
+            'importlength' => 2,
+            'completed' => 2,
+            'duplicates' => 0,
+            'skipped' => 0,
+            'optout' => 0,
+            'imported' => 2,
+        ]);
+
+        $this->assertSame(4214121, $dto->listId);
+        $this->assertSame(2, $dto->total);
+        $this->assertSame(2, $dto->processed);
+        $this->assertTrue($dto->isComplete());
+        $this->assertFalse($dto->isProcessing());
+        $this->assertSame(100.0, $dto->getProgressPercent());
+    }
+
+    public function test_bulk_progress_data_reports_in_progress_status(): void
+    {
+        $dto = BulkProgressData::fromResponse([
+            'list_id' => 4214121,
+            'status' => 'in progress',
+            'importlength' => 10,
+            'completed' => 4,
+        ]);
+
+        $this->assertFalse($dto->isComplete());
+        $this->assertTrue($dto->isProcessing());
+        $this->assertSame(40.0, $dto->getProgressPercent());
     }
 }
