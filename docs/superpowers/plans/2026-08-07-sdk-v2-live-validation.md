@@ -2339,7 +2339,23 @@ cat > /home/mitchell/projects/kudosity-sdk-validation/order-notifier/run-on-82.s
 set -euo pipefail
 cd "$(dirname "$0")"
 
-docker run --rm -v "$PWD":/app -w /app php:8.2-cli bash -c '
+# THREE mounts are required, and the reason is not obvious:
+#   /app        the project itself
+#   /artifacts  because composer.lock's dist URL for the SDK is a RELATIVE path
+#               (../artifacts/...zip) which is invisible to a container that only
+#               mounts order-notifier
+#   /results    because `/app/../results` does NOT resolve back to the host.
+#               A bind mount does not carry its parent relationship across `..`;
+#               that path resolves on the CONTAINER's filesystem. Without this
+#               mount the run prints the right PHP version, reports every check
+#               PASS, exits 0 — and silently writes nothing, because
+#               file_put_contents only warns. The floor then appears tested while
+#               being untested. Found by running it, not by reading it.
+docker run --rm \
+  -v "$PWD":/app \
+  -v "$(dirname "$PWD")/artifacts":/artifacts:ro \
+  -v "$(dirname "$PWD")/results":/results \
+  -w /app php:8.2-cli bash -c '
   set -e
   apt-get update -qq && apt-get install -y -qq git unzip libzip-dev >/dev/null
   docker-php-ext-install zip >/dev/null 2>&1 || true
@@ -2388,7 +2404,7 @@ docker run --rm -v "$PWD":/app -w /app php:8.2-cli bash -c '
       try { \$out[] = [\"surface\" => \$name, \"expectation\" => \"works on PHP 8.2\", \"result\" => \"PASS\", \"detail\" => (string) \$fn(), \"evidence\" => []]; }
       catch (Throwable \$t) { \$out[] = [\"surface\" => \$name, \"expectation\" => \"works on PHP 8.2\", \"result\" => \"FAIL\", \"detail\" => get_class(\$t) . \": \" . \$t->getMessage(), \"evidence\" => []]; }
     }
-    file_put_contents(\"/app/../results/A-11-php82.json\", json_encode([\"scenario\" => \"11-php82\", \"php\" => PHP_VERSION, \"checks\" => \$out], JSON_PRETTY_PRINT) . PHP_EOL);
+    file_put_contents(\"/results/A-11-php82.json\", json_encode([\"scenario\" => \"11-php82\", \"php\" => PHP_VERSION, \"checks\" => \$out], JSON_PRETTY_PRINT) . PHP_EOL);
     foreach (\$out as \$r) { printf(\"  [%-7s] %s — %s\n\", \$r[\"result\"], \$r[\"surface\"], \$r[\"detail\"]); }
   "
 '
@@ -2396,7 +2412,7 @@ SCRIPT
 chmod +x /home/mitchell/projects/kudosity-sdk-validation/order-notifier/run-on-82.sh
 ```
 
-Note the results path: the container mounts `order-notifier` at `/app`, so `results/` is at `/app/../results`. Confirm the file lands by checking on the host afterwards, not by trusting the path.
+**The results path is the trap, and the obvious fix is wrong.** `/app/../results` does *not* reach the host: a bind mount does not carry its parent relationship across `..`, so that path resolves inside the container and the write is silently lost. Mount `results/` explicitly, as above. Always confirm on the host that the file exists and is valid JSON — the container exiting 0 proves nothing, because `file_put_contents` only warns on failure.
 
 - [ ] **Step 2: Run it**
 
