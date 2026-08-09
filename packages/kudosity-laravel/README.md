@@ -229,6 +229,23 @@ typed events. **The three V1 GET callback routes are unchanged** and still handl
 V1 sends — V2 has no per-send callback URL, so a send migrated from `bulk()` to
 `sms()` silently stops reporting until a webhook is registered.
 
+> **Register listeners once — not twice.** Laravel 11 and 12 auto-discover
+> class-based listeners in `app/Listeners`. If you *also* register them
+> explicitly with `Event::listen()`, every event is dispatched to your listener
+> **twice**, and for a webhook receiver that means duplicated rows and duplicated
+> side effects. Observed live during consumer validation: each delivery was
+> processed two times.
+>
+> Pick one. Either rely on discovery alone and drop the explicit calls, or keep
+> the explicit registration and disable discovery in `bootstrap/app.php`:
+>
+> ```php
+> ->withEvents(discover: false)
+> ```
+>
+> The closure listeners shown below are not affected — discovery only finds
+> class-based listeners. The hazard appears when you move to a listener class.
+
 ```php
 Event::listen(KudosityStatusReceived::class, function (KudosityStatusReceived $e) {
     // Deliveries are at-least-once AND unordered. A SENT redelivered 57 seconds
