@@ -9,6 +9,7 @@ use ExpertSystems\Kudosity\Data\BulkProgressData;
 use ExpertSystems\Kudosity\Data\ContactData;
 use ExpertSystems\Kudosity\Data\ContactSmsStatsData;
 use ExpertSystems\Kudosity\Data\ListData;
+use ExpertSystems\Kudosity\Data\MessageReportData;
 use ExpertSystems\Kudosity\Data\SmsData;
 use ExpertSystems\Kudosity\Data\SmsListData;
 use ExpertSystems\Kudosity\Data\SmsSentItemData;
@@ -28,6 +29,7 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(ContactData::class)]
 #[CoversClass(ContactSmsStatsData::class)]
 #[CoversClass(ListData::class)]
+#[CoversClass(MessageReportData::class)]
 #[CoversClass(SmsData::class)]
 #[CoversClass(SmsListData::class)]
 #[CoversClass(SmsSentItemData::class)]
@@ -391,7 +393,12 @@ final class V1DtoTest extends TestCase
     public function test_contact_sms_stats_data_throws_on_the_real_paginated_response_shape(): void
     {
         $this->expectException(KudosityException::class);
-        $this->expectExceptionMessageMatches('/cannot represent/');
+        // The message must be self-sufficient for a caller who has never
+        // read this DTO's source: what the endpoint actually returns, why
+        // this DTO can't represent it, and where aggregate stats are headed.
+        $this->expectExceptionMessageMatches('/paginated.*per-message record/i');
+        $this->expectExceptionMessageMatches('/ContactSmsStatsData/');
+        $this->expectExceptionMessageMatches('/2\.1\.0/');
 
         ContactSmsStatsData::fromResponse([
             'page' => ['count' => 3, 'number' => 1],
@@ -401,6 +408,54 @@ final class V1DtoTest extends TestCase
             ],
             'error' => ['code' => 'SUCCESS', 'description' => 'OK'],
         ]);
+    }
+
+    /**
+     * A 'records' key alone (no 'page'/'total' alongside it) is not enough
+     * to conclude this is the real shape — require all three, matching the
+     * live signature exactly, so a hypothetical future response that merely
+     * happens to carry an unrelated 'records' field is not misclassified.
+     */
+    public function test_contact_sms_stats_data_requires_the_full_paginated_signature_to_throw(): void
+    {
+        $dto = ContactSmsStatsData::fromResponse([
+            'mobile' => '61491570006',
+            'records' => 'unrelated field, not the paginated shape',
+            'stats' => ['sent' => 5, 'delivered' => 5, 'pending' => 0, 'bounced' => 0, 'responses' => 0, 'optouts' => 0],
+        ]);
+
+        $this->assertSame(5, $dto->sent);
+    }
+
+    // -----------------------------------------------------------------
+    // MessageReportData
+    // -----------------------------------------------------------------
+
+    /**
+     * Live get-message-report.json (2026-08-07/2026-08-10) has no
+     * 'total_count' key — the real account-wide total is reported under
+     * 'messages_total' (and duplicated under 'sms_total'):
+     * {"page":{"count":2,"number":1},"messages_total":12,"sms_total":12,
+     *  "messages":[...9 items on this page...]}
+     * Before this fix, totalCount fell back to count($messages) — the
+     * current PAGE's item count (9), not the account-wide total (12) —
+     * silently substituting a page count for a total.
+     */
+    public function test_message_report_data_reads_the_real_total_key(): void
+    {
+        $dto = MessageReportData::fromResponse([
+            'page' => ['count' => 2, 'number' => 1],
+            'messages_total' => 12,
+            'sms_total' => 12,
+            'messages' => array_fill(0, 9, [
+                'id' => 1, 'msisdn' => '61491570006', 'sent_at' => '2026-08-07 00:00:00', 'status' => 'completed',
+            ]),
+        ]);
+
+        $this->assertSame(12, $dto->totalCount);
+        $this->assertSame(2, $dto->pageCount);
+        $this->assertSame(1, $dto->page);
+        $this->assertCount(9, $dto->messages);
     }
 
     public function test_contact_sms_stats_data_still_parses_the_documented_shape(): void

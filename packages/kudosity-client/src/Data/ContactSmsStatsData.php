@@ -39,11 +39,18 @@ final readonly class ContactSmsStatsData
      */
     public static function fromResponse(array $data): self
     {
-        if (isset($data['records']) && ! isset($data['mobile'])) {
+        // Match the real live signature precisely (page + total + records,
+        // no mobile) rather than inferring from one absent/present key, so a
+        // response that merely lacks 'mobile' for some other reason is not
+        // misclassified.
+        if (isset($data['page'], $data['total'], $data['records']) && ! isset($data['mobile'])) {
             throw new KudosityException(
-                'get-contact-sms-stats.json returned a response shape ContactSmsStatsData cannot represent '.
-                '(a paginated list of per-message records, not aggregate contact stats). '.
-                'This is a known API/SDK mismatch; see ContactSmsStatsData\'s class docblock.'
+                'get-contact-sms-stats.json returned a paginated list of per-message delivery records '.
+                '({page, total, records[]}) — not the {mobile, stats:{sent,delivered,...}} shape '.
+                'ContactSmsStatsData models. This DTO cannot represent that shape: turning it into aggregate '.
+                'stats means paging through records[] and counting by delivery_status, which is a paginated '.
+                'reader planned for 2.1.0, not a field rename this DTO can absorb. There is no workaround '.
+                'through this SDK today — getContactStats() will throw on every real call until that redesign ships.'
             );
         }
 
