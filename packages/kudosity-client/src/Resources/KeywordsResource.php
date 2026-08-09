@@ -31,7 +31,7 @@ class KeywordsResource extends Resource
         $request = new AddKeywordRequest($keyword, $number);
 
         /** @var KeywordData */
-        return $this->connector->send($request)->dtoOrFail();
+        return $this->sendAndDto($request);
     }
 
     /**
@@ -44,7 +44,7 @@ class KeywordsResource extends Resource
     public function addRequest(AddKeywordRequest $request): KeywordData
     {
         /** @var KeywordData */
-        return $this->connector->send($request)->dtoOrFail();
+        return $this->sendAndDto($request);
     }
 
     /**
