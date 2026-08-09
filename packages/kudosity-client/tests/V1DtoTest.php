@@ -7,11 +7,13 @@ namespace ExpertSystems\Kudosity\Tests;
 use ExpertSystems\Kudosity\Data\BalanceData;
 use ExpertSystems\Kudosity\Data\BulkProgressData;
 use ExpertSystems\Kudosity\Data\ContactData;
+use ExpertSystems\Kudosity\Data\ContactSmsStatsData;
 use ExpertSystems\Kudosity\Data\ListData;
 use ExpertSystems\Kudosity\Data\SmsData;
 use ExpertSystems\Kudosity\Data\SmsListData;
 use ExpertSystems\Kudosity\Data\SmsSentItemData;
 use ExpertSystems\Kudosity\Data\SmsStatsData;
+use ExpertSystems\Kudosity\Exceptions\KudosityException;
 use InvalidArgumentException;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -24,6 +26,7 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(BalanceData::class)]
 #[CoversClass(BulkProgressData::class)]
 #[CoversClass(ContactData::class)]
+#[CoversClass(ContactSmsStatsData::class)]
 #[CoversClass(ListData::class)]
 #[CoversClass(SmsData::class)]
 #[CoversClass(SmsListData::class)]
@@ -360,5 +363,62 @@ final class V1DtoTest extends TestCase
         $this->assertFalse($dto->isComplete());
         $this->assertTrue($dto->isProcessing());
         $this->assertSame(40.0, $dto->getProgressPercent());
+    }
+
+    // -----------------------------------------------------------------
+    // ContactSmsStatsData
+    // -----------------------------------------------------------------
+
+    /**
+     * Live get-contact-sms-stats.json (2026-08-07, confirmed again live
+     * 2026-08-10) does not return the {mobile, stats:{sent,delivered,...}}
+     * shape this DTO models at all — it returns a paginated list of
+     * per-message delivery receipts:
+     * {"page":{"count":3,"number":1},"total":27,
+     *  "records":[{"message_id":1528493890,"datetime_send":"2025-12-05
+     *  15:24:57","delivery_status":"delivered"}, ...],
+     *  "error":{"code":"SUCCESS","description":"OK"}}
+     * Before this fix, every field silently defaulted (mobile="", every
+     * count 0) regardless of real account history — confirmed live against
+     * a contact with 27 real delivered messages on record. Silent wrong
+     * data is worse than an error: a consumer reads "no activity" for a
+     * contact who plainly has some. This is not a one-word rename like the
+     * other DTOs in this class — correctly representing records[] needs
+     * aggregation logic this DTO does not have (2.1.0 work) — so the patch
+     * fix is to fail loudly on the shape it cannot represent instead of
+     * lying about it.
+     */
+    public function test_contact_sms_stats_data_throws_on_the_real_paginated_response_shape(): void
+    {
+        $this->expectException(KudosityException::class);
+        $this->expectExceptionMessageMatches('/cannot represent/');
+
+        ContactSmsStatsData::fromResponse([
+            'page' => ['count' => 3, 'number' => 1],
+            'total' => 27,
+            'records' => [
+                ['message_id' => 1528493890, 'datetime_send' => '2025-12-05 15:24:57', 'delivery_status' => 'delivered'],
+            ],
+            'error' => ['code' => 'SUCCESS', 'description' => 'OK'],
+        ]);
+    }
+
+    public function test_contact_sms_stats_data_still_parses_the_documented_shape(): void
+    {
+        $dto = ContactSmsStatsData::fromResponse([
+            'mobile' => '61491570006',
+            'stats' => [
+                'sent' => 10,
+                'delivered' => 9,
+                'pending' => 0,
+                'bounced' => 1,
+                'responses' => 2,
+                'optouts' => 0,
+            ],
+        ]);
+
+        $this->assertSame('61491570006', $dto->mobile);
+        $this->assertSame(10, $dto->sent);
+        $this->assertSame(9, $dto->delivered);
     }
 }
