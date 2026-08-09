@@ -3336,7 +3336,11 @@ it('throws rather than sending V2 traffic to the V1 host when base_url is a stal
     app()->forgetInstance(KudosityClient::class);
 
     app(KudosityV2Connector::class);
-})->throws(Throwable::class);
+})->throws(RuntimeException::class);
+// NOT ->throws(Throwable::class): Pest resolves that argument with class_exists(),
+// which is FALSE for an interface, so it silently degrades to matching the
+// exception *message* against the string "Throwable" and fails. Name the
+// concrete class the guard actually throws.
 
 it('exposes the four notification channels', function () {
     $manager = app(Illuminate\Notifications\ChannelManager::class);
