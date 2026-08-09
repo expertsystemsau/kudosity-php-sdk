@@ -99,6 +99,11 @@ webhook transport needs:
   `mo.content_urls`, which is the *outbound* shape and is absent from a real
   `MMS_INBOUND`. Payloads run to hundreds of KB, carry no content type, and
   arrive with no `last_message` — so an MMS reply has no correlation key.
+  **And `last_message` on an SMS reply names the most recent outbound to that
+  number, not the message being answered** — verified live 2026-08-09, where a
+  reply to an SMS came back pointing at an MMS sent moments later. Reply
+  correlation is therefore only reliable when a recipient has one outstanding
+  message; see the fixture README.
 
 **When writing anything that reads a webhook payload, read
 `packages/kudosity-client/tests/Fixtures/V2Webhooks/README.md` first.** The fixtures are real captured
