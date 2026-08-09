@@ -46,7 +46,7 @@ class ReportingResource extends Resource
         $request = new GetSmsRequest($messageId);
 
         /** @var MessageData */
-        return $this->connector->send($request)->dtoOrFail();
+        return $this->sendAndDto($request);
     }
 
     /**
@@ -62,7 +62,7 @@ class ReportingResource extends Resource
         $request = new GetSmsDeliveryStatusRequest($messageId, $mobile);
 
         /** @var DeliveryStatusData */
-        return $this->connector->send($request)->dtoOrFail();
+        return $this->sendAndDto($request);
     }
 
     /**
@@ -77,7 +77,7 @@ class ReportingResource extends Resource
         $request = new GetSmsStatsRequest($messageId);
 
         /** @var SmsStatsData */
-        return $this->connector->send($request)->dtoOrFail();
+        return $this->sendAndDto($request);
     }
 
     /**
@@ -103,7 +103,7 @@ class ReportingResource extends Resource
         }
 
         /** @var SmsSentCountData */
-        return $this->connector->send($request)->dtoOrFail();
+        return $this->sendAndDto($request);
     }
 
     /**
@@ -165,7 +165,7 @@ class ReportingResource extends Resource
         $request = new GetMessageReportRequest($start, $end);
 
         /** @var MessageReportData */
-        return $this->connector->send($request)->dtoOrFail();
+        return $this->sendAndDto($request);
     }
 
     /**
@@ -178,7 +178,7 @@ class ReportingResource extends Resource
     public function getMessageReportRequest(GetMessageReportRequest $request): MessageReportData
     {
         /** @var MessageReportData */
-        return $this->connector->send($request)->dtoOrFail();
+        return $this->sendAndDto($request);
     }
 
     /**
@@ -200,7 +200,7 @@ class ReportingResource extends Resource
         }
 
         /** @var ContactSmsStatsData */
-        return $this->connector->send($request)->dtoOrFail();
+        return $this->sendAndDto($request);
     }
 
     /**
@@ -213,7 +213,7 @@ class ReportingResource extends Resource
     public function getContactStatsRequest(GetContactSmsStatsRequest $request): ContactSmsStatsData
     {
         /** @var ContactSmsStatsData */
-        return $this->connector->send($request)->dtoOrFail();
+        return $this->sendAndDto($request);
     }
 
     /**
