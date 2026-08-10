@@ -12,6 +12,7 @@ use ExpertSystems\Kudosity\KudosityV2Connector;
 use ExpertSystems\Kudosity\Laravel\Console\Commands\WebhookDeleteCommand;
 use ExpertSystems\Kudosity\Laravel\Console\Commands\WebhookInstallCommand;
 use ExpertSystems\Kudosity\Laravel\Console\Commands\WebhookListCommand;
+use ExpertSystems\Kudosity\Laravel\Console\Commands\WebhookSyncCommand;
 use ExpertSystems\Kudosity\Laravel\Notifications\KudosityChannel;
 use ExpertSystems\Kudosity\Laravel\Notifications\KudosityMmsChannel;
 use ExpertSystems\Kudosity\Laravel\Notifications\KudosityRcsChannel;
@@ -129,6 +130,7 @@ class KudosityServiceProvider extends ServiceProvider
             $this->commands([
                 WebhookListCommand::class,
                 WebhookInstallCommand::class,
+                WebhookSyncCommand::class,
                 WebhookDeleteCommand::class,
             ]);
 

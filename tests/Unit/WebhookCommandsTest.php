@@ -271,10 +271,11 @@ it('exits non-zero when the registration does not exist', function () {
 // Registration
 // ---------------------------------------------------------------------------
 
-it('registers all three commands', function () {
+it('registers all four commands', function () {
     $commands = array_keys(app(Kernel::class)->all());
 
     expect($commands)->toContain('kudosity:webhook:list')
         ->and($commands)->toContain('kudosity:webhook:install')
+        ->and($commands)->toContain('kudosity:webhook:sync')
         ->and($commands)->toContain('kudosity:webhook:delete');
 });
