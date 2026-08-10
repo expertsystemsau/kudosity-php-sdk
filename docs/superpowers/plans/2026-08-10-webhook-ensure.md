@@ -2009,9 +2009,11 @@ it('succeeds and says nothing changed when the registration is already correct',
         ->assertExitCode(0);
 });
 
-it('prints both the previous and the new URL on a repair', function () {
-    // An Updated result means something drifted, and the operator cannot tell
-    // what without seeing the URL that was replaced.
+it('prints the resulting URL on a repair', function () {
+    // An Updated result means something drifted, and the operator needs to see
+    // what the registration now points at. Only the new URL is available —
+    // EnsureResult carries no pre-update DTO — so this asserts exactly that and
+    // does not claim to show what was replaced.
     fakeWebhooks()->shouldReceive('ensure')->once()->andReturn(
         new EnsureResult(EnsureAction::Updated, fakeHook(['url' => 'https://app.example.com/webhooks/kudosity/events?s=NEW'])),
     );
@@ -2163,10 +2165,15 @@ class WebhookSyncCommand extends Command
 
         match ($result->action) {
             EnsureAction::Created => $this->components->info("Created webhook {$hook?->id}"),
-            // Both URLs, because an operator seeing "Updated" cannot otherwise tell
-            // what drifted — a rotated signing key looks identical to a moved route.
+            // The resulting URL, so an operator seeing "Updated" can at least
+            // confirm what the registration now points at. The PREVIOUS url is
+            // not available to print: EnsureResult carries only the post-write
+            // DTO, so nothing here knows what it replaced. Printing the old one
+            // would mean widening EnsureResult, which is not worth it — the
+            // action plus the new URL is enough to tell a rotated signing key
+            // (same path, different query) from a moved route (different path).
             EnsureAction::Updated => $this->components->info(
-                "Repaired webhook {$hook?->id}\n  Now: ".($hook?->url ?? '')
+                "Repaired webhook {$hook?->id}\n  Now: ".($hook->url ?? '')
             ),
             EnsureAction::Unchanged => $this->components->info("Webhook {$hook?->id} is already correct"),
             // Unreachable from this command, which passes no fingerprint store.
