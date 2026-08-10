@@ -286,12 +286,24 @@ To establish that a delivery refers to one of *your* entities, sign the
 ```bash
 php artisan kudosity:webhook:list
 
-# Registers a webhook pointing at this app's own receiver route, signed.
+# The declarative one — put this in your deploy script. Running it twice
+# registers one webhook, not two.
+php artisan kudosity:webhook:sync
+
+# The imperative one-shot, for registering an ADDITIONAL, differently filtered
+# webhook. Creates a new registration every time it runs.
 php artisan kudosity:webhook:install --event=SMS_STATUS --event=SMS_INBOUND
 php artisan kudosity:webhook:install --name="Prod events" --rate-limit=250
 
 php artisan kudosity:webhook:delete {id} --force
 ```
+
+`sync` is idempotent and repairs drift `install` cannot see: rotating
+`KUDOSITY_SIGNING_KEY` or `APP_KEY`, changing `kudosity.webhooks.prefix`, or
+moving `APP_URL` all leave a registration that still receives deliveries the
+receiver then rejects with a 403 — and Kudosity has no channel to tell you your
+endpoint is refusing them. It reports duplicate registrations pointing at the
+same receiver without deleting any of them.
 
 `install` rejects an unrecognised `--event` rather than registering a webhook that
 would deliver nothing. Omit `--event` entirely to receive all ten types.
@@ -300,6 +312,30 @@ would deliver nothing. Omit `--event` entirely to receive all ten types.
 permitted only when `APP_ENV=local` — local development often has no TLS and the
 traffic never leaves the machine — and the command warns when it takes that path.
 Anywhere else, a plaintext `APP_URL` is refused with an explanation.
+
+### Only permitted environments may write
+
+`sync`, `install` and `delete` all write account-level registrations, and they
+refuse to run outside `kudosity.webhooks.sync.environments`, which defaults to
+`['production']`. **This is new in 2.3.0 and changes behaviour for existing
+setups**: an `install` you used to run from staging now refuses.
+
+Registrations belong to the *account*, not the app. If one Kudosity account
+backs several environments, a webhook registered from staging receives the
+whole account's events — every production delivery receipt and inbound reply,
+message bodies and phone numbers included. When those environments also share a
+sender, no webhook filter can partition that traffic.
+
+The list **fails closed**: an empty list, or a config published before this
+feature existed and therefore missing the key entirely, refuses every
+environment. There is no command-line override, and `--force` on `delete` still
+only skips the confirmation prompt. `kudosity:webhook:list` is read-only and
+stays ungated.
+
+If several of your deployments share one Kudosity account and sender, each
+receiver will be delivered events for messages the others sent. Write listeners
+that treat an unrecognised `message_ref` as ordinary rather than an error worth
+alerting on.
 
 ## DLR & Reply Callbacks
 
