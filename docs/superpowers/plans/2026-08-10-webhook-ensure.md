@@ -125,7 +125,7 @@ final class V2WebhookIdentityTest extends TestCase
         $this->assertNotSame(WebhookIdentity::of($a), WebhookIdentity::of($b));
     }
 
-    public function test_an_unparseable_url_never_matches_anything_including_itself_reparsed_differently(): void
+    public function test_an_unparseable_url_falls_back_to_itself_and_matches_no_real_endpoint(): void
     {
         // A registration made by another tool can hold anything at all. Falling back
         // to the raw string means such a row simply never matches ours, which is the
@@ -354,7 +354,9 @@ final class V2WebhookEnsureTest extends TestCase
         $this->assertSame(EnsureAction::Created, $result->action);
         $this->assertSame('wh_1', $result->webhook?->id);
         $this->assertSame([], $result->duplicates);
-        $this->assertSame(2, $mock->getRecordedResponses() === [] ? 2 : count($mock->getRecordedResponses()));
+        // A create was actually issued, rather than the list response being
+        // mistaken for one.
+        $this->assertSame('POST', $mock->getLastPendingRequest()?->getMethod()->value);
     }
 
     public function test_does_nothing_when_the_registration_already_matches(): void
