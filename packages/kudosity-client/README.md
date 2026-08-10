@@ -549,10 +549,21 @@ query, `CallbackUrlParser::parse()` skips signature verification entirely, and
 your receiver is then open to anyone who guesses the path — the default is
 documented.
 
-**`ensure()` repairs, it does not just create.** Rotating your signing key,
-changing your route prefix or moving hosts leaves a registration that still
-exists and still receives deliveries, every one of which your receiver rejects.
-Nothing reports that back to you, which is why a presence check is not enough.
+**`ensure()` repairs, it does not just create — but only some drift is repaired
+in place.** Rotating your signing key or changing the subscribed event set
+updates the existing registration and keeps its id, which is why a presence
+check is not enough: both leave a registration that still exists and still
+receives deliveries, every one of which your receiver rejects, with nothing to
+report that back to you. Changing your route prefix or moving hosts is
+different — the path and host are part of the registration's identity
+(see `WebhookIdentity`), so the old registration becomes a **different
+endpoint**. `ensure()` then registers a new one and leaves the old one running:
+nothing here deletes, and the stale registration will not appear in
+`$result->duplicates` either, since that only reports registrations sharing the
+*current* identity. Those old deliveries 404 — the path no longer routes — not
+the 403 a stale signature produces on a path that still routes. Call
+`$client->webhooks()->all()` afterwards and remove the stale one with
+`delete()`.
 
 To skip the `GET` on hot paths, pass a fingerprint store:
 
@@ -566,10 +577,15 @@ $result = $client->webhooks()->ensure(
 );
 ```
 
-The store is only an optimisation — a missing or stale entry costs one `GET`,
-never a wrong registration. `action` is then `skipped` and `webhook` is `null`,
-because nothing was read. Implement `WebhookFingerprintStore` yourself to back
-it with a PSR-16 cache or anything else.
+The store records that **you** already reconciled this desired state — it says
+nothing about what the account currently holds. If the registration is deleted
+or edited in the dashboard while the fingerprint stays valid, `ensure()` skips
+and reports success without noticing. Pass no store unless your own deploy
+pipeline is the only thing that can change the registration; a *differing* or
+corrupt entry still costs only one `GET`, never a wrong write. `action` is then
+`skipped` and `webhook` is `null`, because nothing was read. Implement
+`WebhookFingerprintStore` yourself to back it with a PSR-16 cache or anything
+else.
 
 **No CLI at all?** Put the same call behind a signed query parameter on the
 receiver you already deploy, and hit it once in a browser.

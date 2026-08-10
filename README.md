@@ -266,10 +266,18 @@ php artisan kudosity:webhook:sync
 
 Put this in your deploy script alongside `migrate`. It is idempotent — running
 it twice registers one webhook, not two — and it repairs drift that a presence
-check cannot see: rotating `KUDOSITY_SIGNING_KEY` or `APP_KEY`, changing
-`kudosity.webhooks.prefix`, or moving `APP_URL` all leave a registration that
-still receives deliveries the receiver then rejects with a 403 nothing reports
-back to you.
+check cannot see, but only some of it in place. Rotating `KUDOSITY_SIGNING_KEY`
+or `APP_KEY` updates the existing registration and keeps its id: without this,
+it keeps receiving deliveries the receiver then rejects with a 403, and nothing
+reports that back to you. Changing `kudosity.webhooks.prefix` or moving
+`APP_URL` is different — the path and host are part of the registration's
+identity, so the old one becomes a **different endpoint**. `sync` registers a
+new webhook for it and leaves the old one running: nothing here deletes, and
+the stale registration will not appear in the duplicate warning either, since
+that only covers registrations sharing the *current* identity. Those old
+deliveries 404 (the path no longer routes) rather than 403 (a stale signature
+on a path that still routes). Run `kudosity:webhook:list` after either change
+and remove the stale row with `kudosity:webhook:delete`.
 
 `kudosity:webhook:install` remains the imperative one-shot, for registering an
 additional, differently-filtered webhook.

@@ -50,8 +50,15 @@ must never make it easy to register a URL without the handler marker.
 
 1. Calling `ensure()` N times with the same arguments leaves exactly one
    registration and issues exactly one write (on the first call).
-2. Each of the four drift triggers above is detected and repaired in place,
-   preserving the registration id.
+2. Each of the four drift triggers above is detected and converged. A rotated
+   signing key and a changed event set are **repaired in place**, preserving
+   the registration id. A changed route prefix and a moved `APP_URL` are not —
+   the path and host are part of the registration's identity (see the identity
+   row below), so either one makes the old registration a different endpoint.
+   Convergence there means registering a new webhook and leaving the old one
+   alone, consistent with the decisions table below ("registrations we don't
+   own … never touched"): the SDK cannot tell "our old prefix" apart from
+   another app's registration on the same account.
 3. A registration belonging to a different host or a different path is never
    modified and never deleted.
 4. A raw-PHP consumer registers in under ten lines, with no console framework,
@@ -68,7 +75,7 @@ must never make it easy to register a URL without the handler marker.
 
 | Question | Decision | Reason |
 |---|---|---|
-| How is "our" registration identified? | Normalised **scheme + host + path**; query string ignored, host lower-cased, trailing slash stripped | The signature lives in the query and is precisely the part that drifts, so it cannot be part of identity. `name` is user-editable in the dashboard. Matching by `id` would force the SDK to demand local persistence. |
+| How is "our" registration identified? | Normalised **scheme + userinfo + host + port + path**; query string ignored, host lower-cased, trailing slash stripped, default port dropped, password reduced to a `:***` marker | The signature lives in the query and is precisely the part that drifts, so it cannot be part of identity. `name` is user-editable in the dashboard. Matching by `id` would force the SDK to demand local persistence. Userinfo is included, not just host and path: without it, a credentialed foreign registration (`https://user:token@host/path`) would match an uncredentialed identity and let `ensure()` `PUT` over someone else's webhook. |
 | How is drift repaired? | `PUT` replace with the whole shape | The API has no `PATCH`; `update()` already replaces (`WebhooksResource:100`) |
 | Delete-and-recreate instead? | No | Loses the id, and drops every delivery in the gap |
 | Registrations we don't own | Never touched, not even reported as a problem | One account legitimately serves many apps |
@@ -172,8 +179,13 @@ because raw PHP is exactly the audience with no cache library.
 Fingerprint: `sha256` over `name | url | sorted event types | rateLimit`. The
 key is the normalised identity, so one file can serve several registrations.
 
-**The store decides only whether to skip the list request. It is never
-authoritative** — a missing or stale file costs one GET, never a wrong outcome.
+**The store decides only whether to skip the list request.** It records that
+*you* already reconciled this desired state — it says nothing about what the
+account currently holds, so a registration deleted or edited in the dashboard
+behind an unchanged fingerprint skips silently and is never repaired. Pass no
+store unless your own deploy pipeline is the only thing that can change the
+registration. A missing, stale or corrupt file still costs only one GET and can
+never produce a wrong write.
 
 ### 3. `kudosity:webhook:sync` — Laravel
 
@@ -293,7 +305,8 @@ with `MockClient` sequences:
 - **the environment gate refuses in `staging` and issues zero HTTP requests**,
   and its message names the shared-account reason
 - the gate applies equally to `install` and `delete`
-- an `Updated` result prints both the previous and the new URL
+- an `Updated` result prints the new URL (`EnsureResult` carries no pre-update
+  DTO, so the previous URL is not available to print)
 - **round trip: the URL `sync` registers passes `WebhookController::events()`
   verification.** This is the assertion the whole design exists for — if it ever
   fails, deliveries 403 in silence.
@@ -347,9 +360,9 @@ number can express the partition without a change here.
 
 ### What the gate does not cover
 
-The environment gate is the only control, so its residual risks are the design's
-residual risks, and both share one root cause — the environment lying about
-itself:
+The environment gate is the only control, so its residual risks are the
+design's residual risks. Two of them share one root cause — the environment
+lying about itself:
 
 - A staging box with `APP_ENV=production` in a copied `.env` passes the gate and
   registers.
@@ -359,6 +372,16 @@ Neither is detectable from inside the SDK: an app asserting it is production,
 with production's `APP_URL`, is indistinguishable from production. Accepted
 rather than mitigated, and recorded here so it is a known limit rather than a
 surprise.
+
+A third is unrelated: `Kudosity::webhooks()->create()`/`update()`/`delete()`/
+`ensure()`, called directly from application code, never reaches the gate at
+all. The facade proxies straight to the framework-agnostic client package,
+which cannot know what environment it is running in — the same split
+`allowInsecureUrl` already lives with, and for the same reason. `create()` and
+`delete()` were reachable this way before this branch, so this is not a
+regression introduced here, and `ensure()` is in fact the safer member of that
+set: idempotent, and it never deletes. This is a gap in this residual-risk
+list, not a missing control.
 
 ### The inverse exposure, which no gate fixes
 
@@ -388,8 +411,10 @@ by staging's key. Production callbacks then 403 in silence, which is the exact
 failure this design exists to prevent, caused by the tool meant to prevent it.
 
 The fail-closed environment gate is the control: staging cannot reach the write
-at all. This is why the gate has no `--force` override, and why `sync` prints
-the resolved URL and the previous URL on every `Updated` result.
+at all. This is why the gate has no `--force` override. (`sync` prints only the
+resolved URL on an `Updated` result — `EnsureResult` carries no pre-update DTO,
+so there is no previous URL to print alongside it; the gate is what carries
+this mitigation, not the output.)
 
 ## Files
 

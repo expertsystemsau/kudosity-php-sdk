@@ -156,10 +156,15 @@ it('registers a URL the receiver actually accepts', function () {
     ])->assertOk();
 });
 
-it('would be rejected by the receiver if the signature were stripped', function () {
+it('would be rejected by the receiver if the whole query were stripped', function () {
     // The complement, and the reason the round trip above is meaningful rather
-    // than tautological: the receiver really does refuse an unsigned URL, so the
-    // test above is asserting the signature works and not that the route is open.
+    // than tautological: the receiver really does refuse a request missing its
+    // signature, so the test above is asserting the signature works and not
+    // that the route is open. This strips the WHOLE query — both `h` and `s` —
+    // and WebhookController::events() (:88-90) requires both to be present, so
+    // either one missing alone would 403 the same way; this test does not by
+    // itself prove the HMAC is checked, only that it is required. The test
+    // below is the truer complement for that.
     $captured = null;
 
     fakeWebhooks()->shouldReceive('ensure')->once()->withArgs(function (...$args) use (&$captured) {
@@ -173,4 +178,27 @@ it('would be rejected by the receiver if the signature were stripped', function 
     $path = (string) parse_url((string) $captured, PHP_URL_PATH);
 
     $this->postJson($path, ['event_type' => 'SMS_STATUS'])->assertStatus(403);
+});
+
+it('would be rejected by the receiver if only the signature were tampered', function () {
+    // The truer complement: `h` stays present, only `s` is corrupted, so this
+    // exercises CallbackUrlParser's HMAC verification itself rather than the
+    // presence guard the test above covers. Nothing else in this suite proves
+    // the signature is actually checked rather than merely required to exist.
+    $captured = null;
+
+    fakeWebhooks()->shouldReceive('ensure')->once()->withArgs(function (...$args) use (&$captured) {
+        $captured = $args[1];
+
+        return true;
+    })->andReturn(new EnsureResult(EnsureAction::Created, fakeHook()));
+
+    $this->artisan('kudosity:webhook:sync')->assertExitCode(0);
+
+    $path = (string) parse_url((string) $captured, PHP_URL_PATH);
+    parse_str((string) parse_url((string) $captured, PHP_URL_QUERY), $query);
+    $query['s'] = 'deadbeef';
+
+    $this->postJson($path.'?'.http_build_query($query), ['event_type' => 'SMS_STATUS'])
+        ->assertStatus(403);
 });

@@ -172,7 +172,7 @@ final class V2WebhookEnsureTest extends TestCase
         $this->assertSame('PUT', $mock->getLastPendingRequest()?->getMethod()->value);
     }
 
-    public function test_repairs_a_changed_route_prefix(): void
+    public function test_registers_a_new_webhook_when_the_route_prefix_changes(): void
     {
         // A different path is a different identity, so this registers rather than
         // updating — the old one is left alone for a human to delete, because

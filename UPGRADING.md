@@ -478,11 +478,30 @@ V1 host — silently ignoring it would send every V2 request to the wrong API. T
 codemod rewrites `TRANSMITSMS_BASE_URL` to `KUDOSITY_BASE_URL_V1` and
 `config('kudosity.base_url')` to `config('kudosity.base_url.v1')`.
 
-New keys, all optional: `country_code`, `mms.sender`, `whatsapp.sender`,
-`rcs.agent_id`, and `webhooks.events.{enabled,path}`. Each channel needs its own
+New keys: `country_code`, `mms.sender`, `whatsapp.sender`, `rcs.agent_id`, and
+`webhooks.events.{enabled,path}` are optional. Each channel needs its own
 sender because they are not the same kind of value — an alphanumeric sender that
 works for SMS is not a valid MMS sender, and an RCS sender is an *agent ID*
 rather than a number at all.
+
+`webhooks.sync.environments` is not optional — it is **required for
+`kudosity:webhook:sync`, `:install` and `:delete`**, which now refuse to write
+in any environment absent from it, with no override flag. `mergeConfigFrom()` is
+a single-level `array_merge`: your already-published `config/kudosity.php`
+supplies the *whole* `webhooks` array, so the merge never reaches in to add the
+new `sync` sub-key to it. That is deliberate, the same as `base_url` above — an
+absent list fails closed rather than silently permitting writes from every
+environment — but it means the three commands refuse everywhere, production
+included, until you add the key yourself:
+
+```php
+'webhooks' => [
+    // ...your existing webhooks config...
+    'sync' => [
+        'environments' => ['production'],
+    ],
+],
+```
 
 ### `KudosityChannel::send()` returns `SentMessage`
 
@@ -533,9 +552,13 @@ Two things worth knowing before you write a listener:
   at-least-once. Use `Webhooks\StatusPrecedence::supersedes()`; a listener that
   writes unconditionally will corrupt its own delivery reporting.
 - **The route is authenticated by its unguessable URL only**, because V2
-  deliveries carry no signature. Register it with
-  `kudosity:webhook:install`, or build the URL through `CallbackUrlBuilder` —
-  a request without a valid signature gets a 403.
+  deliveries carry no signature. Register it with `kudosity:webhook:sync` —
+  idempotent, and the one to put in a deploy script — or the imperative
+  `kudosity:webhook:install` for an additional, differently-filtered webhook.
+  Both build the URL through `CallbackUrlBuilder`; a request without a valid
+  signature gets a 403. Both also refuse to run outside
+  `webhooks.sync.environments` (see above) — add that key before scripting
+  either into a deploy.
 
 ## For maintainers
 

@@ -298,15 +298,31 @@ php artisan kudosity:webhook:install --name="Prod events" --rate-limit=250
 php artisan kudosity:webhook:delete {id} --force
 ```
 
-`sync` is idempotent and repairs drift `install` cannot see: rotating
-`KUDOSITY_SIGNING_KEY` or `APP_KEY`, changing `kudosity.webhooks.prefix`, or
-moving `APP_URL` all leave a registration that still receives deliveries the
-receiver then rejects with a 403 — and Kudosity has no channel to tell you your
-endpoint is refusing them. It reports duplicate registrations pointing at the
+`sync` is idempotent and repairs drift `install` cannot see, but only some of
+it in place. Rotating `KUDOSITY_SIGNING_KEY` or `APP_KEY`, or changing which
+events you subscribe to, updates the existing registration and keeps its id —
+without this, it keeps receiving deliveries the receiver then rejects with a
+403, and Kudosity has no channel to tell you your endpoint is refusing them.
+Changing `kudosity.webhooks.prefix` or moving `APP_URL` is different: the path
+and host are part of the registration's identity, so the old one becomes a
+**different endpoint**. `sync` registers a new webhook for it and leaves the
+old one running — nothing here deletes, and the stale registration will not
+appear in the duplicate warning either, since that only covers registrations
+sharing the *current* identity. Those old deliveries 404 (the path no longer
+routes) rather than 403 (a stale signature on a path that still routes). Run
+`kudosity:webhook:list` after either change and remove the stale row with
+`kudosity:webhook:delete`. It reports duplicate registrations pointing at the
 same receiver without deleting any of them.
 
-`install` rejects an unrecognised `--event` rather than registering a webhook that
-would deliver nothing. Omit `--event` entirely to receive all ten types.
+`sync` calls `ensure()` with no fingerprint store
+(`WebhookSyncCommand.php:62-68`), so every run reconciles against the API
+directly rather than trusting a cached fingerprint — the hazard described in
+the client package's README fingerprint section (a store that outlives a
+dashboard edit) does not apply here.
+
+`install` and `sync` both reject an unrecognised `--event` rather than
+registering a webhook that would deliver nothing — they share the validation
+through `ResolvesEventTypes`. Omit `--event` entirely to receive all ten types.
 
 **HTTPS is required for any real environment.** A plaintext `http://` receiver is
 permitted only when `APP_ENV=local` — local development often has no TLS and the

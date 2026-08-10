@@ -13,10 +13,13 @@ use ExpertSystems\Kudosity\Resources\WebhooksResource;
  * is a handful of lines in a consumer's own code, which is cheaper than adding
  * a dependency to a package that has two.
  *
- * **Never authoritative.** A store only lets
- * {@see WebhooksResource::ensure()} skip the
- * list request. A missing, stale or corrupt entry costs one `GET` and can never
- * produce a wrong registration.
+ * A store only lets {@see WebhooksResource::ensure()} skip the
+ * list request. It records that **you** already reconciled this desired state —
+ * it says nothing about what the account currently holds. If registrations can
+ * change outside your own deploy — a dashboard edit, another environment, a
+ * colleague — pass no store: a store is for consumers whose only writer is
+ * their own deploy pipeline. A *differing* or corrupt entry still costs only
+ * one `GET` and can never produce a wrong write.
  */
 interface WebhookFingerprintStore
 {
