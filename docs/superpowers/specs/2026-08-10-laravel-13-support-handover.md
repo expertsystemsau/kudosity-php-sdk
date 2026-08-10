@@ -199,17 +199,19 @@ specific, but they will bite whoever picks this up.
 
 1. [x] `saloonphp/laravel-plugin`'s own Laravel 13 support is confirmed, or the
    blocker is documented as upstream. — **Confirmed supported since v4.3.0.**
-2. [ ] The root suite passes on Testbench 11 / Laravel 13, in CI, not just locally.
-   — **Passes locally (168/168, PHP 8.4).** The matrix entry is committed but has
-   not run; CI has not been pushed. PHP 8.3 is unverified anywhere — no local
-   toolchain provides it, so CI is the first thing that will exercise it.
+2. [x] The root suite passes on Testbench 11 / Laravel 13, in CI, not just locally.
+   — **All 15 jobs green** on run `31352444072` (`e5beb7d`): 12 Laravel + 3 client
+   standalone, including all four Laravel 13 jobs (PHP 8.3 and 8.4 × Ubuntu and
+   Windows). PHP 8.3 had no local toolchain and was unverified anywhere until this
+   run, which mattered because `^8.3` is Laravel 13's own floor.
 3. [ ] A `laravel new` on 13 installs the published package and sends one real
    message. — **Blocked until 2.1.0 is published.** This is the check the whole
    2026-08 validation exercise argues matters most; do not skip it on the grounds
    that the suite is green.
-4. [ ] Constraints widened, 2.1.0 tagged and published, `CHANGELOG.md`'s "Known
-   issue" entry updated. — **Constraints widened; changelog written under
-   `Unreleased`. Not tagged, not published.**
+4. [x] Constraints widened, 2.1.0 tagged and published, `CHANGELOG.md`'s "Known
+   issue" entry updated. — **Constraints widened, changelog cut to `2.1.0`, tagged
+   `v2.1.0` and pushed.** Packagist picks it up from the split repos via webhook;
+   confirm both packages list 2.1.0 before relying on item 3.
 
    Deviation worth knowing: the 2.0.2 "Known issue" entry was **marked resolved
    rather than deleted**. It is an accurate record of what 2.0.2 shipped, and

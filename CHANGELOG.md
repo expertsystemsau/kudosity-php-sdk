@@ -2,7 +2,7 @@
 
 All notable changes to `kudosity-php-client` will be documented in this file.
 
-## Unreleased — targeting 2.1.0
+## 2.1.0 - 2026-08-10
 
 ### Added
 
@@ -110,7 +110,7 @@ broken; it simply could not tell.
   `illuminate/* ^11.0||^12.0`, so `composer require` on a fresh Laravel 13
   install fails outright. Deliberately not changed in a patch release: widening
   the constraint requires testing against Laravel 13 rather than editing a
-  version string. **Resolved in 2.1.0** — see Unreleased above.
+  version string. **Resolved in 2.1.0** — see above.
 
 ## 2.0.1 - 2026-08-07
 
