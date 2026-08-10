@@ -236,8 +236,13 @@ final class DtoTest extends TestCase
         );
 
         // SmsFallback is a request-side value object rather than a response
-        // DTO; it is covered in ValueObjectTest.
-        $onDisk = array_values(array_diff($onDisk, ['ExpertSystems\Kudosity\Data\V2\SmsFallback']));
+        // DTO; it is covered in ValueObjectTest. EnsureResult is a return-value
+        // composite from WebhooksResource::ensure() — it has no fromArray(), it
+        // never parses a raw payload — and is covered in V2WebhookEnsureTest.
+        $onDisk = array_values(array_diff($onDisk, [
+            'ExpertSystems\Kudosity\Data\V2\SmsFallback',
+            'ExpertSystems\Kudosity\Data\V2\EnsureResult',
+        ]));
 
         $missing = array_values(array_diff($onDisk, array_keys(self::dtoClasses())));
 
