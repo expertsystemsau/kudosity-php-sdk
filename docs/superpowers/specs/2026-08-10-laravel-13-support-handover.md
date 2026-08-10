@@ -1,8 +1,53 @@
 # Handover — Laravel 13 support
 
 **Date:** 2026-08-10
-**Status:** not started. Everything below is analysis, not work in progress.
+**Status:** resumed 2026-08-10 on `feat/laravel-13-support`. Compatibility proven,
+constraints widened, CI matrix updated. Two items remain, both requiring a push or
+a publish — see Definition of done.
 **Context:** 2.0.2 shipped without this, deliberately. See `CHANGELOG.md` "Known issue".
+
+## Outcome (2026-08-10)
+
+**Laravel 13 needed no source changes.** Every risk in the list below was checked
+and none had moved.
+
+| Check | Result |
+|---|---|
+| `saloonphp/laravel-plugin` Laravel 13 support | Already `^11.0 \|\| ^12.39.0 \|\| ^13.0` at v4.3.0 — never an upstream blocker |
+| Root Pest suite, Laravel 13.24.0 / Testbench 11.1.0 / PHP 8.4 | **168 passed** (394 assertions) — identical to the Laravel 12 baseline |
+| PHPStan level 6 | No errors |
+| Deprecations / warnings / notices / risky | None |
+
+Constraints widened: `illuminate/notifications` and `illuminate/support` to
+`^11.0||^12.0||^13.0`, `orchestra/testbench` to `^9.0||^10.0||^11.0` (both the
+package and the monorepo root). Laravel 13 / Testbench 11 added to
+`.github/workflows/run-tests.yml` as a **first-class matrix entry, not an allowed
+failure** — the gap the original plan wanted made visible turned out not to exist.
+
+### The PHP floor stays at `^8.2` — decided, not deferred by accident
+
+Laravel 13 requires PHP `^8.3`; Laravel 11 and 12 require `^8.2`. That is not a
+conflict and needs no matrix exclusion, because Composer resolves per consumer.
+Verified by resolving `packages/kudosity-laravel` standalone under each platform:
+
+| Simulated consumer | Resolves to |
+|---|---|
+| PHP 8.2 | `laravel/framework v12.65.0` |
+| PHP 8.3 | `laravel/framework v13.24.0` |
+
+Raising the floor to `^8.3` is a **breaking change** and belongs in **3.0**, not in
+an additive 2.1.0 — the same versioning logic that kept the constraint widening out
+of a 2.0.2 patch. PHP 8.2 security support ends **2026-12-31**, so 3.0 is the
+natural moment. What the bump would buy, for whoever writes 3.0:
+
+- The root Pest suite could finally exercise the declared floor. It cannot today —
+  **Pest 4 requires PHP `^8.3`**, which is the entire reason the standalone client
+  PHPUnit suite exists. (Confirmed while testing: simulating a PHP 8.2 platform at
+  the monorepo root fails on `pestphp/pest`, not on anything Laravel.)
+- The client suite could move PHPUnit 11 → 12.
+
+Neither justifies a BC break on its own. Note the client package is framework-free,
+so a Laravel-motivated floor bump would penalise consumers who never touch Laravel.
 
 ## The problem, precisely
 
@@ -152,10 +197,27 @@ specific, but they will bite whoever picks this up.
 
 ## Definition of done
 
-1. `saloonphp/laravel-plugin`'s own Laravel 13 support is confirmed, or the
-   blocker is documented as upstream.
-2. The root suite passes on Testbench 11 / Laravel 13, in CI, not just locally.
-3. A `laravel new` on 13 installs the published package and sends one real
-   message.
-4. Constraints widened, 2.1.0 tagged and published, `CHANGELOG.md`'s "Known
-   issue" entry removed.
+1. [x] `saloonphp/laravel-plugin`'s own Laravel 13 support is confirmed, or the
+   blocker is documented as upstream. — **Confirmed supported since v4.3.0.**
+2. [ ] The root suite passes on Testbench 11 / Laravel 13, in CI, not just locally.
+   — **Passes locally (168/168, PHP 8.4).** The matrix entry is committed but has
+   not run; CI has not been pushed. PHP 8.3 is unverified anywhere — no local
+   toolchain provides it, so CI is the first thing that will exercise it.
+3. [ ] A `laravel new` on 13 installs the published package and sends one real
+   message. — **Blocked until 2.1.0 is published.** This is the check the whole
+   2026-08 validation exercise argues matters most; do not skip it on the grounds
+   that the suite is green.
+4. [ ] Constraints widened, 2.1.0 tagged and published, `CHANGELOG.md`'s "Known
+   issue" entry updated. — **Constraints widened; changelog written under
+   `Unreleased`. Not tagged, not published.**
+
+   Deviation worth knowing: the 2.0.2 "Known issue" entry was **marked resolved
+   rather than deleted**. It is an accurate record of what 2.0.2 shipped, and
+   changelog history should not be rewritten to hide a fixed defect.
+
+## Still open for 2.1.0
+
+The other deferred items listed above are **untouched** — dropped DTO fields, the
+`get-contact-sms-stats` paginated reader, the `Contracts\SentMessage` design
+decision, and the two `NOT_IMPLEMENTED` endpoints. Laravel 13 was done as an
+isolated, additive change so it can ship on its own if the rest slips.

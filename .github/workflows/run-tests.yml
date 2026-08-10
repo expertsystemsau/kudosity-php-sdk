@@ -80,6 +80,13 @@ jobs:
   #
   # 8.3+ only, because Pest 4 requires PHP >= 8.3. The 8.2 floor is covered by
   # the standalone client job above, not here.
+  #
+  # Laravel 13 requires PHP ^8.3 and so can never pair with the 8.2 floor both
+  # packages declare. That is not a conflict: the packages keep `php: ^8.2` and
+  # widen `illuminate/*` to admit 13, which Composer resolves per-consumer — an
+  # 8.2 consumer lands on Laravel 12, an 8.3+ consumer may take 13. Because this
+  # job is already 8.3/8.4 only, no matrix exclusion is needed here; add one if
+  # 8.2 is ever added back to `php` above.
   test-laravel:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 5
@@ -88,9 +95,11 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
         php: [8.4, 8.3]
-        laravel: [12.*, 11.*]
+        laravel: [13.*, 12.*, 11.*]
         stability: [prefer-stable]
         include:
+          - laravel: 13.*
+            testbench: 11.*
           - laravel: 12.*
             testbench: 10.*
           - laravel: 11.*
