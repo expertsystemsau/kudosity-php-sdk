@@ -18,6 +18,26 @@ final readonly class SmsStatsData
         public int $bounced,
         public int $responses,
         public int $optouts,
+        /**
+         * Hard bounces — permanent failures. Subset of {@see self::$bounced}.
+         */
+        public int $hardBounced = 0,
+        /**
+         * Soft bounces — transient failures. Subset of {@see self::$bounced}.
+         */
+        public int $softBounced = 0,
+        /**
+         * Clicks on tracked links. Counts machine fetches too: a messaging
+         * app's link preview registers as a hit, so this is not an engagement
+         * metric.
+         */
+        public int $linkHits = 0,
+        /**
+         * Distinct recipients, as opposed to {@see self::$sent}, which counts
+         * SMS parts. A single long message to one recipient reports
+         * `sent > recipientCount`.
+         */
+        public int $recipientCount = 0,
     ) {}
 
     /**
@@ -29,10 +49,15 @@ final readonly class SmsStatsData
 
         // Live get-sms-stats.json (2026-08-07) has no 'sent' key at all — the
         // real key is 'total' — and 'opt-outs' is hyphenated, not 'optouts'.
-        // delivered/pending/bounced/responses are already correct. The API
-        // also reports hard_bounced/soft_bounced/link_hits, which this DTO
-        // does not expose yet (2.1.0 work, not a rename of an existing
-        // field).
+        // delivered/pending/bounced/responses are already correct.
+        //
+        // Verified again live 2026-08-10 against a real message_id. The full
+        // response is:
+        //   {"hard_bounced":0,"soft_bounced":0,"total":1,"recipientCount":1,
+        //    "delivered":1,"pending":0,"bounced":0,"responses":0,
+        //    "opt-outs":0,"link_hits":0}
+        // Note 'recipientCount' really is camelCase while every sibling key is
+        // snake_case — do not "correct" it to recipient_count.
         return new self(
             sent: (int) ($stats['total'] ?? $stats['sent'] ?? 0),
             delivered: (int) ($stats['delivered'] ?? 0),
@@ -40,6 +65,10 @@ final readonly class SmsStatsData
             bounced: (int) ($stats['bounced'] ?? 0),
             responses: (int) ($stats['responses'] ?? 0),
             optouts: (int) ($stats['opt-outs'] ?? $stats['optouts'] ?? 0),
+            hardBounced: (int) ($stats['hard_bounced'] ?? 0),
+            softBounced: (int) ($stats['soft_bounced'] ?? 0),
+            linkHits: (int) ($stats['link_hits'] ?? 0),
+            recipientCount: (int) ($stats['recipientCount'] ?? 0),
         );
     }
 

@@ -2,6 +2,77 @@
 
 All notable changes to `kudosity-php-client` will be documented in this file.
 
+## Unreleased — targeting 2.2.0
+
+Clears the remaining follow-ups deferred from the 2026-08 live validation. Every
+field name below was **verified against the live API**, not taken from the docs —
+six of the eight defects fixed in 2.0.2 were one-word field-name mismatches, and
+a hand-written fixture encodes the same wrong guess as the code.
+
+### Added
+
+- **`SmsStatsData` exposes four fields it was discarding**: `hardBounced`,
+  `softBounced`, `linkHits` and `recipientCount`. The API returned all four and
+  the DTO dropped them.
+
+  `recipientCount` counts distinct recipients where `sent` counts SMS parts, so
+  a long message to one recipient reports `sent > recipientCount`. Note the API
+  spells this one **`recipientCount` in camelCase** while every sibling key is
+  snake_case — do not "correct" it.
+
+  `linkHits` counts machine fetches too: a messaging app's link preview
+  registers as a hit, so it is not an engagement metric.
+
+- **`BulkProgressData` exposes four fields it was discarding**: `imported`,
+  `duplicates`, `skipped` and `optout`. Verified with a deliberately mixed
+  2-row import (one valid number, one invalid) so the counts could not be
+  confused by all being equal: `importlength` counts every row including
+  invalid ones, `completed` counts rows processed, and `imported` counts only
+  rows added.
+
+  `errors` is now `@deprecated` — it was always 0, because the API has no field
+  by that name. `skipped` is the real failed-row count.
+
+- **`ReportingResource::getContactRecords()`** — a lazy paginator over the
+  per-message delivery records `get-contact-sms-stats.json` actually returns.
+  Call `->items()` to walk rows; iterating the paginator itself yields one
+  `Response` per page.
+
+- **`Data\ContactSmsRecordData`** and **`Data\ContactSmsSummaryData`**.
+
+- **`MmsMessageData`, `WhatsAppMessageData` and `RcsMessageData` now implement
+  `Contracts\SentMessage`**, joining `SmsMessageData`. A consumer can finally
+  write one function that handles a send across all four channels. Every V2 send
+  endpoint takes exactly one recipient, so `recipientCount()` is 1 throughout;
+  WhatsApp and RCS keep a nullable `status()` because the API omits it on some
+  reads.
+
+### Fixed
+
+- **`getContactStats()` no longer throws on every call.** Since 2.0.2 it threw
+  unconditionally: the endpoint returns `{page, total, records[]}`, a per-message
+  record list, not the aggregate shape `ContactSmsStatsData` modelled. It now
+  pages through the records and tallies `delivery_status`.
+
+### Changed
+
+- **`getContactStats()` returns `ContactSmsSummaryData`, not
+  `ContactSmsStatsData`**, and takes a new optional `$maxRecords`. Not treated as
+  a breaking change because the previous return value was unreachable — the
+  method threw on every real response, so no working consumer can exist.
+
+  The new DTO deliberately reports **only what the records support**. The old one
+  carried `responses` and `optouts`, and a record contains just `message_id`,
+  `datetime_send` and `delivery_status` — those two counts cannot be derived at
+  all, and returning 0 would be indistinguishable from a real zero.
+
+- **`getContactStatsRequest()` returns a paginator** rather than a DTO, for the
+  same reason.
+
+- `getContactStats()` reads **every page** to produce a total. Pass `$maxRecords`
+  to cap it; the result is then flagged `complete: false` and its counts are a
+  lower bound, not totals.
+
 ## 2.1.0 - 2026-08-10
 
 ### Added

@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace ExpertSystems\Kudosity\Resources;
 
 use DateTimeInterface;
-use ExpertSystems\Kudosity\Data\ContactSmsStatsData;
+use ExpertSystems\Kudosity\Data\ContactSmsRecordData;
+use ExpertSystems\Kudosity\Data\ContactSmsSummaryData;
 use ExpertSystems\Kudosity\Data\DeliveryStatusData;
 use ExpertSystems\Kudosity\Data\MessageData;
 use ExpertSystems\Kudosity\Data\MessageReportData;
@@ -23,6 +24,7 @@ use ExpertSystems\Kudosity\Requests\GetSmsSentRequest;
 use ExpertSystems\Kudosity\Requests\GetSmsStatsRequest;
 use ExpertSystems\Kudosity\Requests\GetUserSmsResponsesRequest;
 use ExpertSystems\Kudosity\Requests\GetUserSmsSentRequest;
+use Saloon\Http\Response;
 
 /**
  * Reporting resource for retrieving SMS delivery and statistics.
@@ -182,38 +184,137 @@ class ReportingResource extends Resource
     }
 
     /**
-     * Get SMS statistics for a specific contact/mobile number.
+     * Every message sent to one contact, as a lazy paginator of per-message
+     * delivery records.
+     *
+     * This is what `get-contact-sms-stats.json` actually returns. Pages are
+     * fetched as they are consumed, so a contact with thousands of messages
+     * costs one request per page rather than one big read.
+     *
+     * Call `->items()` to walk the rows — iterating the paginator itself yields
+     * one {@see Response} per page, not the records inside it. Rows arrive as
+     * **raw arrays**, consistent with every other V1 paginated reader here;
+     * wrap them yourself when you want the DTO:
+     *
+     * ```php
+     * foreach ($reporting->getContactRecords('61400000000')->items() as $row) {
+     *     $record = ContactSmsRecordData::fromResponse($row);
+     * }
+     * ```
      *
      * @param  string  $mobile  The mobile number
      * @param  string|null  $countryCode  Country code for local numbers
+     * @return V1PagedPaginator yielding array<string, mixed> records
+     */
+    public function getContactRecords(string $mobile, ?string $countryCode = null): V1PagedPaginator
+    {
+        return $this->connector->paginate($this->contactStatsRequest($mobile, $countryCode));
+    }
+
+    /**
+     * Aggregate delivery stats for one contact, counted from its records.
+     *
+     * **This reads every page.** The API offers no aggregate endpoint for a
+     * contact, so a summary can only be produced by paging through the records
+     * and tallying `delivery_status`. For a contact with a long history that is
+     * several requests; use {@see self::getContactRecords()} directly if you
+     * want to stream instead.
+     *
+     * `$maxRecords` caps the work. When the cap is hit, the returned summary is
+     * flagged {@see ContactSmsSummaryData::$complete} false — the counts are
+     * then a lower bound and must not be presented as totals.
+     *
+     * @param  string  $mobile  The mobile number
+     * @param  string|null  $countryCode  Country code for local numbers
+     * @param  int|null  $maxRecords  Stop after this many records; null reads all
      *
      * @throws KudosityException
      */
-    public function getContactStats(string $mobile, ?string $countryCode = null): ContactSmsStatsData
+    public function getContactStats(
+        string $mobile,
+        ?string $countryCode = null,
+        ?int $maxRecords = null,
+    ): ContactSmsSummaryData {
+        $byStatus = [];
+        $counted = 0;
+        $complete = true;
+
+        $request = $this->contactStatsRequest($mobile, $countryCode);
+        $itemsKey = $request->paginationItemsKey();
+
+        // Iterating the paginator yields one Response per page, and the rows
+        // are pulled out here. Saloon's own ->items() would read better, but
+        // upstream annotates it `iterable<mixed, Response|PromiseInterface>`
+        // when it actually yields the rows — following that annotation is what
+        // static analysis sees, so this reads the pages directly instead.
+        foreach ($this->connector->paginate($request) as $response) {
+            // Only the async paginator yields promises, and nothing in this
+            // SDK constructs one; skipping is safer than assuming.
+            if (! $response instanceof Response) {
+                continue;
+            }
+
+            $rows = $response->json($itemsKey);
+
+            if (! is_array($rows)) {
+                continue;
+            }
+
+            foreach ($rows as $row) {
+                if ($maxRecords !== null && $counted >= $maxRecords) {
+                    $complete = false;
+                    break 2;
+                }
+
+                if (! is_array($row)) {
+                    continue;
+                }
+
+                // Through the DTO rather than reading $row['delivery_status']
+                // here, so the API's field name lives in exactly one place.
+                $status = ContactSmsRecordData::fromResponse($row)->deliveryStatus;
+
+                $byStatus[$status] = ($byStatus[$status] ?? 0) + 1;
+                $counted++;
+            }
+        }
+
+        arsort($byStatus);
+
+        return new ContactSmsSummaryData(
+            mobile: $mobile,
+            total: $counted,
+            byStatus: $byStatus,
+            complete: $complete,
+        );
+    }
+
+    /**
+     * Build the request, applying the connector's default country code.
+     */
+    private function contactStatsRequest(string $mobile, ?string $countryCode): GetContactSmsStatsRequest
     {
         $request = new GetContactSmsStatsRequest($mobile);
 
-        // Apply default country code if not provided
         $countryCode ??= $this->connector->getDefaultCountryCode();
         if ($countryCode !== null) {
             $request->countryCode($countryCode);
         }
 
-        /** @var ContactSmsStatsData */
-        return $this->sendAndDto($request);
+        return $request;
     }
 
     /**
-     * Get SMS statistics for a specific contact using a custom request.
+     * Get a contact's records using a custom request.
      *
-     * Use this for advanced filtering options.
+     * Use this for date filtering — {@see GetContactSmsStatsRequest::from()}
+     * and {@see GetContactSmsStatsRequest::to()}.
      *
-     * @throws KudosityException
+     * @return V1PagedPaginator yielding array<string, mixed> records
      */
-    public function getContactStatsRequest(GetContactSmsStatsRequest $request): ContactSmsStatsData
+    public function getContactStatsRequest(GetContactSmsStatsRequest $request): V1PagedPaginator
     {
-        /** @var ContactSmsStatsData */
-        return $this->sendAndDto($request);
+        return $this->connector->paginate($request);
     }
 
     /**

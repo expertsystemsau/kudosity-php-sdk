@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace ExpertSystems\Kudosity\Requests;
 
 use DateTimeInterface;
+use ExpertSystems\Kudosity\Contracts\PaginatesResults;
 use ExpertSystems\Kudosity\Data\ContactSmsStatsData;
+use ExpertSystems\Kudosity\Resources\ReportingResource;
 use Saloon\Http\Response;
 
 /**
@@ -13,7 +15,7 @@ use Saloon\Http\Response;
  *
  * @see https://developers.kudosity.com
  */
-class GetContactSmsStatsRequest extends KudosityV1Request
+class GetContactSmsStatsRequest extends KudosityV1Request implements PaginatesResults
 {
     protected ?string $countryCode = null;
 
@@ -88,6 +90,25 @@ class GetContactSmsStatsRequest extends KudosityV1Request
         return $body;
     }
 
+    /**
+     * The response key holding the per-message records.
+     *
+     * Not `stats`: this endpoint returns `{page, total, records[]}` regardless
+     * of what its name suggests.
+     */
+    public function paginationItemsKey(): string
+    {
+        return 'records';
+    }
+
+    /**
+     * @deprecated 2.2.0 The endpoint returns a paginated record list, not the
+     *             aggregate shape {@see ContactSmsStatsData} models, so this
+     *             throws on every real response. Use
+     *             {@see ReportingResource::getContactRecords()}
+     *             for the records, or `getContactStats()` for a summary
+     *             counted from them.
+     */
     public function createDtoFromResponse(Response $response): ContactSmsStatsData
     {
         return ContactSmsStatsData::fromResponse($response->json());

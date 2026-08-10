@@ -6,6 +6,7 @@ namespace ExpertSystems\Kudosity\Data\V2;
 
 use DateTimeImmutable;
 use ExpertSystems\Kudosity\Concerns\ParsesV2Timestamps;
+use ExpertSystems\Kudosity\Contracts\SentMessage;
 use ExpertSystems\Kudosity\Enums\MessageStatus;
 
 /**
@@ -14,7 +15,7 @@ use ExpertSystems\Kudosity\Enums\MessageStatus;
  * Unlike {@see SmsMessageData}, MMS returns a single `country` field rather
  * than a `recipient_country`/`sender_country` pair.
  */
-final readonly class MmsMessageData
+final readonly class MmsMessageData implements SentMessage
 {
     use ParsesV2Timestamps;
 
@@ -55,5 +56,26 @@ final readonly class MmsMessageData
             createdAt: self::parseTimestamp($data['created_at'] ?? null),
             updatedAt: self::parseTimestamp($data['updated_at'] ?? null),
         );
+    }
+
+    public function id(): string
+    {
+        return $this->id;
+    }
+
+    /**
+     * Always 1: `POST /v2/mms` takes exactly one recipient.
+     */
+    public function recipientCount(): int
+    {
+        return 1;
+    }
+
+    /**
+     * The status at send time.
+     */
+    public function status(): MessageStatus
+    {
+        return $this->status;
     }
 }

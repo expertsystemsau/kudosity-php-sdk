@@ -6,6 +6,7 @@ namespace ExpertSystems\Kudosity\Data\V2;
 
 use DateTimeImmutable;
 use ExpertSystems\Kudosity\Concerns\ParsesV2Timestamps;
+use ExpertSystems\Kudosity\Contracts\SentMessage;
 use ExpertSystems\Kudosity\Contracts\WhatsAppContent;
 use ExpertSystems\Kudosity\Enums\MessageStatus;
 
@@ -21,7 +22,7 @@ use ExpertSystems\Kudosity\Enums\MessageStatus;
  * field at all; a non-nullable status would have to invent one for the reply to
  * a send.
  */
-final readonly class WhatsAppMessageData
+final readonly class WhatsAppMessageData implements SentMessage
 {
     use ParsesV2Timestamps;
 
@@ -75,5 +76,29 @@ final readonly class WhatsAppMessageData
             smsFallback: $fallback !== null ? SmsFallback::fromResponse($fallback) : null,
             createdAt: self::parseTimestamp($data['created_at'] ?? null),
         );
+    }
+
+    public function id(): string
+    {
+        return $this->id;
+    }
+
+    /**
+     * Always 1: `POST /v2/whatsapp` takes exactly one recipient.
+     */
+    public function recipientCount(): int
+    {
+        return 1;
+    }
+
+    /**
+     * The status at send time.
+     *
+     * Nullable here because the API omits a status on some reads;
+     * {@see SentMessage::status()} allows exactly that.
+     */
+    public function status(): ?MessageStatus
+    {
+        return $this->status;
     }
 }
