@@ -2,6 +2,38 @@
 
 All notable changes to `kudosity-php-client` will be documented in this file.
 
+## Unreleased — targeting 2.1.0
+
+### Added
+
+- **Laravel 13 support.** `illuminate/notifications` and `illuminate/support` on
+  the Laravel package widen to `^11.0||^12.0||^13.0`, and `orchestra/testbench`
+  to `^9.0||^10.0||^11.0`. This resolves the 2.0.2 known issue, where
+  `composer require` failed outright on a fresh Laravel 13 install — the failure
+  every new adopter hit on their first command.
+
+  **No source changes were needed.** The full Laravel suite (168 tests) and
+  PHPStan level 6 both pass unmodified against Laravel 13.24.0 / Testbench
+  11.1.0, with no deprecations, warnings or risky tests. The package's Laravel
+  surface — service-provider registration, `ChannelManager::extend()` via
+  `Notification::resolved()`, the four channel `send()` signatures, and webhook
+  route registration — is unchanged in 13.
+
+  `saloonphp/laravel-plugin` already declared `^13.0` as of v4.3.0, so the
+  blocker was never upstream.
+
+- Laravel 13 / Testbench 11 added to the CI matrix as a first-class entry, on
+  PHP 8.3 and 8.4.
+
+### Notes
+
+- **The PHP floor stays at `^8.2`.** Laravel 13 itself requires `^8.3`, but that
+  needs no exclusion: Composer resolves per consumer, so a PHP 8.2 consumer
+  installs Laravel 12 and a PHP 8.3+ consumer may install 13. Both paths were
+  verified by resolving the package standalone under each platform. Raising the
+  floor to `^8.3` is a breaking change and is deferred to 3.0; PHP 8.2 security
+  support ends 2026-12-31.
+
 ## 2.0.2 - 2026-08-09
 
 Bug fixes only, no new features and no signature or property changes. Every
@@ -78,7 +110,7 @@ broken; it simply could not tell.
   `illuminate/* ^11.0||^12.0`, so `composer require` on a fresh Laravel 13
   install fails outright. Deliberately not changed in a patch release: widening
   the constraint requires testing against Laravel 13 rather than editing a
-  version string.
+  version string. **Resolved in 2.1.0** — see Unreleased above.
 
 ## 2.0.1 - 2026-08-07
 
