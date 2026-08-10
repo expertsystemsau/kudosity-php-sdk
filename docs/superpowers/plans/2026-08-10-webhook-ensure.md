@@ -178,7 +178,8 @@ namespace ExpertSystems\Kudosity\Webhooks;
  * duplicating.
  *
  * Host and scheme are case-insensitive per RFC 3986; the path is not, and is
- * left alone.
+ * left alone. Userinfo participates, with the password reduced to a marker so
+ * the identity stays safe to persist.
  */
 final class WebhookIdentity
 {
@@ -206,7 +207,27 @@ final class WebhookIdentity
         }
 
         $scheme = strtolower($parts['scheme']);
-        $identity = $scheme.'://'.strtolower($parts['host']);
+        $identity = $scheme.'://';
+
+        $user = $parts['user'] ?? '';
+        $hasPassword = ($parts['pass'] ?? '') !== '';
+
+        if ($user !== '' || $hasPassword) {
+            // Either component alone is a credential, so both are checked:
+            // `https://:TOKEN@host` is the bearer-token-as-Basic-Auth convention
+            // and must not collapse to the uncredentialed identity, or ensure()
+            // would PUT over a foreign registration. parse_url drops userinfo
+            // entirely, which is what makes this necessary at all.
+            //
+            // The password is reduced to a marker rather than carried: this
+            // string becomes a key in an on-disk fingerprint store, and a real
+            // credential must never be written there. An empty password is
+            // treated as no credential, so `https://user:@h` and
+            // `https://user@h` are one identity — neither carries a secret.
+            $identity .= $user.($hasPassword ? ':***' : '').'@';
+        }
+
+        $identity .= strtolower($parts['host']);
 
         $port = $parts['port'] ?? null;
 
