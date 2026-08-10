@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace ExpertSystems\Kudosity\Laravel\Console\Commands;
 
-use ExpertSystems\Kudosity\Callbacks\CallbackType;
 use ExpertSystems\Kudosity\Callbacks\CallbackUrlBuilder;
 use ExpertSystems\Kudosity\Enums\WebhookEventType;
 use ExpertSystems\Kudosity\Exceptions\KudosityException;
 use ExpertSystems\Kudosity\KudosityClient;
+use ExpertSystems\Kudosity\Laravel\Console\Commands\Concerns\GuardsReceiverUrl;
 use Illuminate\Console\Command;
 
 /**
@@ -21,15 +21,7 @@ use Illuminate\Console\Command;
  */
 class WebhookInstallCommand extends Command
 {
-    /**
-     * The handler slot carries this marker rather than a class name.
-     *
-     * V2 deliveries dispatch Laravel events rather than a handler class, so there
-     * is no handler to name. But the signature is only produced when `h` or `c` is
-     * present, and the receiver requires `h` — so the slot is used to make the URL
-     * signed at all. See WebhookController::events().
-     */
-    public const HANDLER_MARKER = 'kudosity.v2.events';
+    use GuardsReceiverUrl;
 
     protected $signature = 'kudosity:webhook:install
         {--name= : A name for the registration, 2-100 characters}
@@ -41,35 +33,13 @@ class WebhookInstallCommand extends Command
 
     public function handle(KudosityClient $client, CallbackUrlBuilder $urls): int
     {
-        $url = (string) ($this->option('url') ?: $urls->build(CallbackType::EVENTS, self::HANDLER_MARKER));
+        $receiver = $this->resolveReceiverUrl($urls);
 
-        // Plaintext is allowed only on a local environment. Laravel knows which
-        // environment it is; the client package does not, which is why the
-        // decision is made here and passed down explicitly.
-        $allowInsecure = app()->environment('local') && str_starts_with(strtolower($url), 'http://');
-
-        if ($allowInsecure) {
-            $this->components->warn(
-                'Registering a plaintext http:// receiver because APP_ENV=local. Deliveries carry message '.
-                'content and are unsigned, so never do this outside local development.'
-            );
-        }
-
-        if (! $allowInsecure && ! str_starts_with(strtolower($url), 'https://')) {
-            // Caught here rather than let through to the request class, so the
-            // operator gets an explanation naming the cause rather than a
-            // ValidationException about a URL they never typed.
-            $this->components->error('The receiver URL must be HTTPS.');
-            $this->line(
-                "  Resolved: <comment>{$url}</comment>\n".
-                '  It comes from APP_URL plus kudosity.webhooks.prefix. Set APP_URL to an https:// address, '.
-                "or pass --url= explicitly.\n".
-                '  Deliveries carry message content and phone numbers and are unsigned, so a plaintext '.
-                'endpoint is readable and forgeable in transit.'
-            );
-
+        if ($receiver === null) {
             return self::FAILURE;
         }
+
+        ['url' => $url, 'allowInsecure' => $allowInsecure] = $receiver;
 
         $events = $this->resolveEvents();
 
