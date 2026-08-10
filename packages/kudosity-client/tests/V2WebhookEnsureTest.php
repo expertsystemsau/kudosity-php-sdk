@@ -150,4 +150,122 @@ final class V2WebhookEnsureTest extends TestCase
 
         $this->assertSame(EnsureAction::Created, $result->action);
     }
+
+    public function test_repairs_a_stale_signature_in_place_rather_than_registering_a_duplicate(): void
+    {
+        // The drift this design exists for. The signing key rotated, so the stored
+        // URL's `s` no longer verifies and every delivery is rejected — but the
+        // registration still exists, so a presence check sees nothing wrong.
+        $stale = self::hookBody(['url' => 'https://app.example.com/webhooks/kudosity/events?h=aGFuZGxlcg&s=OLD']);
+
+        [$resource, $mock] = self::resourceWith([$stale], MockResponse::make(self::hookBody(), 200));
+
+        $result = $resource->ensure('Prod events', self::URL, [
+            WebhookEventType::SmsStatus,
+            WebhookEventType::SmsInbound,
+        ]);
+
+        $this->assertSame(EnsureAction::Updated, $result->action);
+        // Repaired in place: same id, so nothing downstream that recorded it breaks.
+        $this->assertSame('wh_1', $result->webhook?->id);
+        $this->assertSame('PUT', $mock->getLastPendingRequest()?->getMethod()->value);
+    }
+
+    public function test_repairs_a_changed_route_prefix(): void
+    {
+        // A different path is a different identity, so this registers rather than
+        // updating — the old one is left alone for a human to delete, because
+        // deleting is unrecoverable and it may still be serving another app.
+        [$resource, $mock] = self::resourceWith(
+            [self::hookBody(['url' => 'https://app.example.com/hooks/kudosity/events?h=a&s=b'])],
+            MockResponse::make(self::hookBody(), 201),
+        );
+
+        $result = $resource->ensure('Prod events', self::URL);
+
+        $this->assertSame(EnsureAction::Created, $result->action);
+        $this->assertSame('POST', $mock->getLastPendingRequest()?->getMethod()->value);
+    }
+
+    public function test_repairs_a_changed_event_subscription(): void
+    {
+        // Not a reorder — a genuinely different set. Subscribing to fewer events than
+        // the code expects means silence, not errors.
+        [$resource] = self::resourceWith([self::hookBody()], MockResponse::make(self::hookBody(), 200));
+
+        $result = $resource->ensure('Prod events', self::URL, [
+            WebhookEventType::SmsStatus,
+            WebhookEventType::SmsInbound,
+            WebhookEventType::LinkHit,
+        ]);
+
+        $this->assertSame(EnsureAction::Updated, $result->action);
+    }
+
+    public function test_repairs_a_changed_name(): void
+    {
+        [$resource] = self::resourceWith(
+            [self::hookBody(['name' => 'Old name'])],
+            MockResponse::make(self::hookBody(), 200),
+        );
+
+        $result = $resource->ensure('Prod events', self::URL, [
+            WebhookEventType::SmsStatus,
+            WebhookEventType::SmsInbound,
+        ]);
+
+        $this->assertSame(EnsureAction::Updated, $result->action);
+    }
+
+    public function test_sends_the_whole_shape_on_a_repair_because_put_replaces_rather_than_patches(): void
+    {
+        // PUT is a replace: omitting the name does not preserve it, the API answers
+        // 400. So a repair that only carried the changed field would fail.
+        [$resource, $mock] = self::resourceWith(
+            [self::hookBody(['name' => 'Old name'])],
+            MockResponse::make(self::hookBody(), 200),
+        );
+
+        $resource->ensure('Prod events', self::URL, [WebhookEventType::SmsStatus], rateLimit: 250);
+
+        $body = (array) $mock->getLastPendingRequest()?->body()?->all();
+
+        $this->assertSame('Prod events', $body['name']);
+        $this->assertSame(self::URL, $body['url']);
+        $this->assertSame(['event_type' => ['SMS_STATUS']], $body['filter']);
+        $this->assertSame(250, $body['rate_limit']);
+    }
+
+    public function test_a_null_rate_limit_against_an_echoed_zero_is_not_drift(): void
+    {
+        // THE regression guard. `rate_limit: 0` from the API means "system default",
+        // not "no requests allowed". If a caller-supplied null compared unequal to a
+        // stored 0, every deploy would PUT a no-op change, forever, and the
+        // Unchanged branch would never execute in production.
+        //
+        // No write response is registered on the mock, so a PUT attempt throws.
+        [$resource] = self::resourceWith([self::hookBody(['rate_limit' => 0])]);
+
+        $result = $resource->ensure('Prod events', self::URL, [
+            WebhookEventType::SmsStatus,
+            WebhookEventType::SmsInbound,
+        ]);
+
+        $this->assertSame(EnsureAction::Unchanged, $result->action);
+    }
+
+    public function test_an_explicit_rate_limit_differing_from_the_stored_one_is_drift(): void
+    {
+        [$resource] = self::resourceWith(
+            [self::hookBody(['rate_limit' => 100])],
+            MockResponse::make(self::hookBody(['rate_limit' => 250]), 200),
+        );
+
+        $result = $resource->ensure('Prod events', self::URL, [
+            WebhookEventType::SmsStatus,
+            WebhookEventType::SmsInbound,
+        ], rateLimit: 250);
+
+        $this->assertSame(EnsureAction::Updated, $result->action);
+    }
 }
