@@ -370,10 +370,14 @@ this; it follows from one sender on one account.
 The consequence is a requirement on consumers rather than on this SDK: a
 receiver must tolerate a `messageRef` it has no record of, and must not treat an
 unrecognised reference as an error worth alerting on. `WebhookController::events()`
-already just dispatches, so no code change follows — but the client README and
-the root README both need to say it (the Laravel package has no README of its
-own), because the natural implementation of a listener is to look the ref up and
-throw when it is missing.
+already just dispatches, so no code change follows — but the client README, the
+root README and `packages/kudosity-laravel/README.md` all need to say it,
+because the natural implementation of a listener is to look the ref up and throw
+when it is missing.
+
+(An earlier revision of this spec claimed the Laravel package had no README of
+its own. It does — 22KB, tracked, with its own Artisan-commands section. The
+claim came from a check run in the wrong working directory and was wrong.)
 
 ### The clobber hazard
 
@@ -399,6 +403,7 @@ the resolved URL and the previous URL on every `Updated` result.
 | `packages/kudosity-client/src/Webhooks/FileFingerprintStore.php` | new |
 | `packages/kudosity-client/README.md` | raw-PHP recipes, no-CLI bootstrap, unknown-`messageRef` tolerance |
 | `README.md` | `sync` usage, the environment gate and why it fails closed |
+| `packages/kudosity-laravel/README.md` | **exists** — its Artisan-commands section documents `list`/`install`/`delete` and must gain `sync` plus the gate. The gate is a behaviour change to commands this file already documents, so omitting it leaves existing users with an unexplained refusal. |
 | `packages/kudosity-laravel/src/Console/Commands/WebhookSyncCommand.php` | new |
 | `packages/kudosity-laravel/src/Console/Commands/Concerns/GuardsReceiverUrl.php` | new; URL guard extracted from `WebhookInstallCommand` |
 | `packages/kudosity-laravel/src/Console/Commands/Concerns/GuardsEnvironment.php` | new; the fail-closed allowlist |
