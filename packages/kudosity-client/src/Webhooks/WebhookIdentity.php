@@ -15,7 +15,9 @@ namespace ExpertSystems\Kudosity\Webhooks;
  *
  * The password in userinfo is deliberately reduced to a marker (`***`) rather
  * than carried, because this identity becomes a key in an on-disk fingerprint
- * store and a real password must never be written there.
+ * store and a real password must never be written there. An empty password
+ * (`https://user:@host`) is treated as no credential and collapses to the
+ * username-only form (`https://user@host`), since neither carries a secret.
  *
  * Host and scheme are case-insensitive per RFC 3986; the path is not, and is
  * left alone.
@@ -48,12 +50,16 @@ final class WebhookIdentity
         $scheme = strtolower($parts['scheme']);
         $identity = $scheme.'://';
 
-        if (isset($parts['user']) && $parts['user'] !== '') {
-            // Included so a credentialed foreign registration never matches ours,
-            // which would otherwise PUT over it. The password is reduced to a marker
-            // rather than carried: this string becomes a key in an on-disk fingerprint
-            // store, and a real password must never be written there.
-            $identity .= $parts['user'].(isset($parts['pass']) ? ':***' : '').'@';
+        $user = $parts['user'] ?? '';
+        $hasPassword = ($parts['pass'] ?? '') !== '';
+
+        if ($user !== '' || $hasPassword) {
+            // Either component alone is a credential. `https://:TOKEN@host` is the
+            // bearer-token-as-Basic-Auth convention and must not collapse to the
+            // uncredentialed identity, or ensure() would PUT over a foreign
+            // registration. The password is reduced to a marker rather than carried:
+            // this string becomes a key in an on-disk fingerprint store.
+            $identity .= $user.($hasPassword ? ':***' : '').'@';
         }
 
         $identity .= strtolower($parts['host']);

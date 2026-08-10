@@ -40,6 +40,10 @@ final class V2WebhookIdentityTest extends TestCase
                 'https://app.example.com:443/webhooks/kudosity/events',
                 'https://app.example.com/webhooks/kudosity/events',
             ],
+            'an empty password is not a credential' => [
+                'https://user:@app.example.com/h',
+                'https://user@app.example.com/h',
+            ],
         ];
     }
 
@@ -81,6 +85,10 @@ final class V2WebhookIdentityTest extends TestCase
                 'https://alice@app.example.com/h',
                 'https://bob@app.example.com/h',
             ],
+            'a password-only credential is part of the endpoint' => [
+                'https://:sup3rs3cret@app.example.com/webhooks/kudosity/events',
+                'https://app.example.com/webhooks/kudosity/events',
+            ],
         ];
     }
 
@@ -120,5 +128,11 @@ final class V2WebhookIdentityTest extends TestCase
 
         $this->assertStringNotContainsString('sup3rs3cret', $identity);
         $this->assertStringContainsString('user', $identity);
+
+        // Same redaction applies to the password-only (bearer token) form.
+        $this->assertStringNotContainsString(
+            'sup3rs3cret',
+            WebhookIdentity::of('https://:sup3rs3cret@app.example.com/h'),
+        );
     }
 }
