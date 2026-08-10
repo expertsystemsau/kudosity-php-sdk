@@ -2,6 +2,84 @@
 
 All notable changes to `kudosity-php-client` will be documented in this file.
 
+## 2.0.2 - 2026-08-09
+
+Bug fixes only, no new features and no signature or property changes. Every
+defect below was found by installing the published packages into two fresh
+applications and driving them against the live API — not by a unit test, which
+is the point: six of the seven are one-word field-name mismatches, and a
+hand-written fixture encodes the same wrong assumption as the code.
+
+### Fixed
+
+- **`V2PagedPaginator` silently dropped every page after the second.** The API
+  reports `total_records` correctly on page 1 and as `"0"` on later pages even
+  when they hold items, so `ceil(0/limit)` concluded "last page" one page early
+  and the tail of every list was lost with no error raised. Observed live on a
+  26-item, three-page read. A total that computes to zero is no longer trusted
+  once the current page is known non-empty.
+- **`getDeliveryStatus()` could never succeed.** It sent `mobile`; the API
+  requires `msisdn` and answered `FIELD_EMPTY` every time.
+- **`SmsStatsData` reported `sent` and `optouts` as `0` always.** The API calls
+  them `total` and `opt-outs` — hyphenated.
+- **`BulkProgressData` reported every count as `0`, and `isComplete()` and
+  `isProcessing()` were always `false`.** The API sends `importlength`,
+  `completed` and `imported`, and its status strings are `completed` and
+  `in progress`. Since polling this endpoint is the only way to learn whether a
+  bulk import succeeded, a caller waiting for completion waited forever.
+- **`SmsSentItemData` crashed with a `TypeError` on real rows.** The API sends
+  `id`, `msisdn` and `sent_at`; the DTO expected `message_id`, `mobile` and
+  `send_at`.
+- **`MessageReportData::$totalCount` silently reported a page count as an
+  account total.** It read `total_count`, which does not exist; the real keys
+  are `messages_total` and `sms_total`.
+- **V1 error responses escaped `catch (KudosityException)`.** Every resource
+  used `dtoOrFail()`, so Saloon wrapped the real exception in its own
+  `LogicException` — uncatchable by any documented handler. All six resources
+  now route through `sendAndDto()`.
+
+### Changed — behaviour
+
+Three changes are observable. Each replaces wrong data or an uncatchable
+failure with correct behaviour, so code that appears to break was already
+broken; it simply could not tell.
+
+- **V1 errors now throw `KudosityException`** across every resource, instead of
+  Saloon's `LogicException`. A `catch (KudosityException $e)` block that never
+  fired before will now fire.
+- **`getContactStats()` now throws instead of returning zeros.** The endpoint
+  returns a paginated per-message record list, not aggregate counts, so the DTO
+  could never represent it and previously handed back `mobile: ""` with every
+  count `0` — for every call, not an edge case. The exception explains the real
+  shape. A paginated reader is planned for 2.1.0.
+- **`getDeliveryStatus()`, `getMessageReport()`, `SmsStatsData` and
+  `BulkProgressData` now return real values** where they previously returned
+  zeros or crashed.
+
+### Documentation
+
+- **Reply correlation guidance corrected, and it was wrong in a way that
+  mattered.** `CLAUDE.md` and the webhook fixture README told readers to route
+  replies on `last_message.message_ref` *because* matching on the phone number
+  "breaks when one contact is in two flows at once". Verified live: an SMS and
+  an MMS sent seconds apart, the customer replied to the SMS, and the inbound
+  event named the **MMS**. `last_message` identifies the most recent outbound to
+  that number, so it has the same failure mode — and is worse for it, because it
+  looks like per-message correlation and fails silently. `SignedMessageRef` does
+  not rescue this: it protects the ref's integrity, not its identity.
+- **The Laravel README's listener registration double-processed every webhook.**
+  It documented explicit `Event::listen()` without noting that Laravel 11 and 12
+  auto-discover class-based listeners, so a consumer using a listener class
+  received every event twice.
+
+### Known issue
+
+- **Laravel 13 is not supported.** The Laravel package requires
+  `illuminate/* ^11.0||^12.0`, so `composer require` on a fresh Laravel 13
+  install fails outright. Deliberately not changed in a patch release: widening
+  the constraint requires testing against Laravel 13 rather than editing a
+  version string.
+
 ## 2.0.1 - 2026-08-07
 
 Metadata only — no code changes from 2.0.0.

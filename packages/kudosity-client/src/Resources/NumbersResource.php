@@ -38,7 +38,7 @@ class NumbersResource extends Resource
         $request = new LeaseNumberRequest($number);
 
         /** @var LeaseResultData */
-        return $this->connector->send($request)->dtoOrFail();
+        return $this->sendAndDto($request);
     }
 
     /**
@@ -69,7 +69,7 @@ class NumbersResource extends Resource
         $request = new GetNumberRequest($number);
 
         /** @var NumberData */
-        return $this->connector->send($request)->dtoOrFail();
+        return $this->sendAndDto($request);
     }
 
     /**

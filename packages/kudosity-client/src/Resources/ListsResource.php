@@ -42,7 +42,7 @@ class ListsResource extends Resource
         $request = new AddListRequest($name);
 
         /** @var ListData */
-        return $this->connector->send($request)->dtoOrFail();
+        return $this->sendAndDto($request);
     }
 
     /**
@@ -55,7 +55,7 @@ class ListsResource extends Resource
     public function createRequest(AddListRequest $request): ListData
     {
         /** @var ListData */
-        return $this->connector->send($request)->dtoOrFail();
+        return $this->sendAndDto($request);
     }
 
     /**
@@ -86,7 +86,7 @@ class ListsResource extends Resource
         $request = new GetListRequest($listId);
 
         /** @var ListData */
-        return $this->connector->send($request)->dtoOrFail();
+        return $this->sendAndDto($request);
     }
 
     /**
@@ -170,7 +170,7 @@ class ListsResource extends Resource
         }
 
         /** @var ContactData */
-        return $this->connector->send($request)->dtoOrFail();
+        return $this->sendAndDto($request);
     }
 
     /**
@@ -183,7 +183,7 @@ class ListsResource extends Resource
     public function addContactRequest(AddToListRequest $request): ContactData
     {
         /** @var ContactData */
-        return $this->connector->send($request)->dtoOrFail();
+        return $this->sendAndDto($request);
     }
 
     /**
@@ -199,7 +199,7 @@ class ListsResource extends Resource
         $request = new GetContactRequest($listId, $mobile);
 
         /** @var ContactData */
-        return $this->connector->send($request)->dtoOrFail();
+        return $this->sendAndDto($request);
     }
 
     /**
@@ -307,7 +307,7 @@ class ListsResource extends Resource
         }
 
         /** @var BulkAddResultData */
-        return $this->connector->send($request)->dtoOrFail();
+        return $this->sendAndDto($request);
     }
 
     /**
@@ -318,7 +318,7 @@ class ListsResource extends Resource
     public function bulkAddRequest(AddContactsBulkRequest $request): BulkAddResultData
     {
         /** @var BulkAddResultData */
-        return $this->connector->send($request)->dtoOrFail();
+        return $this->sendAndDto($request);
     }
 
     /**
@@ -333,6 +333,6 @@ class ListsResource extends Resource
         $request = new AddContactsBulkProgressRequest($listId);
 
         /** @var BulkProgressData */
-        return $this->connector->send($request)->dtoOrFail();
+        return $this->sendAndDto($request);
     }
 }

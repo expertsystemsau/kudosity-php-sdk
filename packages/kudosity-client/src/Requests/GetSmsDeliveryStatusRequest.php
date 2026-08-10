@@ -31,7 +31,13 @@ class GetSmsDeliveryStatusRequest extends KudosityV1Request
     {
         return [
             'message_id' => $this->messageId,
-            'mobile' => $this->mobile,
+            // The live API requires 'msisdn', not 'mobile' — confirmed
+            // 2026-08-08: sending 'mobile' answers
+            // {"error":{"code":"FIELD_EMPTY","description":"Field msisdn is
+            // required"}} on every call. The *response* nests the recipient
+            // back under 'mobile' (see DeliveryStatusData), so the request
+            // and response deliberately disagree on the field name.
+            'msisdn' => $this->mobile,
         ];
     }
 

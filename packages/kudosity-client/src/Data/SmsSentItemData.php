@@ -27,10 +27,14 @@ final readonly class SmsSentItemData
      */
     public static function fromResponse(array $data): self
     {
+        // get-message-report.json's items are keyed id/msisdn/sent_at, not
+        // message_id/mobile/send_at — confirmed live 2026-08-07. The
+        // non-nullable $sendAt made the missing key a fatal TypeError rather
+        // than a silently-wrong default, so both keys are checked here.
         return new self(
-            messageId: (int) $data['message_id'],
-            mobile: (string) $data['mobile'],
-            sendAt: $data['send_at'],
+            messageId: (int) ($data['id'] ?? $data['message_id'] ?? 0),
+            mobile: (string) ($data['msisdn'] ?? $data['mobile'] ?? ''),
+            sendAt: (string) ($data['sent_at'] ?? $data['send_at'] ?? ''),
             datetime: $data['datetime'] ?? null,
             status: $data['status'] ?? 'pending',
             message: $data['message'] ?? '',

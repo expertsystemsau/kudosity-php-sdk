@@ -106,6 +106,74 @@ final class PaginatorTest extends TestCase
         $this->assertCount(50, $seenRegistrations);
     }
 
+    public function test_a_later_pages_disagreeing_total_does_not_truncate_real_items(): void
+    {
+        // Observed live, 2026-08-08: GET /v2/sms correctly reports
+        // total_records on page 1 ("26") but reports it as the string "0" on
+        // every page after the first — even though those later pages hold
+        // real, non-empty items (10 and 6 respectively, against a limit of
+        // 10). Every other test in this class either keeps total_records
+        // consistent across pages or pairs a bogus total with an empty page;
+        // this is the untested combination that let the live bug ship: a
+        // later page has real items AND a total that disagrees with page
+        // one's. Before the fix, isLastPage() re-reads total_records fresh
+        // from page 2's response, computes ceil(0/10) = 0 pages, and
+        // concludes "done" — silently dropping page 3.
+        $connector = new KudosityV2Connector('key');
+        $connector->withMockClient(new MockClient([
+            MockResponse::make(['smses' => array_fill(0, 10, ['id' => 'a']), 'total_records' => '26'], 200),
+            MockResponse::make(['smses' => array_fill(0, 10, ['id' => 'b']), 'total_records' => '0'], 200),
+            MockResponse::make(['smses' => array_fill(0, 6, ['id' => 'c']), 'total_records' => '0'], 200),
+        ]));
+
+        $seen = [];
+        foreach ($connector->paginate(new ListSmsV2Request)->setPerPageLimit(10)->items() as $row) {
+            $seen[] = $row;
+        }
+
+        $this->assertCount(26, $seen, 'Page 3 must not be silently dropped because its total_records disagrees with page 1.');
+    }
+
+    public function test_a_later_pages_disagreeing_total_count_does_not_truncate_registrations_either(): void
+    {
+        // Same mechanism as the total_records case above, exercised against
+        // the other documented total key. Not observed live — this account
+        // has zero sender registrations, so a real multi-page read-after-
+        // disagreement was never available to reproduce — but the fix in
+        // isLastPage() reads $total from either key through the same
+        // expression, so the same defect class is possible here in
+        // principle and is covered by construction, not by coincidence.
+        //
+        // Page 2 is deliberately not the final page (its own item count
+        // equals the limit, so a page short enough to self-terminate via
+        // the count(...) < $limit fallback is needed too, same as the real
+        // total_records case's page 3) — otherwise this would need a
+        // fictional page 3 to satisfy the mock client with no real page to
+        // model it on.
+        $connector = new KudosityV2Connector('key');
+        $connector->withMockClient(new MockClient([
+            MockResponse::make([
+                'data' => ['registrations' => array_fill(0, 25, ['id' => 'r'])],
+                'meta' => ['pagination' => ['limit' => 25, 'page' => 1, 'total_count' => 60, 'type' => 'page']],
+            ], 200),
+            MockResponse::make([
+                'data' => ['registrations' => array_fill(0, 25, ['id' => 'r'])],
+                'meta' => ['pagination' => ['limit' => 25, 'page' => 2, 'total_count' => 0, 'type' => 'page']],
+            ], 200),
+            MockResponse::make([
+                'data' => ['registrations' => array_fill(0, 10, ['id' => 'r'])],
+                'meta' => ['pagination' => ['limit' => 25, 'page' => 3, 'total_count' => 0, 'type' => 'page']],
+            ], 200),
+        ]));
+
+        $seen = [];
+        foreach ($connector->paginate(new ListSenderRegistrationsRequest)->items() as $row) {
+            $seen[] = $row;
+        }
+
+        $this->assertCount(60, $seen, 'A page 2 that disagrees with page 1\'s total_count must not be treated as though nothing more remains.');
+    }
+
     public function test_an_empty_page_terminates_rather_than_looping(): void
     {
         // GET /v2/webhook returns {} when empty, omitting the collection key

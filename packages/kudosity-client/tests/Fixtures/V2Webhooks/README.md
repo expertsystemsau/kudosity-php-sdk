@@ -42,11 +42,33 @@ Any DTO built for these events should carry all three.
 - **`status.status` is UPPERCASE** here (`SENT`, `DELIVERED`), whereas the send
   endpoints answer lowercase. `MessageStatus::fromApi()` is case-insensitive for
   exactly this reason.
-- **`last_message.message_ref` is the reply-threading join key.** The inbound
-  fixture proves a `message_ref` set on the outbound (`order-9931:cust-4471`)
-  survives the round trip through a customer reply. Route replies on this, not
-  on the phone number — number matching breaks when one contact is in two flows
-  at once, and again when `routed_via` shows a shared number was used.
+- **`last_message.message_ref` survives the round trip — but it identifies the
+  MOST RECENT OUTBOUND to that number, not the message being replied to.**
+  The inbound fixture proves a `message_ref` set on the outbound
+  (`order-9931:cust-4471`) comes back intact through a customer reply, so the
+  value is trustworthy. **What it points AT is not.**
+
+  Observed live 2026-08-09: an SMS ("Reply YES to confirm") and an MMS ("Reply
+  with a photo of the parcel") were sent to one handset seconds apart. The
+  customer replied `Yes` — plainly answering the SMS. The `SMS_INBOUND` came
+  back with `last_message` naming the **MMS**: its id, its `message_ref`
+  (`order-9931:mms-live`), and its body.
+
+  **An earlier version of this README recommended routing replies on this field
+  precisely because number matching "breaks when one contact is in two flows at
+  once". That recommendation was wrong.** `last_message` has the same failure
+  mode, and is worse for it: number matching fails visibly, while this looks
+  like genuine per-message correlation and fails silently.
+
+  So: `last_message.message_ref` is only reliable when a recipient has exactly
+  one outstanding outbound message. If a contact can receive two messages in
+  close succession, no field in this payload identifies which one a reply
+  answers — correlation has to come from the reply's own content, or from
+  application state, or be accepted as approximate.
+
+  Note `SignedMessageRef` does not rescue this. It protects the ref's
+  **integrity**, not its **identity**: a signed ref for the wrong message
+  verifies perfectly.
 - **In an inbound payload, `mo.sender` is the customer and `mo.recipient` is your
   number** — the reverse of an outbound. Note the webhook `filter`'s `sender`
   key matches against `mo.recipient` for inbound events, i.e. it filters by

@@ -29,6 +29,6 @@ class AccountResource extends Resource
         $request = new GetBalanceRequest;
 
         /** @var BalanceData */
-        return $this->connector->send($request)->dtoOrFail();
+        return $this->sendAndDto($request);
     }
 }

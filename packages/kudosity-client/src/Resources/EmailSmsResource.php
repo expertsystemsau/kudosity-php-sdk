@@ -28,7 +28,7 @@ class EmailSmsResource extends Resource
         $request = new AddEmailRequest($email);
 
         /** @var EmailSmsData */
-        return $this->connector->send($request)->dtoOrFail();
+        return $this->sendAndDto($request);
     }
 
     /**
@@ -41,7 +41,7 @@ class EmailSmsResource extends Resource
     public function addRequest(AddEmailRequest $request): EmailSmsData
     {
         /** @var EmailSmsData */
-        return $this->connector->send($request)->dtoOrFail();
+        return $this->sendAndDto($request);
     }
 
     /**
@@ -72,7 +72,7 @@ class EmailSmsResource extends Resource
         $request = (new AddEmailRequest($email))->maxSms($maxSms);
 
         /** @var EmailSmsData */
-        return $this->connector->send($request)->dtoOrFail();
+        return $this->sendAndDto($request);
     }
 
     /**
@@ -88,6 +88,6 @@ class EmailSmsResource extends Resource
         $request = (new AddEmailRequest($email))->number($number);
 
         /** @var EmailSmsData */
-        return $this->connector->send($request)->dtoOrFail();
+        return $this->sendAndDto($request);
     }
 }

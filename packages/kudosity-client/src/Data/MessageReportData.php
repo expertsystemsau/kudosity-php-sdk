@@ -33,8 +33,13 @@ final readonly class MessageReportData
             $messages[] = SmsSentItemData::fromResponse($item);
         }
 
+        // Live get-message-report.json has no 'total_count' key — the real
+        // key is 'messages_total' ('sms_total' duplicates it in every
+        // observed response). Falling back to count($messages) silently
+        // substitutes the current page's item count for the account-wide
+        // total, which is what this DTO did before this fix.
         return new self(
-            totalCount: (int) ($data['total_count'] ?? count($messages)),
+            totalCount: (int) ($data['messages_total'] ?? $data['sms_total'] ?? $data['total_count'] ?? count($messages)),
             page: (int) ($data['page']['number'] ?? 1),
             pageCount: (int) ($data['page']['count'] ?? 1),
             messages: $messages,
