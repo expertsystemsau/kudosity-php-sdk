@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace ExpertSystems\Kudosity\Tests;
 
 use ExpertSystems\Kudosity\Data\V2\EnsureResult;
+use ExpertSystems\Kudosity\Data\V2\WebhookData;
 use ExpertSystems\Kudosity\Enums\EnsureAction;
 use ExpertSystems\Kudosity\Enums\WebhookEventType;
 use ExpertSystems\Kudosity\Exceptions\ValidationException;
@@ -267,5 +268,92 @@ final class V2WebhookEnsureTest extends TestCase
         ], rateLimit: 250);
 
         $this->assertSame(EnsureAction::Updated, $result->action);
+    }
+
+    public function test_leaves_a_registration_on_another_host_completely_alone(): void
+    {
+        // One Kudosity account backs every environment here, so staging's
+        // registration sits in the same list as production's. Touching it would
+        // break another environment's callbacks.
+        //
+        // A write response IS registered, because a create is the expected
+        // outcome. What proves the foreign row was left alone is the pair of
+        // assertions below: the action is Created rather than Updated, and the
+        // request issued was a POST rather than a PUT. Asserting the action
+        // alone would not — `resourceWith()` answers both the create and the
+        // update with the same body, so a wrongly-matched PUT would return a
+        // populated DTO too.
+        $foreign = self::hookBody([
+            'id' => 'wh_staging',
+            'name' => 'Staging events',
+            'url' => 'https://staging.example.com/webhooks/kudosity/events?h=a&s=b',
+        ]);
+
+        [$resource, $mock] = self::resourceWith([$foreign], MockResponse::make(self::hookBody(), 201));
+
+        $result = $resource->ensure('Prod events', self::URL);
+
+        $this->assertSame(EnsureAction::Created, $result->action);
+        $this->assertSame('wh_1', $result->webhook?->id);
+        $this->assertSame([], $result->duplicates);
+        $this->assertSame('POST', $mock->getLastPendingRequest()?->getMethod()->value);
+    }
+
+    public function test_leaves_a_registration_on_the_same_host_but_a_different_path_alone(): void
+    {
+        $sibling = self::hookBody([
+            'id' => 'wh_other',
+            'url' => 'https://app.example.com/webhooks/other-vendor/events?h=a&s=b',
+        ]);
+
+        [$resource] = self::resourceWith([$sibling], MockResponse::make(self::hookBody(), 201));
+
+        $this->assertSame(EnsureAction::Created, $resource->ensure('Prod events', self::URL)->action);
+    }
+
+    public function test_reports_further_matches_as_duplicates_and_deletes_none_of_them(): void
+    {
+        // Two registrations on one identity, most likely from the old install
+        // command being run twice. Repair the first, report the rest. Deleting is
+        // unrecoverable and nothing here can know which one is load-bearing.
+        //
+        // DeleteWebhookRequest is deliberately absent from the mock: a delete
+        // attempt fails the test rather than passing quietly.
+        [$resource] = self::resourceWith([
+            self::hookBody(['id' => 'wh_1', 'name' => 'Old name']),
+            self::hookBody(['id' => 'wh_2']),
+            self::hookBody(['id' => 'wh_3']),
+        ], MockResponse::make(self::hookBody(), 200));
+
+        $result = $resource->ensure('Prod events', self::URL, [
+            WebhookEventType::SmsStatus,
+            WebhookEventType::SmsInbound,
+        ]);
+
+        $this->assertSame(EnsureAction::Updated, $result->action);
+        $this->assertSame('wh_1', $result->webhook?->id);
+        $this->assertCount(2, $result->duplicates);
+        $this->assertSame(['wh_2', 'wh_3'], array_map(
+            static fn (WebhookData $hook): string => $hook->id,
+            $result->duplicates,
+        ));
+    }
+
+    public function test_reports_duplicates_even_when_the_first_match_needs_no_repair(): void
+    {
+        // Otherwise a correct-but-duplicated account looks clean, and the duplicate
+        // keeps delivering a second copy of every event indefinitely.
+        [$resource] = self::resourceWith([
+            self::hookBody(['id' => 'wh_1']),
+            self::hookBody(['id' => 'wh_2']),
+        ]);
+
+        $result = $resource->ensure('Prod events', self::URL, [
+            WebhookEventType::SmsStatus,
+            WebhookEventType::SmsInbound,
+        ]);
+
+        $this->assertSame(EnsureAction::Unchanged, $result->action);
+        $this->assertCount(1, $result->duplicates);
     }
 }
