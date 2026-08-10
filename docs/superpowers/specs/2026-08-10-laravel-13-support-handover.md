@@ -239,9 +239,37 @@ specific, but they will bite whoever picks this up.
    rather than deleted**. It is an accurate record of what 2.0.2 shipped, and
    changelog history should not be rewritten to hide a fixed defect.
 
-## Still open for 2.1.0
+## The other deferred items — all done 2026-08-10, targeting 2.2.0
 
-The other deferred items listed above are **untouched** — dropped DTO fields, the
-`get-contact-sms-stats` paginated reader, the `Contracts\SentMessage` design
-decision, and the two `NOT_IMPLEMENTED` endpoints. Laravel 13 was done as an
-isolated, additive change so it can ship on its own if the rest slips.
+Laravel 13 shipped alone as 2.1.0, so the rest lands in **2.2.0**. All four are
+complete and on `main`; nothing from the 2026-08 validation backlog is left.
+
+| Item | Outcome |
+|---|---|
+| Dropped `SmsStatsData` fields | Added `hardBounced`, `softBounced`, `linkHits` — **and `recipientCount`, a fourth the original note missed** |
+| Dropped `BulkProgressData` fields | Added `imported`, `duplicates`, `skipped`, `optout`; `errors` deprecated (always 0) |
+| `get-contact-sms-stats` paginated reader | `getContactRecords()` + `getContactStats()` now aggregates instead of throwing |
+| `SentMessage` on the other three V2 DTOs | Implemented on all four — decided with the user, not left as a design note |
+| The two `NOT_IMPLEMENTED` endpoints | Confirmed live; no SDK method reaches them, so nothing to fix |
+
+**Every field name was verified against the live API**, including a deliberately
+mixed 2-row bulk import (one valid number, one invalid) so `importlength`,
+`imported` and `skipped` took distinct values and could not be confused by all
+reading zero. The probe list and its gist were deleted afterwards.
+
+Three things worth carrying forward:
+
+- **`get-sms-stats` returns `recipientCount` in camelCase** while every sibling
+  key is snake_case. A reasonable "fix" to `recipient_count` silently zeroes it.
+  There is a mutation-tested assertion pinning this.
+- **Saloon's `Paginator::items()` is annotated `iterable<mixed,
+  Response|PromiseInterface>` upstream, which is wrong** — it yields the rows.
+  PHPStan believes the annotation, so `ReportingResource` reads pages directly
+  rather than suppressing the error.
+- **`MessageStatus::fromApi()` returns `Unknown` rather than throwing** on an
+  unmodelled value. `ContactSmsRecordData` keeps the raw string beside the enum,
+  because this endpoint's status vocabulary is undocumented upstream.
+
+Verified: client suite **820 tests** (was 802), root suite 168, PHPStan level 6
+clean, Pint clean. Both new behaviours were mutation-tested — breaking the
+multi-page tally and snake_casing `recipientCount` each fail a test.

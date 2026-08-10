@@ -476,4 +476,78 @@ final class V1DtoTest extends TestCase
         $this->assertSame(10, $dto->sent);
         $this->assertSame(9, $dto->delivered);
     }
+    // ---- 2.2.0: fields the API returns that these DTOs used to discard ----
+
+    public function test_sms_stats_exposes_the_four_fields_it_used_to_drop(): void
+    {
+        // Verbatim live get-sms-stats.json body, captured 2026-08-10 against a
+        // real message_id. Note recipientCount is camelCase while every sibling
+        // key is snake_case — that asymmetry is the API's, not a typo here.
+        $dto = SmsStatsData::fromResponse([
+            'stats' => [
+                'hard_bounced' => 3,
+                'soft_bounced' => 2,
+                'total' => 10,
+                'recipientCount' => 7,
+                'delivered' => 4,
+                'pending' => 1,
+                'bounced' => 5,
+                'responses' => 0,
+                'opt-outs' => 0,
+                'link_hits' => 6,
+            ],
+        ]);
+
+        $this->assertSame(3, $dto->hardBounced);
+        $this->assertSame(2, $dto->softBounced);
+        $this->assertSame(6, $dto->linkHits);
+        $this->assertSame(7, $dto->recipientCount, 'recipientCount is distinct from sent, which counts SMS parts');
+        $this->assertSame(10, $dto->sent);
+    }
+
+    public function test_sms_stats_defaults_the_new_fields_to_zero_when_absent(): void
+    {
+        $dto = SmsStatsData::fromResponse(['stats' => ['total' => 1, 'delivered' => 1]]);
+
+        $this->assertSame(0, $dto->hardBounced);
+        $this->assertSame(0, $dto->softBounced);
+        $this->assertSame(0, $dto->linkHits);
+        $this->assertSame(0, $dto->recipientCount);
+    }
+
+    public function test_bulk_progress_exposes_the_four_fields_it_used_to_drop(): void
+    {
+        // Verbatim live add-contacts-bulk-progress.json, captured 2026-08-10
+        // from a deliberately mixed 2-row import (one valid, one invalid) so
+        // importlength, imported and skipped could not be confused with each
+        // other by all being equal.
+        $dto = BulkProgressData::fromResponse([
+            'list_id' => 11205319,
+            'status' => 'completed',
+            'importlength' => 2,
+            'completed' => 2,
+            'duplicates' => 0,
+            'skipped' => 1,
+            'optout' => 0,
+            'imported' => 1,
+        ]);
+
+        $this->assertSame(2, $dto->total, 'importlength counts every row, including invalid ones');
+        $this->assertSame(2, $dto->processed);
+        $this->assertSame(1, $dto->imported, 'only the valid row was added');
+        $this->assertSame(1, $dto->skipped, 'the invalid row was skipped');
+        $this->assertSame(0, $dto->duplicates);
+        $this->assertSame(0, $dto->optout);
+        $this->assertNotSame($dto->total, $dto->imported, 'total and imported diverge whenever a row fails');
+    }
+
+    public function test_bulk_progress_defaults_the_new_fields_to_zero_when_absent(): void
+    {
+        $dto = BulkProgressData::fromResponse(['list_id' => 1, 'status' => 'in progress']);
+
+        $this->assertSame(0, $dto->imported);
+        $this->assertSame(0, $dto->duplicates);
+        $this->assertSame(0, $dto->skipped);
+        $this->assertSame(0, $dto->optout);
+    }
 }
