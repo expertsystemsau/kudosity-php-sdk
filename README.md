@@ -258,6 +258,33 @@ Then send notifications:
 $user->notify(new OrderShipped());
 ```
 
+#### Keeping the registration correct
+
+```bash
+php artisan kudosity:webhook:sync
+```
+
+Put this in your deploy script alongside `migrate`. It is idempotent — running
+it twice registers one webhook, not two — and it repairs drift that a presence
+check cannot see: rotating `KUDOSITY_SIGNING_KEY` or `APP_KEY`, changing
+`kudosity.webhooks.prefix`, or moving `APP_URL` all leave a registration that
+still receives deliveries the receiver then rejects with a 403 nothing reports
+back to you.
+
+`kudosity:webhook:install` remains the imperative one-shot, for registering an
+additional, differently-filtered webhook.
+
+**Only permitted environments may run it.** Registrations are account-level, so
+one made from staging receives production's delivery receipts and inbound
+replies — message bodies and phone numbers included. `kudosity.webhooks.sync.environments`
+controls this, defaults to `['production']`, **fails closed** on an empty or
+absent list, and has no command-line override. `kudosity:webhook:list` is
+read-only and ungated.
+
+If several of your deployments share one Kudosity account and sender, each
+receiver will be delivered events for messages the others sent. Write listeners
+that treat an unrecognised `message_ref` as ordinary rather than an error.
+
 ## Package Structure
 
 ```

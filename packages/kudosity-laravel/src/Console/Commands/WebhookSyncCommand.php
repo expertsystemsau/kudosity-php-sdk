@@ -76,8 +76,10 @@ class WebhookSyncCommand extends Command
 
         match ($result->action) {
             EnsureAction::Created => $this->components->info("Created webhook {$hook?->id}"),
-            // Both URLs, because an operator seeing "Updated" cannot otherwise tell
-            // what drifted — a rotated signing key looks identical to a moved route.
+            // An Updated result means something drifted, and the operator needs to see
+            // what the registration now points at. Only the new URL is available —
+            // EnsureResult carries no pre-update DTO — so this asserts exactly that and
+            // does not claim to show what was replaced.
             EnsureAction::Updated => $this->components->info(
                 "Repaired webhook {$hook?->id}\n  Now: ".($hook->url ?? '')
             ),

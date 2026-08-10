@@ -517,6 +517,68 @@ if (StatusPrecedence::supersedes($event->status, $recorded)) {
   and warns when it does. `WebhookData::isSecure()` reports on registrations that
   already exist.
 
+### Keeping a webhook registered
+
+V2 has no per-send callback URL: delivery receipts and inbound replies arrive
+only if an account-level registration points at your receiver. `ensure()`
+converges the account on one registration and is safe to run on every deploy.
+
+```php
+<?php
+require 'vendor/autoload.php';
+
+use ExpertSystems\Kudosity\Callbacks\{CallbackType, CallbackUrlBuilder};
+use ExpertSystems\Kudosity\KudosityClient;
+
+$client = new KudosityClient(apiKey: getenv('KUDOSITY_API_KEY'));
+$urls = new CallbackUrlBuilder('https://app.example.com/webhooks/kudosity', getenv('KUDOSITY_SIGNING_KEY'));
+
+$result = $client->webhooks()->ensure(
+    name: 'My app events',
+    url: $urls->build(CallbackType::EVENTS, 'kudosity.v2.events'),
+);
+
+echo $result->action->value.' '.$result->webhook?->id.PHP_EOL;
+```
+
+`$result->action` is `created`, `updated`, `unchanged` or `skipped`. Re-running
+is free — one `GET` when nothing has moved.
+
+**Always pass a handler marker to `build()`.** With neither `h` nor `c` in the
+query, `CallbackUrlParser::parse()` skips signature verification entirely, and
+your receiver is then open to anyone who guesses the path — the default is
+documented.
+
+**`ensure()` repairs, it does not just create.** Rotating your signing key,
+changing your route prefix or moving hosts leaves a registration that still
+exists and still receives deliveries, every one of which your receiver rejects.
+Nothing reports that back to you, which is why a presence check is not enough.
+
+To skip the `GET` on hot paths, pass a fingerprint store:
+
+```php
+use ExpertSystems\Kudosity\Webhooks\FileFingerprintStore;
+
+$result = $client->webhooks()->ensure(
+    name: 'My app events',
+    url: $signedUrl,
+    store: new FileFingerprintStore(__DIR__.'/storage/kudosity-webhooks.json'),
+);
+```
+
+The store is only an optimisation — a missing or stale entry costs one `GET`,
+never a wrong registration. `action` is then `skipped` and `webhook` is `null`,
+because nothing was read. Implement `WebhookFingerprintStore` yourself to back
+it with a PSR-16 cache or anything else.
+
+**No CLI at all?** Put the same call behind a signed query parameter on the
+receiver you already deploy, and hit it once in a browser.
+
+**Tolerate a `message_ref` you do not recognise.** If more than one deployment
+shares one Kudosity account and sender, your receiver will be delivered events
+for messages another one sent. Look the reference up, and treat a miss as
+ordinary rather than an error worth alerting on.
+
 ## Senders
 
 ```php

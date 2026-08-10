@@ -57,9 +57,11 @@ it('succeeds and says nothing changed when the registration is already correct',
         ->assertExitCode(0);
 });
 
-it('prints both the previous and the new URL on a repair', function () {
-    // An Updated result means something drifted, and the operator cannot tell
-    // what without seeing the URL that was replaced.
+it('prints the resulting URL on a repair', function () {
+    // An Updated result means something drifted, and the operator needs to see
+    // what the registration now points at. Only the new URL is available —
+    // EnsureResult carries no pre-update DTO — so this asserts exactly that and
+    // does not claim to show what was replaced.
     fakeWebhooks()->shouldReceive('ensure')->once()->andReturn(
         new EnsureResult(EnsureAction::Updated, fakeHook(['url' => 'https://app.example.com/webhooks/kudosity/events?s=NEW'])),
     );
@@ -120,4 +122,55 @@ it('reports a client failure without a stack trace', function () {
 it('is registered as a command', function () {
     expect(array_keys(app(Kernel::class)->all()))
         ->toContain('kudosity:webhook:sync');
+});
+
+it('registers a URL the receiver actually accepts', function () {
+    // THE test. Every other assertion can pass while this fails, and when it
+    // fails the symptom is that nothing arrives — the receiver 403s each
+    // delivery, and Kudosity has no channel to tell you it is being refused.
+    //
+    // So: capture what sync registered, then POST a real payload to exactly that
+    // URL through the app's own routes.
+    $captured = null;
+
+    fakeWebhooks()->shouldReceive('ensure')->once()->withArgs(function (...$args) use (&$captured) {
+        $captured = $args[1];
+
+        return true;
+    })->andReturn(new EnsureResult(EnsureAction::Created, fakeHook()));
+
+    $this->artisan('kudosity:webhook:sync')->assertExitCode(0);
+
+    expect($captured)->not->toBeNull();
+
+    // Everything from the path onwards, so the request goes through this app.
+    $path = (string) parse_url((string) $captured, PHP_URL_PATH);
+    $query = (string) parse_url((string) $captured, PHP_URL_QUERY);
+
+    $this->postJson($path.'?'.$query, [
+        'event_type' => 'SMS_STATUS',
+        'status' => [
+            'message_ref' => 'ref-1',
+            'status' => 'DELIVERED',
+        ],
+    ])->assertOk();
+});
+
+it('would be rejected by the receiver if the signature were stripped', function () {
+    // The complement, and the reason the round trip above is meaningful rather
+    // than tautological: the receiver really does refuse an unsigned URL, so the
+    // test above is asserting the signature works and not that the route is open.
+    $captured = null;
+
+    fakeWebhooks()->shouldReceive('ensure')->once()->withArgs(function (...$args) use (&$captured) {
+        $captured = $args[1];
+
+        return true;
+    })->andReturn(new EnsureResult(EnsureAction::Created, fakeHook()));
+
+    $this->artisan('kudosity:webhook:sync')->assertExitCode(0);
+
+    $path = (string) parse_url((string) $captured, PHP_URL_PATH);
+
+    $this->postJson($path, ['event_type' => 'SMS_STATUS'])->assertStatus(403);
 });
