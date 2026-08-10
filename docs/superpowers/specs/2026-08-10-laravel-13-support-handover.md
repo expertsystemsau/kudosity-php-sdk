@@ -1,0 +1,161 @@
+# Handover — Laravel 13 support
+
+**Date:** 2026-08-10
+**Status:** not started. Everything below is analysis, not work in progress.
+**Context:** 2.0.2 shipped without this, deliberately. See `CHANGELOG.md` "Known issue".
+
+## The problem, precisely
+
+`packages/kudosity-laravel/composer.json` requires:
+
+```json
+"illuminate/notifications": "^11.0||^12.0",
+"illuminate/support":       "^11.0||^12.0"
+```
+
+Laravel's current release is **13.x** (13.24.0 as of 2026-08-09). So:
+
+```
+composer create-project laravel/laravel my-app     # gets Laravel 13
+composer require expertsystemsau/kudosity-laravel-client
+# -> hard dependency resolution failure
+```
+
+**Every new adopter hits this on their first command.** The other seven defects
+found during validation degrade behaviour; this one prevents installation. It is
+the highest-impact open issue on the package, and it is invisible to anyone
+already on Laravel 12 — which is why it went unnoticed until someone ran
+`laravel new` from scratch during the 2026-08 consumer validation.
+
+`orchestra/testbench` is capped the same way (`^9.0||^10.0`) and gates the dev
+matrix. Testbench 11 is the Laravel 13 line.
+
+## Why this was not fixed in 2.0.2
+
+Widening a constraint is a one-line edit; *supporting* a major version is not.
+Publishing `^13.0` without testing against 13 would move the failure from an
+honest install error to a runtime surprise in someone's production app, which is
+strictly worse. The validation exercise that found this had no Laravel 13
+coverage and could not manufacture it responsibly in scope.
+
+## What actually needs checking
+
+The package's Laravel surface is small, which is the good news. In rough order of
+risk:
+
+1. **`KudosityServiceProvider`** — `packages/kudosity-laravel/src/KudosityServiceProvider.php`.
+   Registers singletons for both connectors and the client, extends the
+   notification `ChannelManager` with four channels, registers three Artisan
+   commands, publishes config, and loads routes. Provider registration and
+   `publishes()` are the APIs most likely to have moved.
+2. **`Notification::resolved(fn (ChannelManager $service) => $service->extend(...))`** —
+   the channel-registration hook. This is the least stable thing the package
+   touches; verify `extend()` and the resolved-callback still behave the same.
+3. **The four notification channels** — `KudosityChannel`, `KudosityMmsChannel`,
+   `KudosityWhatsAppChannel`, `KudosityRcsChannel`. They implement Laravel's
+   channel contract (`send($notifiable, Notification $notification)`); confirm
+   the signature is unchanged.
+4. **Route registration** — `registerWebhookRoutes()` uses `Route::prefix()->middleware()->group()`
+   with `loadRoutesFrom`. Stable historically, but the `api` middleware group's
+   composition has changed across majors.
+5. **`saloonphp/laravel-plugin: ^4.0`** — a transitive constraint of its own.
+   Check whether it supports Laravel 13 before assuming the blocker is only ours.
+   **If it does not, that is the real blocker and it is upstream**, which changes
+   the whole shape of this task.
+
+## Recommended approach
+
+**Do not start by editing the constraint.** Start by proving compatibility, then
+widen to match the evidence.
+
+1. **Check `saloonphp/laravel-plugin` first.** One command, and it can make the
+   rest moot: `composer show saloonphp/laravel-plugin --all | grep -A2 requires`,
+   or read its `composer.json` on Packagist. If it caps at Laravel 12, open or
+   find an upstream issue before doing anything else.
+2. **Add Laravel 13 to the CI matrix as an allowed failure**, so the gap is
+   visible and measured rather than assumed. `.github/workflows/run-tests.yml`
+   already has a matrix; Testbench 11 pairs with Laravel 13.
+3. **Run the root suite against Testbench 11 locally.** The root suite is the
+   Laravel integration suite — that is exactly the coverage this needs. Note it
+   needs PHP 8.3+ (Pest 4), so the 8.2 floor is not exercisable here; that is
+   pre-existing and documented in `CLAUDE.md`.
+4. **Fix what breaks**, then widen `illuminate/*` to `^11.0||^12.0||^13.0` and
+   `orchestra/testbench` to `^9.0||^10.0||^11.0`.
+5. **Validate as a consumer, not just as a suite.** The whole lesson of the
+   2026-08 exercise is that a green suite proves less than one install. Do a
+   `laravel new` on 13, `composer require` the published package, and send one
+   real message. That is a ten-minute check that would have caught this issue
+   before it shipped.
+
+## Version strategy
+
+Widening a constraint to admit a new major is **additive** — no existing
+consumer's resolution changes. Ship it as **2.1.0**, alongside the other 2.1.0
+work already deferred (below). Do not ship it as a patch: consumers reasonably
+read a patch as "nothing about my dependency graph changed".
+
+## Already deferred to 2.1.0 — bundle these
+
+From the same validation exercise, all deliberately not done in 2.0.2:
+
+- **Expose the fields these DTOs currently drop.** The API returns them and the
+  SDK discards them: `SmsStatsData` drops `hard_bounced`, `soft_bounced`,
+  `link_hits`; `BulkProgressData` drops `imported`, `duplicates`, `skipped`,
+  `optout`. Additive properties, safe in a minor.
+- **A paginated reader for `get-contact-sms-stats`.** `getContactStats()`
+  currently throws (2.0.2) because the endpoint returns
+  `{page, total, records[]}` — a per-message record list — which
+  `ContactSmsStatsData` cannot represent. Correct aggregation means paging
+  through `records[]`, which is a behaviour change and so belongs here.
+- **Design note, needs a decision rather than an implementation:** three of four
+  V2 message DTOs (`MmsMessageData`, `WhatsAppMessageData`, `RcsMessageData`) do
+  not implement `Contracts\SentMessage`; only `SmsMessageData` does. That is
+  defensible today — only the SMS channel routes between V1 and V2, so only it
+  needs a stable return type — but it means a consumer cannot write polymorphic
+  code across channels. Decide whether that is intentional.
+- **Two methods target endpoints the platform does not implement.** No SDK method
+  calls them, so nothing is broken, but `/get-sms-report.json` and
+  `/get-contact-stats.json` both answer `NOT_IMPLEMENTED` if anyone adds one.
+
+## Traps that will cost you time if nobody warns you
+
+These were all paid for during the 2026-08 validation. They are not Laravel 13
+specific, but they will bite whoever picks this up.
+
+- **`laravel/laravel` now resolves to 13 by default**, so scaffolding a "current"
+  test app silently gives you 13. Pin explicitly when you want 12.
+- **A fresh Laravel 12 skeleton ships plain PHPUnit, not Pest.** If you reuse the
+  validation exercise's tests, install `pestphp/pest` and
+  `pestphp/pest-plugin-laravel` and run `pest --init` first.
+- **`->throws(Throwable::class)` does not work in Pest.** Pest resolves that
+  argument with `class_exists()`, which is `false` for an interface, so it
+  degrades to matching the exception *message* and fails confusingly. Name the
+  concrete class.
+- **Laravel 11/12 auto-discover class-based listeners.** Combined with explicit
+  `Event::listen()`, every event dispatches twice. The package README now warns
+  about this; if you write a listener class in a test app, either drop the
+  explicit registration or set `->withEvents(discover: false)`.
+- **`KudosityV2Connector` cannot autowire** — `$apiKey` has no default — so it
+  depends on its explicit singleton in the provider. If provider registration
+  changes in 13, this is the first thing that will break.
+
+## Where the evidence lives
+
+- `/home/mitchell/projects/kudosity-sdk-validation/VALIDATION-REPORT.md` — the
+  full 142-check report from the exercise that found this.
+- `.superpowers/sdd/2026-08-07-sdk-v2-live-validation/progress.md` — the ledger,
+  including several places where an initial conclusion was wrong and got
+  corrected. Read it before trusting any summary, including this one.
+- `docs/superpowers/plans/2026-08-07-sdk-v2-live-validation.md` — the plan, with
+  sixteen defects of its own corrected in place. Task 11 is the Laravel scaffold
+  and is the closest existing template for a Laravel 13 consumer check.
+
+## Definition of done
+
+1. `saloonphp/laravel-plugin`'s own Laravel 13 support is confirmed, or the
+   blocker is documented as upstream.
+2. The root suite passes on Testbench 11 / Laravel 13, in CI, not just locally.
+3. A `laravel new` on 13 installs the published package and sends one real
+   message.
+4. Constraints widened, 2.1.0 tagged and published, `CHANGELOG.md`'s "Known
+   issue" entry removed.
