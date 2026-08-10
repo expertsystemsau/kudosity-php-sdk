@@ -133,17 +133,24 @@ enum EnsureAction: string {
     case Created = 'created';
     case Updated = 'updated';
     case Unchanged = 'unchanged';
+    case Skipped = 'skipped';
 }
 
 final readonly class EnsureResult {
     public function __construct(
         public EnsureAction $action,
-        public WebhookData $webhook,
+        public ?WebhookData $webhook = null,
         /** @var array<int, WebhookData> */
         public array $duplicates = [],
     ) {}
 }
 ```
+
+`Skipped` exists because the fingerprint store below short-circuits before the
+list request, so there is no registration to return — it is the **only** action
+carrying a null `$webhook`, and that invariant is documented on both types. A
+caller that always needs the DTO passes no store. `Unchanged` and `Skipped` both
+mean "nothing was written", and the difference is whether the account was read.
 
 ### 2. `WebhookFingerprintStore` — optional, for skipping the GET
 
@@ -384,7 +391,8 @@ the resolved URL and the previous URL on every `Updated` result.
 
 | File | Change |
 |---|---|
-| `packages/kudosity-client/src/Resources/WebhooksResource.php` | add `ensure()`, identity normalisation, comparison |
+| `packages/kudosity-client/src/Resources/WebhooksResource.php` | add `ensure()`, drift comparison, fingerprint |
+| `packages/kudosity-client/src/Webhooks/WebhookIdentity.php` | new; identity normalisation, its own class so it is directly testable |
 | `packages/kudosity-client/src/Data/V2/EnsureResult.php` | new |
 | `packages/kudosity-client/src/Enums/EnsureAction.php` | new |
 | `packages/kudosity-client/src/Contracts/WebhookFingerprintStore.php` | new |
@@ -394,6 +402,7 @@ the resolved URL and the previous URL on every `Updated` result.
 | `packages/kudosity-laravel/src/Console/Commands/WebhookSyncCommand.php` | new |
 | `packages/kudosity-laravel/src/Console/Commands/Concerns/GuardsReceiverUrl.php` | new; URL guard extracted from `WebhookInstallCommand` |
 | `packages/kudosity-laravel/src/Console/Commands/Concerns/GuardsEnvironment.php` | new; the fail-closed allowlist |
+| `packages/kudosity-laravel/src/Console/Commands/Concerns/ResolvesEventTypes.php` | new; extracted so `sync` does not duplicate `install`'s event validation |
 | `packages/kudosity-laravel/src/Console/Commands/WebhookInstallCommand.php` | use both guards |
 | `packages/kudosity-laravel/src/Console/Commands/WebhookDeleteCommand.php` | use the environment guard |
 | `packages/kudosity-laravel/src/KudosityServiceProvider.php` | register the command |
