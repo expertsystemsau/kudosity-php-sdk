@@ -2,6 +2,89 @@
 
 All notable changes to `kudosity-php-client` will be documented in this file.
 
+## 2.3.0 - 2026-08-10
+
+Idempotent V2 webhook registration. The failure this addresses is **drift, not
+absence**: the receiver URL carries an HMAC signature, so rotating
+`KUDOSITY_SIGNING_KEY` or `APP_KEY`, or changing the subscribed event set, leaves
+a registration that still exists and still receives deliveries — every one of
+which the receiver then rejects with a 403 that Kudosity has no channel to report
+back to you. A "does a registration exist?" check passes in every one of those
+cases.
+
+### ⚠️ Action required when upgrading a Laravel app with a published config
+
+`kudosity:webhook:sync`, `:install` and `:delete` now refuse to run unless the
+current environment is listed in **`kudosity.webhooks.sync.environments`**, which
+ships as `['production']`.
+
+`mergeConfigFrom` is a single-level merge, so a `config/kudosity.php` published
+before this release supplies the whole `webhooks` array and that key is **absent
+entirely** — which means those three commands refuse in *every* environment,
+production included, until you add it. That is deliberate fail-closed behaviour,
+not a bug. `kudosity:webhook:list` is read-only and stays ungated.
+
+The reason it fails closed: registrations are **account-level**. If one Kudosity
+account backs several environments, a webhook registered from staging receives
+the whole account's events — every production delivery receipt and inbound reply,
+message bodies and phone numbers included. When those environments share a sender,
+no webhook filter can partition that traffic, so this allowlist is the only
+control. It has no command-line override; `--force` on `delete` still only skips
+the confirmation prompt.
+
+### Added
+
+- **`WebhooksResource::ensure()`** — lists the account, matches your registration
+  by a normalised receiver identity, then creates, `PUT`-replaces, or does
+  nothing. Safe to run on every deploy. Returns
+  `EnsureResult{action, ?webhook, duplicates}` where `action` is `created`,
+  `updated`, `unchanged` or `skipped`. It **never deletes**, and never modifies a
+  registration whose identity differs from the URL you passed.
+
+- **`Webhooks\WebhookIdentity`** — that identity: scheme, userinfo, host, port and
+  path, **never the query string**, because the query is where the signature lives
+  and therefore the part that drifts. Userinfo participates so a credentialed
+  foreign registration (`https://user:token@host/path`) cannot match an
+  uncredentialed one and get overwritten; any password is reduced to a `:***`
+  marker, because this string becomes a key in an on-disk store.
+
+- **`Contracts\WebhookFingerprintStore`** and **`Webhooks\FileFingerprintStore`** —
+  optional, off by default, letting a caller skip the list request when nothing
+  changed. Two methods, no new dependency. **Read the caveat below before using
+  it.**
+
+- **`kudosity:webhook:sync`** (Laravel) — the declarative counterpart to
+  `install`. Put it in your deploy script: running it twice registers one webhook,
+  not two. `install` remains the imperative one-shot for registering an
+  additional, differently-filtered webhook.
+
+### Two limits worth knowing before you rely on this
+
+- **A changed route prefix or a moved `APP_URL` is not repaired in place.** Path
+  and host are part of the identity, so changing either makes the old
+  registration a *different endpoint*: `sync` registers a new one and leaves the
+  old one alone. It will not appear in `duplicates` either, which is
+  same-identity only. Nothing here deletes. Run `kudosity:webhook:list` after
+  either change and remove the stale row yourself — its deliveries now 404
+  against a path that no longer routes. Only a rotated signing key and a changed
+  event set are repaired in place, preserving the registration id.
+
+- **A fingerprint store records that *you* already reconciled a desired state. It
+  says nothing about what the account currently holds.** If the registration is
+  deleted or edited in the Kudosity dashboard while your desired state is
+  unchanged, `ensure()` returns `skipped` and never repairs. Pass no store if
+  registrations can change outside your own deploy — a dashboard edit, another
+  environment, a colleague. `kudosity:webhook:sync` passes no store, so Laravel
+  users are not exposed to this.
+
+### Changed
+
+- `expertsystemsau/kudosity-laravel-client` now requires
+  `expertsystemsau/kudosity-php-client: ^2.3`, because the Laravel package uses
+  `EnsureAction`, `EnsureResult` and `ensure()`, all new here. Under the previous
+  `^2.0` Composer could have paired this release with a 2.0.x client and fatalled
+  at runtime.
+
 ## 2.2.0 - 2026-08-10
 
 Clears the remaining follow-ups deferred from the 2026-08 live validation. Every
