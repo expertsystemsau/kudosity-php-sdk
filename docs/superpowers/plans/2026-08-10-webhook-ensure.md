@@ -864,20 +864,27 @@ Append to `V2WebhookEnsureTest`:
         // registration sits in the same list as production's. Touching it would
         // break another environment's callbacks.
         //
-        // No write response is registered, so any attempt to write throws.
+        // A write response IS registered, because a create is the expected
+        // outcome. What proves the foreign row was left alone is the pair of
+        // assertions below: the action is Created rather than Updated, and the
+        // request issued was a POST rather than a PUT. Asserting the action
+        // alone would not — `resourceWith()` answers both the create and the
+        // update with the same body, so a wrongly-matched PUT would return a
+        // populated DTO too.
         $foreign = self::hookBody([
             'id' => 'wh_staging',
             'name' => 'Staging events',
             'url' => 'https://staging.example.com/webhooks/kudosity/events?h=a&s=b',
         ]);
 
-        [$resource] = self::resourceWith([$foreign], MockResponse::make(self::hookBody(), 201));
+        [$resource, $mock] = self::resourceWith([$foreign], MockResponse::make(self::hookBody(), 201));
 
         $result = $resource->ensure('Prod events', self::URL);
 
         $this->assertSame(EnsureAction::Created, $result->action);
         $this->assertSame('wh_1', $result->webhook?->id);
         $this->assertSame([], $result->duplicates);
+        $this->assertSame('POST', $mock->getLastPendingRequest()?->getMethod()->value);
     }
 
     public function test_leaves_a_registration_on_the_same_host_but_a_different_path_alone(): void
