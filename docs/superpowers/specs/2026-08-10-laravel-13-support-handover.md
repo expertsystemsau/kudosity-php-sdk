@@ -239,10 +239,10 @@ specific, but they will bite whoever picks this up.
    rather than deleted**. It is an accurate record of what 2.0.2 shipped, and
    changelog history should not be rewritten to hide a fixed defect.
 
-## The other deferred items — all done 2026-08-10, targeting 2.2.0
+## The other deferred items — all done 2026-08-10, shipped as 2.2.0
 
-Laravel 13 shipped alone as 2.1.0, so the rest lands in **2.2.0**. All four are
-complete and on `main`; nothing from the 2026-08 validation backlog is left.
+Laravel 13 shipped alone as 2.1.0; the rest shipped as **2.2.0**. All four are
+complete, merged and tagged; nothing from the 2026-08 validation backlog is left.
 
 | Item | Outcome |
 |---|---|

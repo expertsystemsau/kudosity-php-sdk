@@ -2,7 +2,7 @@
 
 All notable changes to `kudosity-php-client` will be documented in this file.
 
-## Unreleased — targeting 2.2.0
+## 2.2.0 - 2026-08-10
 
 Clears the remaining follow-ups deferred from the 2026-08 live validation. Every
 field name below was **verified against the live API**, not taken from the docs —
