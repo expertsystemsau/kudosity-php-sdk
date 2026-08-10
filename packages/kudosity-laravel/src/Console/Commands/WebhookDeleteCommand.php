@@ -6,6 +6,7 @@ namespace ExpertSystems\Kudosity\Laravel\Console\Commands;
 
 use ExpertSystems\Kudosity\Exceptions\KudosityException;
 use ExpertSystems\Kudosity\KudosityClient;
+use ExpertSystems\Kudosity\Laravel\Console\Commands\Concerns\GuardsEnvironment;
 use Illuminate\Console\Command;
 
 /**
@@ -13,12 +14,18 @@ use Illuminate\Console\Command;
  */
 class WebhookDeleteCommand extends Command
 {
+    use GuardsEnvironment;
+
     protected $signature = 'kudosity:webhook:delete {id : The registration id} {--force : Skip the confirmation}';
 
     protected $description = 'Delete a Kudosity V2 webhook registration';
 
     public function handle(KudosityClient $client): int
     {
+        if (! $this->environmentPermitsWrites()) {
+            return self::FAILURE;
+        }
+
         $id = (string) $this->argument('id');
 
         // Destructive and not undoable: deleting the only registration stops all

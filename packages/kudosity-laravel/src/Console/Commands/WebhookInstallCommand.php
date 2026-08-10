@@ -8,6 +8,7 @@ use ExpertSystems\Kudosity\Callbacks\CallbackUrlBuilder;
 use ExpertSystems\Kudosity\Enums\WebhookEventType;
 use ExpertSystems\Kudosity\Exceptions\KudosityException;
 use ExpertSystems\Kudosity\KudosityClient;
+use ExpertSystems\Kudosity\Laravel\Console\Commands\Concerns\GuardsEnvironment;
 use ExpertSystems\Kudosity\Laravel\Console\Commands\Concerns\GuardsReceiverUrl;
 use Illuminate\Console\Command;
 
@@ -21,6 +22,7 @@ use Illuminate\Console\Command;
  */
 class WebhookInstallCommand extends Command
 {
+    use GuardsEnvironment;
     use GuardsReceiverUrl;
 
     protected $signature = 'kudosity:webhook:install
@@ -33,6 +35,10 @@ class WebhookInstallCommand extends Command
 
     public function handle(KudosityClient $client, CallbackUrlBuilder $urls): int
     {
+        if (! $this->environmentPermitsWrites()) {
+            return self::FAILURE;
+        }
+
         $receiver = $this->resolveReceiverUrl($urls);
 
         if ($receiver === null) {

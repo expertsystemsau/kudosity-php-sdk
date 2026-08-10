@@ -2,37 +2,13 @@
 
 declare(strict_types=1);
 
-use ExpertSystems\Kudosity\Data\V2\WebhookData;
 use ExpertSystems\Kudosity\Exceptions\NotFoundException;
 use ExpertSystems\Kudosity\Exceptions\ValidationException;
-use ExpertSystems\Kudosity\KudosityClient;
 use ExpertSystems\Kudosity\Laravel\Console\Commands\WebhookInstallCommand;
-use ExpertSystems\Kudosity\Resources\WebhooksResource;
 use Illuminate\Contracts\Console\Kernel;
 
-/** Bind a mocked webhooks resource into the container the commands resolve from. */
-function fakeWebhooks(): WebhooksResource
-{
-    $resource = Mockery::mock(WebhooksResource::class);
-    $client = Mockery::mock(KudosityClient::class);
-    $client->shouldReceive('webhooks')->andReturn($resource);
-    app()->instance(KudosityClient::class, $client);
-
-    return $resource;
-}
-
-/** @param array<string, mixed> $overrides */
-function fakeHook(array $overrides = []): WebhookData
-{
-    return WebhookData::fromArray(array_merge([
-        'id' => '8ab7060c-6c74-482b-baf6-8e7ef36cdf63',
-        'name' => 'Prod events',
-        'url' => 'https://e.test/h',
-        'filter' => ['event_type' => ['SMS_STATUS']],
-        'rate_limit' => 0,
-        'is_sandbox' => false,
-    ], $overrides));
-}
+// fakeWebhooks() and fakeHook() are declared once in tests/Pest.php and shared
+// with WebhookEnvironmentGateTest — see the docblock there for why.
 
 // ---------------------------------------------------------------------------
 // list
@@ -91,6 +67,7 @@ it('installs a webhook at a signed receiver URL, not a bare one', function () {
     // hand-assembled URL registers a webhook that can never deliver — and fails
     // silently, because Kudosity cannot tell you your endpoint is rejecting it.
     config()->set('app.url', 'https://app.example.com');
+    config()->set('kudosity.webhooks.sync.environments', ['testing']);
 
     $captured = null;
 
@@ -127,6 +104,7 @@ it('allows a plaintext receiver on a local environment, with a warning', functio
     // silently: the warning says why it is acceptable here and nowhere else.
     app()['env'] = 'local';
     config()->set('app.url', 'http://kudosity.test');
+    config()->set('kudosity.webhooks.sync.environments', ['local']);
 
     $insecure = null;
 
@@ -148,6 +126,7 @@ it('allows a plaintext receiver on a local environment, with a warning', functio
 it('does not opt in to plaintext when the local URL is already HTTPS', function () {
     app()['env'] = 'local';
     config()->set('app.url', 'https://kudosity.test');
+    config()->set('kudosity.webhooks.sync.environments', ['local']);
 
     $insecure = null;
 
@@ -166,6 +145,7 @@ it('rejects an unrecognised event type instead of registering a webhook that del
     // An event type the API does not know is silently ignored, so the
     // registration would look correct and never fire.
     config()->set('app.url', 'https://app.example.com');
+    config()->set('kudosity.webhooks.sync.environments', ['testing']);
     $resource = fakeWebhooks();
     $resource->shouldNotReceive('create');
 
@@ -177,6 +157,7 @@ it('rejects an unrecognised event type instead of registering a webhook that del
 
 it('subscribes to every event type when none is named', function () {
     config()->set('app.url', 'https://app.example.com');
+    config()->set('kudosity.webhooks.sync.environments', ['testing']);
 
     $events = 'unset';
 
@@ -193,6 +174,7 @@ it('subscribes to every event type when none is named', function () {
 
 it('honours an explicit --url override', function () {
     config()->set('app.url', 'https://app.example.com');
+    config()->set('kudosity.webhooks.sync.environments', ['testing']);
 
     $url = null;
 
@@ -210,6 +192,7 @@ it('honours an explicit --url override', function () {
 
 it('passes a rate limit through only when given', function () {
     config()->set('app.url', 'https://app.example.com');
+    config()->set('kudosity.webhooks.sync.environments', ['testing']);
 
     $limits = [];
 
@@ -228,6 +211,7 @@ it('passes a rate limit through only when given', function () {
 
 it('exits non-zero when the API rejects the registration', function () {
     config()->set('app.url', 'https://app.example.com');
+    config()->set('kudosity.webhooks.sync.environments', ['testing']);
 
     fakeWebhooks()->shouldReceive('create')->once()
         ->andThrow(new ValidationException('name too short', errorCode: 'FIELD_INVALID'));
@@ -246,6 +230,7 @@ it('uses the marker handler, since V2 dispatches events rather than a handler cl
 // ---------------------------------------------------------------------------
 
 it('confirms before deleting, and does nothing when declined', function () {
+    config()->set('kudosity.webhooks.sync.environments', ['testing']);
     $resource = fakeWebhooks();
     $resource->shouldNotReceive('delete');
 
@@ -256,6 +241,7 @@ it('confirms before deleting, and does nothing when declined', function () {
 });
 
 it('deletes when confirmed', function () {
+    config()->set('kudosity.webhooks.sync.environments', ['testing']);
     fakeWebhooks()->shouldReceive('delete')->once()->with('abc')->andReturn(true);
 
     $this->artisan('kudosity:webhook:delete', ['id' => 'abc'])
@@ -265,6 +251,7 @@ it('deletes when confirmed', function () {
 });
 
 it('skips the confirmation with --force', function () {
+    config()->set('kudosity.webhooks.sync.environments', ['testing']);
     fakeWebhooks()->shouldReceive('delete')->once()->with('abc')->andReturn(true);
 
     $this->artisan('kudosity:webhook:delete', ['id' => 'abc', '--force' => true])
@@ -272,6 +259,7 @@ it('skips the confirmation with --force', function () {
 });
 
 it('exits non-zero when the registration does not exist', function () {
+    config()->set('kudosity.webhooks.sync.environments', ['testing']);
     fakeWebhooks()->shouldReceive('delete')->once()->andThrow(new NotFoundException('Webhook not found'));
 
     $this->artisan('kudosity:webhook:delete', ['id' => 'nope', '--force' => true])

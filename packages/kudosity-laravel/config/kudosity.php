@@ -244,5 +244,30 @@ return [
             'enabled' => env('KUDOSITY_WEBHOOKS_EVENTS_ENABLED', true),
             'path' => env('KUDOSITY_WEBHOOKS_EVENTS_PATH', 'events'),
         ],
+
+        /*
+        |----------------------------------------------------------------------
+        | Registration Writes
+        |----------------------------------------------------------------------
+        |
+        | Which environments may create, replace or delete account-level webhook
+        | registrations, via kudosity:webhook:sync, :install and :delete.
+        |
+        | Webhook registrations belong to the ACCOUNT, not to an app. One
+        | Kudosity account backs every environment, and every environment sends
+        | from the same sender, so no filter can separate their traffic: a
+        | registration made from staging receives production's delivery receipts
+        | and inbound replies in full, message bodies and phone numbers
+        | included.
+        |
+        | This list is therefore the only thing preventing that, and it FAILS
+        | CLOSED — an empty or absent list refuses every environment, and there
+        | is no command-line override. kudosity:webhook:list is read-only and
+        | stays ungated.
+        |
+        */
+        'sync' => [
+            'environments' => ['production'],
+        ],
     ],
 ];
