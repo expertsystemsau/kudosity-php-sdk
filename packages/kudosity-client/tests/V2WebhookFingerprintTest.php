@@ -168,6 +168,20 @@ final class V2WebhookFingerprintTest extends TestCase
         );
 
         $this->assertSame(EnsureAction::Updated, $result->action);
+
+        // The update path writes a fingerprint too, and this is what proves it:
+        // a third call with an empty MockClient issues no request at all, so it
+        // can only return Skipped if the update-path write actually happened.
+        // Without this, deleting that write leaves the suite green.
+        $skipped = $this->resource(new MockClient([]))->ensure(
+            'Prod events',
+            $rotated,
+            [WebhookEventType::SmsStatus],
+            store: $store,
+        );
+
+        $this->assertSame(EnsureAction::Skipped, $skipped->action);
+        $this->assertNull($skipped->webhook);
     }
 
     public function test_a_changed_event_set_re_fires(): void
