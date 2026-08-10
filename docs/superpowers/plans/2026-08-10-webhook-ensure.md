@@ -1479,7 +1479,17 @@ Add the fingerprint helper next to the other private statics:
 
 Run: `cd packages/kudosity-client && vendor/bin/phpunit --filter 'V2WebhookFingerprintTest|V2WebhookEnsureTest'`
 
-Expected: PASS, 26 tests.
+Expected: PASS, 25 tests — 16 from `V2WebhookEnsureTest` plus the 9 defined
+above. (An earlier draft of this step said 26 and "10 new tests"; the code block
+defines 9. The code is authoritative.)
+
+Note a gap this count exposes: `ensure()` has three `$store?->put()` call sites —
+create, unchanged and update — and the tests above assert the effect of only the
+first two. `test_a_changed_url_re_fires_even_though_a_fingerprint_exists`
+executes the update-path write but asserts nothing about it, so deleting that
+third `put()` would leave the suite green. The consequence is a lost
+optimisation rather than a wrong registration (the next call does a full GET
+instead of skipping), so this is recorded rather than fixed here.
 
 If `test_an_unwritable_path_throws_rather_than_silently_losing_the_optimisation` fails because the sandbox permits writing to `/proc/...`, substitute a path under a directory created with `0o400` in the test's `setUp()`. Do not delete the test — an unwritable store is the failure mode most likely to appear in a real deploy.
 
