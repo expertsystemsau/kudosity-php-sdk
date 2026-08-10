@@ -7,11 +7,15 @@ namespace ExpertSystems\Kudosity\Webhooks;
 /**
  * The comparison key for "is this registration ours".
  *
- * Scheme, host and path — **never the query string**, which is where the HMAC
- * signature lives. That exclusion is the whole point: rotating the signing key
- * changes the query and nothing else, and a registration whose signature no
- * longer verifies is precisely the one that needs repairing rather than
- * duplicating.
+ * Scheme, host, userinfo and path — **never the query string**, which is where
+ * the HMAC signature lives. That exclusion is the whole point: rotating the
+ * signing key changes the query and nothing else, and a registration whose
+ * signature no longer verifies is precisely the one that needs repairing rather
+ * than duplicating.
+ *
+ * The password in userinfo is deliberately reduced to a marker (`***`) rather
+ * than carried, because this identity becomes a key in an on-disk fingerprint
+ * store and a real password must never be written there.
  *
  * Host and scheme are case-insensitive per RFC 3986; the path is not, and is
  * left alone.
@@ -42,7 +46,17 @@ final class WebhookIdentity
         }
 
         $scheme = strtolower($parts['scheme']);
-        $identity = $scheme.'://'.strtolower($parts['host']);
+        $identity = $scheme.'://';
+
+        if (isset($parts['user']) && $parts['user'] !== '') {
+            // Included so a credentialed foreign registration never matches ours,
+            // which would otherwise PUT over it. The password is reduced to a marker
+            // rather than carried: this string becomes a key in an on-disk fingerprint
+            // store, and a real password must never be written there.
+            $identity .= $parts['user'].(isset($parts['pass']) ? ':***' : '').'@';
+        }
+
+        $identity .= strtolower($parts['host']);
 
         $port = $parts['port'] ?? null;
 

@@ -73,6 +73,14 @@ final class V2WebhookIdentityTest extends TestCase
                 'http://app.example.com/webhooks/kudosity/events',
                 'https://app.example.com/webhooks/kudosity/events',
             ],
+            'credentials are part of the endpoint' => [
+                'https://user:pass@app.example.com/webhooks/kudosity/events',
+                'https://app.example.com/webhooks/kudosity/events',
+            ],
+            'a different user is a different endpoint' => [
+                'https://alice@app.example.com/h',
+                'https://bob@app.example.com/h',
+            ],
         ];
     }
 
@@ -102,5 +110,15 @@ final class V2WebhookIdentityTest extends TestCase
             WebhookIdentity::of('https://app.example.com'),
             WebhookIdentity::of('https://app.example.com/'),
         );
+    }
+
+    public function test_a_password_never_appears_in_the_identity_because_it_is_persisted_to_disk(): void
+    {
+        // The identity becomes a key in an on-disk fingerprint store, so carrying a
+        // real password here would write a credential to the filesystem.
+        $identity = WebhookIdentity::of('https://user:sup3rs3cret@app.example.com/h');
+
+        $this->assertStringNotContainsString('sup3rs3cret', $identity);
+        $this->assertStringContainsString('user', $identity);
     }
 }
