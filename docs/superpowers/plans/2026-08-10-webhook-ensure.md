@@ -1,5 +1,23 @@
 # Idempotent V2 Webhook Registration Implementation Plan
 
+> **SUPERSEDED IN PART — released as 2.3.0 on 2026-08-10.** This file is the
+> historical execution record. Two claims in Task 9's Step 3 and Step 4 README
+> blocks were found **false** by the final whole-branch review and corrected in
+> the shipped documentation:
+>
+> 1. `sync` does **not** repair a changed route prefix or a moved `APP_URL`. Path
+>    and host are part of the receiver identity, so either change makes the old
+>    registration a different endpoint: a new webhook is registered, the stale one
+>    stays live, and it does not appear in `duplicates`. Its deliveries 404, not
+>    403. Only a rotated signing key and a changed event set repair in place.
+> 2. The fingerprint store is **not** "never authoritative". It records that you
+>    already reconciled a desired state and says nothing about what the account
+>    holds, so a dashboard edit or deletion is silently skipped.
+>
+> Do not regenerate documentation from the blocks below. `README.md`,
+> `packages/kudosity-client/README.md` and `packages/kudosity-laravel/README.md`
+> as shipped are authoritative.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add `WebhooksResource::ensure()` — a declarative, idempotent reconcile of one V2 webhook registration — plus a `kudosity:webhook:sync` command and a fail-closed environment gate on every command that writes to the shared account.
