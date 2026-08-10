@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace ExpertSystems\Kudosity\Resources;
 
+use ExpertSystems\Kudosity\Contracts\WebhookFingerprintStore;
 use ExpertSystems\Kudosity\Data\V2\EnsureResult;
 use ExpertSystems\Kudosity\Data\V2\WebhookData;
 use ExpertSystems\Kudosity\Data\V2\WebhookFilter;
@@ -98,6 +99,7 @@ class WebhooksResource extends V2Resource
         ?WebhookFilter $filter = null,
         ?int $rateLimit = null,
         bool $allowInsecureUrl = false,
+        ?WebhookFingerprintStore $store = null,
     ): EnsureResult {
         // Up front, not left to create()/update(): on the unchanged path no write
         // request is built, so a guard living only in the request classes would let
@@ -107,42 +109,52 @@ class WebhooksResource extends V2Resource
         $desired = self::mergeEventTypes($filter, $eventTypes);
         $identity = WebhookIdentity::of($url);
 
+        $fingerprint = self::fingerprint($name, $url, $desired, $rateLimit);
+
+        if ($store !== null && $store->get($identity) === $fingerprint) {
+            // No DTO to return: nothing was read. See EnsureResult.
+            return new EnsureResult(EnsureAction::Skipped);
+        }
+
         $matches = array_values(array_filter(
             $this->all(),
             static fn (WebhookData $hook): bool => WebhookIdentity::of($hook->url) === $identity,
         ));
 
         if ($matches === []) {
-            return new EnsureResult(
-                EnsureAction::Created,
-                $this->create(
-                    name: $name,
-                    url: $url,
-                    filter: $desired,
-                    rateLimit: $rateLimit,
-                    allowInsecureUrl: $allowInsecureUrl,
-                ),
-            );
-        }
-
-        $existing = array_shift($matches);
-
-        if (self::matchesDesired($existing, $name, $url, $desired, $rateLimit)) {
-            return new EnsureResult(EnsureAction::Unchanged, $existing, $matches);
-        }
-
-        return new EnsureResult(
-            EnsureAction::Updated,
-            $this->update(
-                id: $existing->id,
+            $created = $this->create(
                 name: $name,
                 url: $url,
                 filter: $desired,
                 rateLimit: $rateLimit,
                 allowInsecureUrl: $allowInsecureUrl,
-            ),
-            $matches,
+            );
+
+            $store?->put($identity, $fingerprint);
+
+            return new EnsureResult(EnsureAction::Created, $created);
+        }
+
+        $existing = array_shift($matches);
+
+        if (self::matchesDesired($existing, $name, $url, $desired, $rateLimit)) {
+            $store?->put($identity, $fingerprint);
+
+            return new EnsureResult(EnsureAction::Unchanged, $existing, $matches);
+        }
+
+        $updated = $this->update(
+            id: $existing->id,
+            name: $name,
+            url: $url,
+            filter: $desired,
+            rateLimit: $rateLimit,
+            allowInsecureUrl: $allowInsecureUrl,
         );
+
+        $store?->put($identity, $fingerprint);
+
+        return new EnsureResult(EnsureAction::Updated, $updated, $matches);
     }
 
     /**
@@ -302,5 +314,30 @@ class WebhooksResource extends V2Resource
         ksort($comparable);
 
         return $comparable;
+    }
+
+    /**
+     * A stable digest of the desired state.
+     *
+     * Covers the whole filter rather than event types alone, so changing a sender
+     * or status condition re-fires as readily as changing an event type. Values
+     * are sorted through {@see self::comparableFilter()} so that reordering an
+     * array in application code does not invalidate the entry.
+     *
+     * `$rateLimit` folds in as the literal string `default` when null, which is
+     * distinct from any integer and so cannot collide with an explicit limit.
+     */
+    private static function fingerprint(
+        string $name,
+        string $url,
+        ?WebhookFilter $filter,
+        ?int $rateLimit,
+    ): string {
+        return hash('sha256', implode("\0", [
+            $name,
+            $url,
+            json_encode(self::comparableFilter($filter)) ?: '{}',
+            $rateLimit === null ? 'default' : (string) $rateLimit,
+        ]));
     }
 }
