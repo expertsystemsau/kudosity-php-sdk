@@ -19,7 +19,7 @@
     ],
     "require": {
         "php": "^8.2",
-        "expertsystemsau/kudosity-php-client": "^2.0",
+        "expertsystemsau/kudosity-php-client": "^2.3",
         "illuminate/notifications": "^11.0||^12.0||^13.0",
         "illuminate/support": "^11.0||^12.0||^13.0",
         "saloonphp/laravel-plugin": "^4.0"
