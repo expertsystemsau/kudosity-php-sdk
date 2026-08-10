@@ -1,9 +1,11 @@
 # Handover — Laravel 13 support
 
 **Date:** 2026-08-10
-**Status:** resumed 2026-08-10 on `feat/laravel-13-support`. Compatibility proven,
-constraints widened, CI matrix updated. Two items remain, both requiring a push or
-a publish — see Definition of done.
+**Status:** **COMPLETE 2026-08-10.** Shipped as `v2.1.0` — all four Definition of
+done items closed, including a live send from a fresh Laravel 13 app against the
+published package. Remaining 2.1.0 scope (DTO fields, the `get-contact-sms-stats`
+paginator, the `SentMessage` design decision) is unrelated to Laravel 13 and still
+open; see "Still open" below.
 **Context:** 2.0.2 shipped without this, deliberately. See `CHANGELOG.md` "Known issue".
 
 ## Outcome (2026-08-10)
@@ -204,10 +206,30 @@ specific, but they will bite whoever picks this up.
    standalone, including all four Laravel 13 jobs (PHP 8.3 and 8.4 × Ubuntu and
    Windows). PHP 8.3 had no local toolchain and was unverified anywhere until this
    run, which mattered because `^8.3` is Laravel 13's own floor.
-3. [ ] A `laravel new` on 13 installs the published package and sends one real
-   message. — **Blocked until 2.1.0 is published.** This is the check the whole
-   2026-08 validation exercise argues matters most; do not skip it on the grounds
-   that the suite is green.
+3. [x] A `laravel new` on 13 installs the published package and sends one real
+   message. — **Done 2026-08-10.** Fresh `composer create-project laravel/laravel`
+   gave Laravel 13.24.0 on PHP 8.4.5; `composer require
+   expertsystemsau/kudosity-laravel-client` resolved `^2.1` from real Packagist
+   and auto-discovered the provider. Verified in that app: config publishes, the
+   client and both connectors resolve (including `KudosityV2Connector`, the one
+   flagged as most likely to break), all four channels register on
+   `ChannelManager`, all six V2 resources resolve, three Artisan commands and four
+   webhook routes register.
+
+   **Live send: `id=71b46873-67a1-41cb-82a7-8ce9c3ebc1d3`, read back as
+   `DELIVERED`** to `61447514584` from `61437130145`, `sms_count=1`.
+
+   Two things this check caught that CI structurally could not: the repo `.env`
+   still carried the retired sender `61426309571` and every V2 send failed
+   `Sender not found` (now fixed in `.env`); and the account holds exactly one
+   active number, `61437130145`, confirmed via V1 `numbers()`. Neither is a
+   Laravel 13 issue — but the first would have made any live send fail and be
+   misread as one.
+
+   Non-defect worth recording so nobody re-reports it: `numbers()->all()` returns
+   a `V1PagedPaginator`, not an array. A probe that does
+   `is_array($r) ? $r : $r->toArray()` silently yields `[]` and looks like an
+   empty account.
 4. [x] Constraints widened, 2.1.0 tagged and published, `CHANGELOG.md`'s "Known
    issue" entry updated. — **Constraints widened, changelog cut to `2.1.0`, tagged
    `v2.1.0` and pushed.** Packagist picks it up from the split repos via webhook;
