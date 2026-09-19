@@ -9,6 +9,7 @@ use ExpertSystems\Kudosity\Data\V2\SmsMessageData;
 use ExpertSystems\Kudosity\Exceptions\ValidationException;
 use ExpertSystems\Kudosity\Requests\KudosityV2BodyRequest;
 use ExpertSystems\Kudosity\Support\PhoneNumber;
+use ExpertSystems\Kudosity\Support\SmsLength;
 use Saloon\Http\Response;
 
 /**
@@ -36,7 +37,7 @@ use Saloon\Http\Response;
  * payload one: check `/v2/senders/registrations` and `get-numbers.json`.
  *
  * Message length is not validated here — a long message is split and billed
- * per part, not rejected. {@see \ExpertSystems\Kudosity\Support\SmsLength}
+ * per part, not rejected. {@see SmsLength}
  * measures what a body will cost before you send it.
  *
  * @see https://developers.kudosity.com/reference/post_v2-sms
