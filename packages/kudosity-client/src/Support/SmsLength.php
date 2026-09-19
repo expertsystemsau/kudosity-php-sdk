@@ -171,6 +171,82 @@ final class SmsLength
         return $this->parts > 1;
     }
 
+    /**
+     * Would this message fit in `$maxParts` or fewer?
+     *
+     * ⚠ THE API SETS NO MAXIMUM. `POST /v2/sms` has no `maxLength` on `message`
+     * and documents no part cap — a 20-part message sends, and bills 20 times.
+     * So the ceiling is a BUSINESS decision (cost, or a carrier's own limit),
+     * never a protocol one, which is why this takes the number instead of
+     * hiding one inside the SDK.
+     */
+    public function fitsWithin(int $maxParts): bool
+    {
+        if ($maxParts < 1) {
+            throw new \InvalidArgumentException('maxParts must be at least 1, got '.$maxParts);
+        }
+
+        return $this->parts <= $maxParts;
+    }
+
+    /**
+     * How many billable units fit in `$parts` parts at this encoding.
+     *
+     * Note the discontinuity: one part holds 160, but two hold 306 — not 320.
+     * The moment a message needs splitting EVERY part pays the UDH header,
+     * including the first, so the second part costs you 7 characters off the
+     * first as well as its own.
+     */
+    public static function capacityFor(int $parts, string $encoding = self::ENCODING_GSM): int
+    {
+        if ($parts < 1) {
+            throw new \InvalidArgumentException('parts must be at least 1, got '.$parts);
+        }
+
+        $gsm = $encoding === self::ENCODING_GSM;
+
+        if ($parts === 1) {
+            return $gsm ? self::GSM_SINGLE : self::UNICODE_SINGLE;
+        }
+
+        return $parts * ($gsm ? self::GSM_MULTIPART : self::UNICODE_MULTIPART);
+    }
+
+    /**
+     * The longest prefix of `$message` that still fits in `$maxParts`.
+     *
+     * Cuts on CHARACTER boundaries and counts in billable units, so it never
+     * splits a multi-byte character and never leaves a trailing escape whose
+     * partner was cut — a naive `mb_substr()` to a character count does both.
+     *
+     * ⚠ Conservative by one edge case, deliberately: capacity is measured at
+     * the ORIGINAL message's encoding. If the only non-GSM character sits past
+     * the cut, the result is pure GSM and could have held more. Recomputing to
+     * exploit that would mean re-encoding on every character, and the failure
+     * direction matters more than the last few characters — this way the
+     * result ALWAYS fits.
+     */
+    public static function truncateToParts(string $message, int $maxParts): string
+    {
+        $capacity = self::capacityFor($maxParts, self::for($message)->encoding());
+
+        $kept = '';
+        $used = 0;
+
+        foreach (preg_split('//u', $message, -1, PREG_SPLIT_NO_EMPTY) ?: [] as $character) {
+            $cost = mb_strpos(self::GSM_EXTENDED, $character) !== false ? 2 : 1;
+
+            if ($used + $cost > $capacity) {
+                break;
+            }
+
+            $kept .= $character;
+            $used += $cost;
+        }
+
+        return $kept;
+    }
+
     private function perPart(): int
     {
         if ($this->parts === 1) {

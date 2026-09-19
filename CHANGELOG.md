@@ -2,6 +2,70 @@
 
 All notable changes to `kudosity-php-client` will be documented in this file.
 
+## 2.5.0 - 2026-09-19
+
+Message length measurement, and `sender` pinned as required on V2.
+
+### `SmsLength` — what a message costs before you send it
+
+Nothing in the client knew the documented limits: **160** characters on GSM-7
+and **70** on Unicode, dropping to **153** and **67** per part once a message
+splits, because every part of a multipart message carries the UDH segmentation
+header — including the first. Callers pricing a bulk run, or a template editor
+showing "2 parts", had to reimplement that, and the easy version is wrong by a
+whole part on every long message.
+
+```php
+$sms = SmsLength::for($body);
+$sms->encoding();      // 'GSM-7' | 'UCS-2'
+$sms->length();        // billable units, NOT mb_strlen()
+$sms->parts();         // what you will be billed for
+$sms->remaining();     // units before the next part
+$sms->isMultipart();
+$sms->fitsWithin(3);   // against YOUR ceiling — see below
+
+SmsLength::capacityFor(2);                  // 306, not 320
+SmsLength::truncateToParts($body, 2);       // longest prefix that fits
+```
+
+It **measures, it does not reject**. A long message is not an error — the
+network splits it and the account is billed per part, so refusing one would
+break a legitimate send and truncating silently would be worse.
+
+⚠ **There is no API maximum.** `POST /v2/sms` declares no `maxLength` on
+`message` and documents no part cap — a 20-part message sends, and bills 20
+times. Any ceiling is a *business* decision, which is why `fitsWithin()` takes
+the number rather than the SDK hiding one.
+
+Two behaviours worth knowing:
+
+- **Encoding is all-or-nothing.** One character off the GSM alphabet — a curly
+  quote pasted from Word, an emoji, an accented name — re-encodes the whole
+  message and takes the limit from 160 to 70.
+- **Nine GSM characters cost two units:** `^ { } \ [ ~ ] |` and `€` are sent as
+  an escape byte plus the character. 80 backslashes fill a part; 81 overflow it.
+
+`truncateToParts()` cuts on character boundaries in billable units, so it never
+splits a multi-byte character and never orphans an escape whose partner was cut
+— a naive `mb_substr()` to a character count does both.
+
+### `sender` is REQUIRED on `/v2/sms`
+
+Already typed non-nullable, so **no behaviour change** — but nothing said why it
+differs from `SendWhatsAppRequest`, whose nullable sender is omitted so the
+account default applies. That asymmetry reads as an oversight and invites a
+well-meaning "fix". Verified against the live API:
+
+```
+sender omitted   -> 400 {"error":"sender: required"}
+sender: ""       -> 400 {"error":"sender: required"}
+sender: "PHMS"   -> 400 {"error":"Sender not found"}
+```
+
+SMS has no account-default fallback. Omitting is not a working state, it is the
+same 400. `Sender not found` is a **provisioning** error — check
+`/v2/senders/registrations` and `get-numbers.json` — not a payload one.
+
 ## 2.4.0 - 2026-08-25
 
 Correlation on the SMS notification channel, and three silent-drop defects around
