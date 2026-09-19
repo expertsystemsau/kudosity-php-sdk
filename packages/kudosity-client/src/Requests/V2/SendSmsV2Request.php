@@ -18,6 +18,27 @@ use Saloon\Http\Response;
  * multiple recipients, a contact list, or a future send time, use the V1
  * bulk surface — `$client->bulk()`.
  *
+ * ⚠ `$sender` IS REQUIRED, and deliberately NOT nullable — unlike
+ * {@see SendWhatsAppRequest}, which omits an absent sender so the account's
+ * registered default applies. SMS has no such fallback. Verified against the
+ * live API 2026-09-19:
+ *
+ *   sender omitted entirely  ->  400 {"error":"sender: required"}
+ *   sender: ""               ->  400 {"error":"sender: required"}
+ *   sender: "PHMS"           ->  400 {"error":"Sender not found"}
+ *
+ * So do NOT "fix" this by making it optional to match the WhatsApp request:
+ * omitting the field is not a working state, it is the same 400. The value
+ * must be a sender the account actually holds — an alphanumeric ID registered
+ * on the account (max 11 chars; letters, numbers, underscore, hyphen or space,
+ * no consecutive specials) or a leased virtual number in international format.
+ * Anything else is `Sender not found`, which is a PROVISIONING error, not a
+ * payload one: check `/v2/senders/registrations` and `get-numbers.json`.
+ *
+ * Message length is not validated here — a long message is split and billed
+ * per part, not rejected. {@see \ExpertSystems\Kudosity\Support\SmsLength}
+ * measures what a body will cost before you send it.
+ *
  * @see https://developers.kudosity.com/reference/post_v2-sms
  */
 class SendSmsV2Request extends KudosityV2BodyRequest
@@ -31,6 +52,7 @@ class SendSmsV2Request extends KudosityV2BodyRequest
     public function __construct(
         protected string $message,
         protected string $recipient,
+        /** REQUIRED by the API — see the class docblock before making this nullable. */
         protected string $sender,
         protected ?string $messageRef = null,
         protected bool $trackLinks = false,

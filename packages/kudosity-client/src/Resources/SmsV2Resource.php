@@ -25,6 +25,12 @@ class SmsV2Resource extends V2Resource
     public function send(
         string $message,
         string $to,
+        /**
+         * REQUIRED. A sender the account holds — a registered alphanumeric ID
+         * or a leased number. `''` and omission both return 400
+         * `sender: required`; an unheld value returns `Sender not found`.
+         * SMS has no account-default fallback the way WhatsApp does.
+         */
         string $from,
         ?string $messageRef = null,
         bool $trackLinks = false,
