@@ -19,7 +19,7 @@
     ],
     "require": {
         "php": "^8.2",
-        "saloonphp/laravel-plugin": "^4.0",
+        "saloonphp/laravel-plugin": "^5.0",
         "saloonphp/pagination-plugin": "^2.3",
         "saloonphp/saloon": "^4.0"
     },
