@@ -22,7 +22,7 @@
         "expertsystemsau/kudosity-php-client": "^2.4",
         "illuminate/notifications": "^11.0||^12.0||^13.0",
         "illuminate/support": "^11.0||^12.0||^13.0",
-        "saloonphp/laravel-plugin": "^4.0"
+        "saloonphp/laravel-plugin": "^4.0||^5.0"
     },
     "require-dev": {
         "orchestra/testbench": "^9.0||^10.0||^11.0",

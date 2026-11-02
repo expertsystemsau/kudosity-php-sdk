@@ -2,6 +2,22 @@
 
 All notable changes to `kudosity-php-client` will be documented in this file.
 
+## 2.6.0 - 2026-11-03
+
+Compatibility with `saloonphp/laravel-plugin` v5, and a PHP 8.5 fix.
+
+- **saloon-laravel v5 support.** The Laravel package now allows
+  `saloonphp/laravel-plugin` `^4.0||^5.0` (previously `^4.0` only). v5 drops
+  Laravel 11 support but is otherwise API-compatible for our usage; the
+  service provider and connector wiring are unchanged. This unblocks
+  consumers (e.g. phms-api) that want to run laravel-plugin v5. The core
+  `kudosity-php-client` is unaffected — it uses Saloon core, not the Laravel
+  plugin.
+- **PHP 8.5 fix.** `KudosityException::fromResponse()` indexed the error map
+  with a null error code, which PHP 8.5 deprecates ("Using null as an array
+  offset"). The null case is now guarded explicitly. Full suites green:
+  Laravel 209 / client 904.
+
 ## 2.5.0 - 2026-09-19
 
 Message length measurement, and `sender` pinned as required on V2.

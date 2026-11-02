@@ -104,7 +104,11 @@ class KudosityException extends Exception
             );
         }
 
-        $exceptionClass = self::$errorMap[$errorCode] ?? self::class;
+        // $errorCode is null when the body has no code (or failed to decode); indexing an
+        // array with a null key is deprecated on PHP 8.5, so guard it explicitly.
+        $exceptionClass = $errorCode !== null
+            ? (self::$errorMap[$errorCode] ?? self::class)
+            : self::class;
 
         // For rate limit exceptions, use the specialized factory method
         // to extract rate limit metadata from headers
