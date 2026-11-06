@@ -22,7 +22,7 @@
         "saloonphp/saloon": "^4.0"
     },
     "require-dev": {
-        "phpunit/phpunit": "^11.0",
+        "phpunit/phpunit": "^13.4",
         "mockery/mockery": "^1.6"
     },
     "replace": {
